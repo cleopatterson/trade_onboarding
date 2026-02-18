@@ -1,0 +1,5590 @@
+{
+  "Insurance": {
+    "category_id": 17,
+    "category_name": "Insurance",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 366,
+        "subcategory_name": "Boating & Marine Insurance",
+        "subcategory_job_title": "Boating & Marine Broker"
+      },
+      {
+        "subcategory_id": 367,
+        "subcategory_name": "Business Insurance",
+        "subcategory_job_title": "Business Insurance Broker"
+      },
+      {
+        "subcategory_id": 368,
+        "subcategory_name": "Car Insurance",
+        "subcategory_job_title": "Car Insurance Broker"
+      },
+      {
+        "subcategory_id": 370,
+        "subcategory_name": "General Insurance",
+        "subcategory_job_title": "General Insurance Broker"
+      },
+      {
+        "subcategory_id": 371,
+        "subcategory_name": "Home & Contents Insurance",
+        "subcategory_job_title": "Home & Contents Insurance Broker"
+      },
+      {
+        "subcategory_id": 372,
+        "subcategory_name": "Insurance Assessors",
+        "subcategory_job_title": "Insurance Assessor"
+      },
+      {
+        "subcategory_id": 373,
+        "subcategory_name": "Insurance Broking",
+        "subcategory_job_title": "Insurance Broker"
+      },
+      {
+        "subcategory_id": 374,
+        "subcategory_name": "Life Insurance",
+        "subcategory_job_title": "Life Insurance Broker"
+      },
+      {
+        "subcategory_id": 375,
+        "subcategory_name": "Risk Management",
+        "subcategory_job_title": "Risk Manager"
+      },
+      {
+        "subcategory_id": 376,
+        "subcategory_name": "Travel Insurance",
+        "subcategory_job_title": "Travel Insurance Broker"
+      }
+    ]
+  },
+  "Accountant": {
+    "category_id": 99,
+    "category_name": "Accountant",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 4,
+        "subcategory_name": "Financial Advice",
+        "subcategory_job_title": "Financial Advisor"
+      },
+      {
+        "subcategory_id": 493,
+        "subcategory_name": "Business Accounting & Advice",
+        "subcategory_job_title": "Accountant"
+      },
+      {
+        "subcategory_id": 593,
+        "subcategory_name": "MYOB",
+        "subcategory_job_title": "MYOB"
+      },
+      {
+        "subcategory_id": 2198,
+        "subcategory_name": "Personal tax returns and advice",
+        "subcategory_job_title": "Personal tax returns and advice"
+      },
+      {
+        "subcategory_id": 2199,
+        "subcategory_name": "Auditing",
+        "subcategory_job_title": "Auditing"
+      },
+      {
+        "subcategory_id": 2200,
+        "subcategory_name": "Payroll accounting",
+        "subcategory_job_title": "Payroll accounting"
+      },
+      {
+        "subcategory_id": 2240,
+        "subcategory_name": "Xero accounting",
+        "subcategory_job_title": "Xero accounting"
+      },
+      {
+        "subcategory_id": 2241,
+        "subcategory_name": "Self Managed Super Funds",
+        "subcategory_job_title": "Self Managed Super Funds"
+      },
+      {
+        "subcategory_id": 2242,
+        "subcategory_name": "Business Activity Statement (BAS) Preparation",
+        "subcategory_job_title": "Business Activity Statement (BAS) Preperation"
+      }
+    ]
+  },
+  "Air Conditioning & Heating Technician": {
+    "category_id": 100,
+    "category_name": "Air Conditioning & Heating Technician",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 494,
+        "subcategory_name": "Heating Installation & Repair",
+        "subcategory_job_title": "Heater Installer"
+      },
+      {
+        "subcategory_id": 605,
+        "subcategory_name": "Automotive Air Conditioning",
+        "subcategory_job_title": "Automotive Air Conditioning"
+      },
+      {
+        "subcategory_id": 608,
+        "subcategory_name": "Duct Installation",
+        "subcategory_job_title": "Duct Installation"
+      },
+      {
+        "subcategory_id": 609,
+        "subcategory_name": "Ducted Air Conditioning",
+        "subcategory_job_title": "Ducted Air Conditioning"
+      },
+      {
+        "subcategory_id": 623,
+        "subcategory_name": "Ducted Gas Heating",
+        "subcategory_job_title": "Ducted Gas Heating"
+      },
+      {
+        "subcategory_id": 625,
+        "subcategory_name": "Evaporative Cooling",
+        "subcategory_job_title": "Evaporative Cooling"
+      },
+      {
+        "subcategory_id": 631,
+        "subcategory_name": "Reverse Cycle Air Conditioning",
+        "subcategory_job_title": "Reverse Cycle Air Conditioning"
+      },
+      {
+        "subcategory_id": 632,
+        "subcategory_name": "Split System Air Conditioning",
+        "subcategory_job_title": "Split System Air Conditioning"
+      },
+      {
+        "subcategory_id": 634,
+        "subcategory_name": "Vent Installation",
+        "subcategory_job_title": "Vent Installation"
+      },
+      {
+        "subcategory_id": 635,
+        "subcategory_name": "Air Conditioning Cleaning",
+        "subcategory_job_title": "Air Conditioning Cleaning"
+      },
+      {
+        "subcategory_id": 2204,
+        "subcategory_name": "Air conditioner repair",
+        "subcategory_job_title": "Air conditioner repair"
+      },
+      {
+        "subcategory_id": 2205,
+        "subcategory_name": "Heating Installation & Repair",
+        "subcategory_job_title": "Heating Installation & Repair"
+      },
+      {
+        "subcategory_id": 2243,
+        "subcategory_name": "Air conditioner installation",
+        "subcategory_job_title": "Air conditioner installation"
+      },
+      {
+        "subcategory_id": 2244,
+        "subcategory_name": "Wood heaters and fireplaces",
+        "subcategory_job_title": "Wood heaters and fireplaces"
+      },
+      {
+        "subcategory_id": 2245,
+        "subcategory_name": "Electric heaters",
+        "subcategory_job_title": "Electric heaters"
+      },
+      {
+        "subcategory_id": 2246,
+        "subcategory_name": "Gas heaters and fireplaces",
+        "subcategory_job_title": "Gas heaters and fireplaces"
+      },
+      {
+        "subcategory_id": 2716,
+        "subcategory_name": "Duct Cleaning",
+        "subcategory_job_title": "Duct Cleaning"
+      },
+      {
+        "subcategory_id": 2722,
+        "subcategory_name": "Commercial Refrigeration",
+        "subcategory_job_title": "Commercial Refrigeration"
+      }
+    ]
+  },
+  "App Developer": {
+    "category_id": 101,
+    "category_name": "App Developer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2210,
+        "subcategory_name": "iOS developer",
+        "subcategory_job_title": "iOS developer"
+      },
+      {
+        "subcategory_id": 2211,
+        "subcategory_name": "Android developer",
+        "subcategory_job_title": "Android developer"
+      }
+    ]
+  },
+  "Arborist": {
+    "category_id": 102,
+    "category_name": "Arborist",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 526,
+        "subcategory_name": "Tree Lopping",
+        "subcategory_job_title": "Tree Lopper"
+      },
+      {
+        "subcategory_id": 574,
+        "subcategory_name": "Tree Stumping",
+        "subcategory_job_title": "Tree Stumper"
+      },
+      {
+        "subcategory_id": 1062,
+        "subcategory_name": "Tree Pruning",
+        "subcategory_job_title": "Tree Pruning"
+      },
+      {
+        "subcategory_id": 1063,
+        "subcategory_name": "Tree Removal",
+        "subcategory_job_title": "Tree Removal"
+      },
+      {
+        "subcategory_id": 1065,
+        "subcategory_name": "Tree Surgery",
+        "subcategory_job_title": "Tree Surgery"
+      },
+      {
+        "subcategory_id": 2247,
+        "subcategory_name": "Stump grinding",
+        "subcategory_job_title": "Stump griding"
+      }
+    ]
+  },
+  "Building Designer": {
+    "category_id": 103,
+    "category_name": "Building Designer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 52,
+        "subcategory_name": "CAD drawing",
+        "subcategory_job_title": "CAD Expert"
+      },
+      {
+        "subcategory_id": 55,
+        "subcategory_name": "Commercial Architecture",
+        "subcategory_job_title": "Commercial Architect"
+      },
+      {
+        "subcategory_id": 63,
+        "subcategory_name": "Residential Architecture",
+        "subcategory_job_title": "Residential Architect"
+      },
+      {
+        "subcategory_id": 64,
+        "subcategory_name": "Restoration Architecture",
+        "subcategory_job_title": "Restoriation Architect"
+      },
+      {
+        "subcategory_id": 67,
+        "subcategory_name": "Development Assessments",
+        "subcategory_job_title": "Development Assessments (DA) Expert"
+      },
+      {
+        "subcategory_id": 68,
+        "subcategory_name": "Town Planning",
+        "subcategory_job_title": "Town Planner"
+      },
+      {
+        "subcategory_id": 878,
+        "subcategory_name": "3D Modelling",
+        "subcategory_job_title": "3D Modelling"
+      },
+      {
+        "subcategory_id": 967,
+        "subcategory_name": "Architecture For Extensions",
+        "subcategory_job_title": "Architecture For Extensions"
+      },
+      {
+        "subcategory_id": 970,
+        "subcategory_name": "Heritage Architecture",
+        "subcategory_job_title": "Heritage Architecture"
+      },
+      {
+        "subcategory_id": 1351,
+        "subcategory_name": "3D Modelling",
+        "subcategory_job_title": "3D Modelling"
+      },
+      {
+        "subcategory_id": 2194,
+        "subcategory_name": "Building project management",
+        "subcategory_job_title": "Building project management"
+      },
+      {
+        "subcategory_id": 2214,
+        "subcategory_name": "Private certifier submissions",
+        "subcategory_job_title": "Private certifier submissions"
+      },
+      {
+        "subcategory_id": 2215,
+        "subcategory_name": "Building feasibility reports",
+        "subcategory_job_title": "Building feasibility reports"
+      },
+      {
+        "subcategory_id": 2216,
+        "subcategory_name": "BASIX Certificates",
+        "subcategory_job_title": "BASIX Certificates"
+      },
+      {
+        "subcategory_id": 2248,
+        "subcategory_name": "Architecture plans and documentation",
+        "subcategory_job_title": "Architect plans and documentation"
+      },
+      {
+        "subcategory_id": 2249,
+        "subcategory_name": "Home renovation designs",
+        "subcategory_job_title": "Home renovation designs"
+      },
+      {
+        "subcategory_id": 2250,
+        "subcategory_name": "Development approvals and council documentation",
+        "subcategory_job_title": "Development approvals and council documentation"
+      },
+      {
+        "subcategory_id": 2251,
+        "subcategory_name": "New home designs and sketches",
+        "subcategory_job_title": "New home designs and sketches"
+      }
+    ]
+  },
+  "Asbestos Removalist": {
+    "category_id": 104,
+    "category_name": "Asbestos Removalist",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 126,
+        "subcategory_name": "Asbestos Removal",
+        "subcategory_job_title": "Asbestos Removalist"
+      },
+      {
+        "subcategory_id": 2252,
+        "subcategory_name": "Asbestos inspection reports",
+        "subcategory_job_title": "Asbestos inspection reports"
+      },
+      {
+        "subcategory_id": 2253,
+        "subcategory_name": "Roof asbestos removal",
+        "subcategory_job_title": "Roof asbestos removal"
+      },
+      {
+        "subcategory_id": 2254,
+        "subcategory_name": "Fence asbestos removal",
+        "subcategory_job_title": "Fence asbestos removal"
+      },
+      {
+        "subcategory_id": 2255,
+        "subcategory_name": "Wall asbestos removal",
+        "subcategory_job_title": "Wall asbestos removal"
+      },
+      {
+        "subcategory_id": 2256,
+        "subcategory_name": "Window asbestos removal",
+        "subcategory_job_title": "Window asbestos removal"
+      },
+      {
+        "subcategory_id": 2257,
+        "subcategory_name": "Floor asbestos removal",
+        "subcategory_job_title": "Floor asbestos removal"
+      }
+    ]
+  },
+  "Asphalting Company": {
+    "category_id": 105,
+    "category_name": "Asphalting Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2258,
+        "subcategory_name": "Driveway & Footpath Construction",
+        "subcategory_job_title": "Driveway & Footpath Construction"
+      },
+      {
+        "subcategory_id": 2259,
+        "subcategory_name": "Bitumen sealing",
+        "subcategory_job_title": "Bitumen sealing"
+      },
+      {
+        "subcategory_id": 2260,
+        "subcategory_name": "Asphalt laying",
+        "subcategory_job_title": "Asphalt laying"
+      },
+      {
+        "subcategory_id": 2261,
+        "subcategory_name": "Asphalt resurfacing",
+        "subcategory_job_title": "Asphalt resurfacing"
+      },
+      {
+        "subcategory_id": 2262,
+        "subcategory_name": "Asphalt maintenance",
+        "subcategory_job_title": "Asphalt maintenance"
+      },
+      {
+        "subcategory_id": 2683,
+        "subcategory_name": "Rejuvenate Bitumen",
+        "subcategory_job_title": "Rejuvenate Bitumen"
+      },
+      {
+        "subcategory_id": 2684,
+        "subcategory_name": "Recoat Bitumen",
+        "subcategory_job_title": "Recoat Bitumen"
+      },
+      {
+        "subcategory_id": 2685,
+        "subcategory_name": "Bitumen Restoration",
+        "subcategory_job_title": "Bitumen Restoration"
+      }
+    ]
+  },
+  "Auto Tuner": {
+    "category_id": 106,
+    "category_name": "Auto Tuner",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2263,
+        "subcategory_name": "Auto performance tuning",
+        "subcategory_job_title": "Auto performance tuning"
+      },
+      {
+        "subcategory_id": 2264,
+        "subcategory_name": "Dyno tuning",
+        "subcategory_job_title": "Dyno tuning"
+      }
+    ]
+  },
+  "Auto Electrician": {
+    "category_id": 107,
+    "category_name": "Auto Electrician",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 971,
+        "subcategory_name": "Car Alarms",
+        "subcategory_job_title": "Car Alarms"
+      },
+      {
+        "subcategory_id": 2265,
+        "subcategory_name": "Mobile auto electrician",
+        "subcategory_job_title": "Mobile auto electrician"
+      },
+      {
+        "subcategory_id": 2266,
+        "subcategory_name": "Battery replacement",
+        "subcategory_job_title": "Battery replacement"
+      },
+      {
+        "subcategory_id": 2267,
+        "subcategory_name": "Vehicle lighting",
+        "subcategory_job_title": "Vehicle lighting"
+      },
+      {
+        "subcategory_id": 2268,
+        "subcategory_name": "Vehicle alternators and starter motors",
+        "subcategory_job_title": "Vehicle alternators and starter motors"
+      },
+      {
+        "subcategory_id": 2269,
+        "subcategory_name": "Automotive diagnostics and testing",
+        "subcategory_job_title": "Automotive diagnostics and testing"
+      }
+    ]
+  },
+  "Smash Repair Company": {
+    "category_id": 108,
+    "category_name": "Smash Repair Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2270,
+        "subcategory_name": "Panel beater",
+        "subcategory_job_title": "Panel beater"
+      },
+      {
+        "subcategory_id": 2271,
+        "subcategory_name": "Automotive insurance repairs",
+        "subcategory_job_title": "Automotive insurance repairs"
+      },
+      {
+        "subcategory_id": 2272,
+        "subcategory_name": "Auto scratch repair",
+        "subcategory_job_title": "Auto scratch repair"
+      },
+      {
+        "subcategory_id": 2273,
+        "subcategory_name": "Car bumper repairs",
+        "subcategory_job_title": "Car bumper repairs"
+      },
+      {
+        "subcategory_id": 2274,
+        "subcategory_name": "Paintless dent repair and removal",
+        "subcategory_job_title": "Paintless dent repair and removal"
+      },
+      {
+        "subcategory_id": 2275,
+        "subcategory_name": "Car dent repairs",
+        "subcategory_job_title": "Car dent repairs"
+      }
+    ]
+  },
+  "Car detailer": {
+    "category_id": 109,
+    "category_name": "Car detailer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 96,
+        "subcategory_name": "Car Cleaning & Detailing",
+        "subcategory_job_title": "Car Detailer"
+      },
+      {
+        "subcategory_id": 2276,
+        "subcategory_name": "Car Polish",
+        "subcategory_job_title": "Car Polish"
+      },
+      {
+        "subcategory_id": 2277,
+        "subcategory_name": "Car Painting",
+        "subcategory_job_title": "Car Painting"
+      },
+      {
+        "subcategory_id": 2675,
+        "subcategory_name": "Paint Protection",
+        "subcategory_job_title": "Paint Protection"
+      },
+      {
+        "subcategory_id": 2676,
+        "subcategory_name": "Car Wash",
+        "subcategory_job_title": "Car Wash"
+      },
+      {
+        "subcategory_id": 2677,
+        "subcategory_name": "Car Cleaning",
+        "subcategory_job_title": "Car Cleaning"
+      },
+      {
+        "subcategory_id": 2678,
+        "subcategory_name": "Truck Washing And Heavy Machinery",
+        "subcategory_job_title": "Truck Washing And Heavy Machinery"
+      },
+      {
+        "subcategory_id": 2679,
+        "subcategory_name": "Washing Truck Detailing",
+        "subcategory_job_title": "Washing Truck Detailing"
+      },
+      {
+        "subcategory_id": 2680,
+        "subcategory_name": "Boat Detailing",
+        "subcategory_job_title": "Boat Detailing"
+      },
+      {
+        "subcategory_id": 2681,
+        "subcategory_name": "Motorhome Detailing",
+        "subcategory_job_title": "Motorhome Detailing"
+      }
+    ]
+  },
+  "Automatic Door & Gate Company": {
+    "category_id": 110,
+    "category_name": "Automatic Door & Gate Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 185,
+        "subcategory_name": "Automatic Doors & Gates",
+        "subcategory_job_title": "Automatic Doors & Garage Door Expert"
+      },
+      {
+        "subcategory_id": 2278,
+        "subcategory_name": "Boom gates",
+        "subcategory_job_title": "Boom gates"
+      },
+      {
+        "subcategory_id": 2279,
+        "subcategory_name": "Roller doors and shutters",
+        "subcategory_job_title": "Roller doors and shutters"
+      }
+    ]
+  },
+  "Automotive Glass Repair Company": {
+    "category_id": 111,
+    "category_name": "Automotive Glass Repair Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2280,
+        "subcategory_name": "Windscreen repair and replacement",
+        "subcategory_job_title": "Windscreen repair and replacement"
+      },
+      {
+        "subcategory_id": 2281,
+        "subcategory_name": "Car window tinting",
+        "subcategory_job_title": "Car window tinting"
+      },
+      {
+        "subcategory_id": 2282,
+        "subcategory_name": "Car window repair and replacement",
+        "subcategory_job_title": "Car window repair and replacement"
+      }
+    ]
+  },
+  "Bathroom Renovation Company": {
+    "category_id": 112,
+    "category_name": "Bathroom Renovation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 128,
+        "subcategory_name": "Bathroom Renovations",
+        "subcategory_job_title": "Bathroom Renovator"
+      },
+      {
+        "subcategory_id": 179,
+        "subcategory_name": "Bathroom Tiling",
+        "subcategory_job_title": "Bathroom Tiler"
+      },
+      {
+        "subcategory_id": 571,
+        "subcategory_name": "Bathtub Resurfacing",
+        "subcategory_job_title": "Bathtub Resurfacer"
+      },
+      {
+        "subcategory_id": 2283,
+        "subcategory_name": "Bathroom design",
+        "subcategory_job_title": "Bathroom design"
+      },
+      {
+        "subcategory_id": 2284,
+        "subcategory_name": "Bathroom vanity installation",
+        "subcategory_job_title": "Bathroom vanity installation"
+      },
+      {
+        "subcategory_id": 2285,
+        "subcategory_name": "Bathroom tap installation",
+        "subcategory_job_title": "Bathroom tap installation"
+      },
+      {
+        "subcategory_id": 2291,
+        "subcategory_name": "Bathtub installation",
+        "subcategory_job_title": "Bathtub installation"
+      },
+      {
+        "subcategory_id": 2292,
+        "subcategory_name": "Bathroom ceilings",
+        "subcategory_job_title": "Bathroom ceilings"
+      },
+      {
+        "subcategory_id": 2293,
+        "subcategory_name": "Bathroom lighting",
+        "subcategory_job_title": "Bathroom lighting"
+      }
+    ]
+  },
+  "Blinds & Shutter Installer": {
+    "category_id": 113,
+    "category_name": "Blinds & Shutter Installer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 140,
+        "subcategory_name": "Blinds & Shutters",
+        "subcategory_job_title": "Curtain, Blinds & Shutters Expert"
+      },
+      {
+        "subcategory_id": 516,
+        "subcategory_name": "Curtains",
+        "subcategory_job_title": "Curtain Expert"
+      },
+      {
+        "subcategory_id": 662,
+        "subcategory_name": "Roller Shutters",
+        "subcategory_job_title": "Roller Shutters"
+      },
+      {
+        "subcategory_id": 750,
+        "subcategory_name": "Holland Blinds",
+        "subcategory_job_title": "Holland Blinds"
+      },
+      {
+        "subcategory_id": 751,
+        "subcategory_name": "Louvre Shutters",
+        "subcategory_job_title": "Louvre Shutters"
+      },
+      {
+        "subcategory_id": 752,
+        "subcategory_name": "Outdoor Blinds",
+        "subcategory_job_title": "Outdoor Blinds"
+      },
+      {
+        "subcategory_id": 753,
+        "subcategory_name": "Panel Glide Blinds",
+        "subcategory_job_title": "Panel Glide Blinds"
+      },
+      {
+        "subcategory_id": 754,
+        "subcategory_name": "Plantation Shutters",
+        "subcategory_job_title": "Plantation Shutters"
+      },
+      {
+        "subcategory_id": 757,
+        "subcategory_name": "PVC Cafe Blinds",
+        "subcategory_job_title": "PVC Cafe Blinds"
+      },
+      {
+        "subcategory_id": 759,
+        "subcategory_name": "Roller Blinds",
+        "subcategory_job_title": "Roller Blinds"
+      },
+      {
+        "subcategory_id": 762,
+        "subcategory_name": "Roman Blinds",
+        "subcategory_job_title": "Roman Blinds"
+      },
+      {
+        "subcategory_id": 770,
+        "subcategory_name": "Timber Blinds",
+        "subcategory_job_title": "Timber Blinds"
+      },
+      {
+        "subcategory_id": 774,
+        "subcategory_name": "Venetian Blinds",
+        "subcategory_job_title": "Venetian Blinds"
+      },
+      {
+        "subcategory_id": 780,
+        "subcategory_name": "Vertical Blinds",
+        "subcategory_job_title": "Vertical Blinds"
+      },
+      {
+        "subcategory_id": 2165,
+        "subcategory_name": "External Shutters",
+        "subcategory_job_title": "External Shutters"
+      },
+      {
+        "subcategory_id": 2294,
+        "subcategory_name": "Express roller blinds",
+        "subcategory_job_title": "Express roller blinds"
+      },
+      {
+        "subcategory_id": 2295,
+        "subcategory_name": "Honeycomb blinds",
+        "subcategory_job_title": "Honeycomb blinds"
+      },
+      {
+        "subcategory_id": 2298,
+        "subcategory_name": "Transition rollers",
+        "subcategory_job_title": "Transition rollers"
+      },
+      {
+        "subcategory_id": 2299,
+        "subcategory_name": "Basswood shutters",
+        "subcategory_job_title": "Basswood shutters"
+      },
+      {
+        "subcategory_id": 2300,
+        "subcategory_name": "PVC shutters",
+        "subcategory_job_title": "PVC shutters"
+      },
+      {
+        "subcategory_id": 2301,
+        "subcategory_name": "Transition blinds",
+        "subcategory_job_title": "Transition blinds"
+      },
+      {
+        "subcategory_id": 2302,
+        "subcategory_name": "Double roller blinds",
+        "subcategory_job_title": "Double roller blinds"
+      },
+      {
+        "subcategory_id": 2303,
+        "subcategory_name": "Awnings",
+        "subcategory_job_title": "Awnings"
+      },
+      {
+        "subcategory_id": 2304,
+        "subcategory_name": "Window shutters",
+        "subcategory_job_title": "Window shutters"
+      }
+    ]
+  },
+  "Bookkeeper": {
+    "category_id": 114,
+    "category_name": "Bookkeeper",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 3,
+        "subcategory_name": "Bookkeeping",
+        "subcategory_job_title": "Bookkeeper"
+      },
+      {
+        "subcategory_id": 2305,
+        "subcategory_name": "On-site bookkeeper",
+        "subcategory_job_title": "On-site bookkeeper"
+      },
+      {
+        "subcategory_id": 2306,
+        "subcategory_name": "Data entry bookkeepers",
+        "subcategory_job_title": "Data entry bookkeepers"
+      },
+      {
+        "subcategory_id": 2307,
+        "subcategory_name": "Monthly accounting",
+        "subcategory_job_title": "Monthly accounting"
+      },
+      {
+        "subcategory_id": 2308,
+        "subcategory_name": "Off-site bookkeeper",
+        "subcategory_job_title": "Off-site bookkeeper"
+      }
+    ]
+  },
+  "Bricklayer": {
+    "category_id": 115,
+    "category_name": "Bricklayer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 129,
+        "subcategory_name": "Bricklaying",
+        "subcategory_job_title": "Bricklayer"
+      },
+      {
+        "subcategory_id": 675,
+        "subcategory_name": "Blockwork",
+        "subcategory_job_title": "Blockwork"
+      },
+      {
+        "subcategory_id": 710,
+        "subcategory_name": "Brick Fireplaces",
+        "subcategory_job_title": "Brick Fireplaces"
+      },
+      {
+        "subcategory_id": 711,
+        "subcategory_name": "Brick Pointing",
+        "subcategory_job_title": "Brick Pointing"
+      },
+      {
+        "subcategory_id": 712,
+        "subcategory_name": "Piering",
+        "subcategory_job_title": "Piering"
+      },
+      {
+        "subcategory_id": 1142,
+        "subcategory_name": "Brick Paving",
+        "subcategory_job_title": "Brick Paving"
+      },
+      {
+        "subcategory_id": 1226,
+        "subcategory_name": "Tuckpointing",
+        "subcategory_job_title": "Tuckpointing"
+      },
+      {
+        "subcategory_id": 1683,
+        "subcategory_name": "Brick Cladding",
+        "subcategory_job_title": "Brick Cladding"
+      },
+      {
+        "subcategory_id": 2309,
+        "subcategory_name": "Brickwork repairs",
+        "subcategory_job_title": "Brickwork repairs"
+      },
+      {
+        "subcategory_id": 2310,
+        "subcategory_name": "Brick letterboxes",
+        "subcategory_job_title": "Brick letterboxes"
+      },
+      {
+        "subcategory_id": 2311,
+        "subcategory_name": "Brick cutting",
+        "subcategory_job_title": "Brick cutting"
+      },
+      {
+        "subcategory_id": 2312,
+        "subcategory_name": "Brick retaining walls",
+        "subcategory_job_title": "Brick retaining walls"
+      },
+      {
+        "subcategory_id": 2313,
+        "subcategory_name": "Brick fences",
+        "subcategory_job_title": "Brick fences"
+      },
+      {
+        "subcategory_id": 2314,
+        "subcategory_name": "Full brick homes",
+        "subcategory_job_title": "Full brick homes"
+      }
+    ]
+  },
+  "Builder": {
+    "category_id": 116,
+    "category_name": "Builder",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 61,
+        "subcategory_name": "Project Management",
+        "subcategory_job_title": "Project Manager"
+      },
+      {
+        "subcategory_id": 130,
+        "subcategory_name": "New Home Builders",
+        "subcategory_job_title": "Builder"
+      },
+      {
+        "subcategory_id": 132,
+        "subcategory_name": "Building Supplies",
+        "subcategory_job_title": "Building Supplier"
+      },
+      {
+        "subcategory_id": 138,
+        "subcategory_name": "Cool Rooms & Cellars",
+        "subcategory_job_title": "Cool Rooms & Cellars Expert"
+      },
+      {
+        "subcategory_id": 143,
+        "subcategory_name": "Drainage & Sewers",
+        "subcategory_job_title": "Drainage & Sewerage Plumbers"
+      },
+      {
+        "subcategory_id": 150,
+        "subcategory_name": "Fixtures & Fittings",
+        "subcategory_job_title": "Fixtures Supplier"
+      },
+      {
+        "subcategory_id": 159,
+        "subcategory_name": "Kitchen Renovations",
+        "subcategory_job_title": "Kitchen Expert"
+      },
+      {
+        "subcategory_id": 180,
+        "subcategory_name": "Walls & Cladding",
+        "subcategory_job_title": "Walls & Cladding Expert"
+      },
+      {
+        "subcategory_id": 939,
+        "subcategory_name": "Stumps",
+        "subcategory_job_title": "Stumps"
+      },
+      {
+        "subcategory_id": 941,
+        "subcategory_name": "Verandahs",
+        "subcategory_job_title": "Verandahs"
+      },
+      {
+        "subcategory_id": 2147,
+        "subcategory_name": "Soil Testing",
+        "subcategory_job_title": "Soil Testing"
+      },
+      {
+        "subcategory_id": 2151,
+        "subcategory_name": "Granny Flat",
+        "subcategory_job_title": "Granny Flat"
+      },
+      {
+        "subcategory_id": 2315,
+        "subcategory_name": "Garages, sheds and carports",
+        "subcategory_job_title": "Garages, sheds and carports"
+      },
+      {
+        "subcategory_id": 2316,
+        "subcategory_name": "Building Designs",
+        "subcategory_job_title": "Building Designer"
+      },
+      {
+        "subcategory_id": 2317,
+        "subcategory_name": "Cost planning and estimation",
+        "subcategory_job_title": "Cost planning and estimation"
+      },
+      {
+        "subcategory_id": 2717,
+        "subcategory_name": "Home renovations",
+        "subcategory_job_title": "Home renovations"
+      },
+      {
+        "subcategory_id": 2718,
+        "subcategory_name": "Home extensions",
+        "subcategory_job_title": "Home extensions"
+      },
+      {
+        "subcategory_id": 2737,
+        "subcategory_name": "General Building",
+        "subcategory_job_title": "General Building"
+      }
+    ]
+  },
+  "Building Inspector": {
+    "category_id": 117,
+    "category_name": "Building Inspector",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1733,
+        "subcategory_name": "Fire Protection Inspections",
+        "subcategory_job_title": "Fire Protection Inspections"
+      },
+      {
+        "subcategory_id": 1751,
+        "subcategory_name": "Pre-Purchase Property Inspections",
+        "subcategory_job_title": "Pre-Purchase Property Inspections"
+      },
+      {
+        "subcategory_id": 1754,
+        "subcategory_name": "Termite Reports",
+        "subcategory_job_title": "Termite Reports"
+      },
+      {
+        "subcategory_id": 2152,
+        "subcategory_name": "Building Certification",
+        "subcategory_job_title": "Building Certification"
+      },
+      {
+        "subcategory_id": 2178,
+        "subcategory_name": "Swimming Pool Inspection",
+        "subcategory_job_title": "Swimming Pool Inspection"
+      },
+      {
+        "subcategory_id": 2318,
+        "subcategory_name": "Property inspection reports",
+        "subcategory_job_title": "Property inspection reports"
+      },
+      {
+        "subcategory_id": 2319,
+        "subcategory_name": "Pest inspection reports",
+        "subcategory_job_title": "Pest inspection reports"
+      },
+      {
+        "subcategory_id": 2320,
+        "subcategory_name": "Strata reports",
+        "subcategory_job_title": "Strata reports"
+      },
+      {
+        "subcategory_id": 2731,
+        "subcategory_name": "Energy Rating Assessors",
+        "subcategory_job_title": "Energy Rating Assessors"
+      }
+    ]
+  },
+  "Carpenter": {
+    "category_id": 119,
+    "category_name": "Carpenter",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 133,
+        "subcategory_name": "Cabinetmaking",
+        "subcategory_job_title": "Cabinetmaker"
+      },
+      {
+        "subcategory_id": 364,
+        "subcategory_name": "Furniture Repair",
+        "subcategory_job_title": "Furniture Repair & Restoration Expert"
+      },
+      {
+        "subcategory_id": 503,
+        "subcategory_name": "Frames & Trusses",
+        "subcategory_job_title": "Carpenter"
+      },
+      {
+        "subcategory_id": 505,
+        "subcategory_name": "Pergolas",
+        "subcategory_job_title": "Pergola Installer"
+      },
+      {
+        "subcategory_id": 506,
+        "subcategory_name": "Timber Decking",
+        "subcategory_job_title": "Decking Specialist"
+      },
+      {
+        "subcategory_id": 849,
+        "subcategory_name": "Architraves",
+        "subcategory_job_title": "Architraves"
+      },
+      {
+        "subcategory_id": 855,
+        "subcategory_name": "Custom Built Furniture",
+        "subcategory_job_title": "Custom Built Furniture"
+      },
+      {
+        "subcategory_id": 864,
+        "subcategory_name": "Handrails",
+        "subcategory_job_title": "Handrails"
+      },
+      {
+        "subcategory_id": 865,
+        "subcategory_name": "House Framing",
+        "subcategory_job_title": "House Framing"
+      },
+      {
+        "subcategory_id": 866,
+        "subcategory_name": "Joinery",
+        "subcategory_job_title": "Joinery"
+      },
+      {
+        "subcategory_id": 870,
+        "subcategory_name": "Shelving",
+        "subcategory_job_title": "Shelving"
+      },
+      {
+        "subcategory_id": 871,
+        "subcategory_name": "Skirting",
+        "subcategory_job_title": "Skirting"
+      },
+      {
+        "subcategory_id": 872,
+        "subcategory_name": "Skirting",
+        "subcategory_job_title": "Skirting"
+      },
+      {
+        "subcategory_id": 875,
+        "subcategory_name": "Vanities",
+        "subcategory_job_title": "Vanities"
+      },
+      {
+        "subcategory_id": 921,
+        "subcategory_name": "Patio Building",
+        "subcategory_job_title": "Patio Building"
+      },
+      {
+        "subcategory_id": 1947,
+        "subcategory_name": "Timber Retaining Walls",
+        "subcategory_job_title": "Timber Retaining Walls"
+      },
+      {
+        "subcategory_id": 2321,
+        "subcategory_name": "Internal Walls",
+        "subcategory_job_title": "Internal Walls"
+      },
+      {
+        "subcategory_id": 2322,
+        "subcategory_name": "Weatherboard cladding",
+        "subcategory_job_title": "Weatherboard cladding"
+      },
+      {
+        "subcategory_id": 2323,
+        "subcategory_name": "Retaining wall",
+        "subcategory_job_title": "Retaining wall"
+      },
+      {
+        "subcategory_id": 2324,
+        "subcategory_name": "General carpentry",
+        "subcategory_job_title": "General carpentry"
+      },
+      {
+        "subcategory_id": 2325,
+        "subcategory_name": "Commercial fit-outs",
+        "subcategory_job_title": "Commercial fit-outs"
+      },
+      {
+        "subcategory_id": 2326,
+        "subcategory_name": "Staircases",
+        "subcategory_job_title": "Staircases"
+      },
+      {
+        "subcategory_id": 2327,
+        "subcategory_name": "Timber fencing",
+        "subcategory_job_title": "Timber fencing"
+      },
+      {
+        "subcategory_id": 2328,
+        "subcategory_name": "Wardrobes",
+        "subcategory_job_title": "Wardrobes"
+      }
+    ]
+  },
+  "Carpet Cleaner": {
+    "category_id": 120,
+    "category_name": "Carpet Cleaner",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 203,
+        "subcategory_name": "Carpet Steam Cleaning",
+        "subcategory_job_title": "Steam Cleaner"
+      },
+      {
+        "subcategory_id": 2329,
+        "subcategory_name": "Carpet flood damage",
+        "subcategory_job_title": "Carpet flood damage"
+      },
+      {
+        "subcategory_id": 2330,
+        "subcategory_name": "Carpet water extraction",
+        "subcategory_job_title": "Carpet water extraction"
+      },
+      {
+        "subcategory_id": 2331,
+        "subcategory_name": "Carpet stain removal",
+        "subcategory_job_title": "Carpet stain removal"
+      },
+      {
+        "subcategory_id": 2332,
+        "subcategory_name": "Carpet restoration and repair",
+        "subcategory_job_title": "Carpet restoration and repair"
+      }
+    ]
+  },
+  "Carpet Installer": {
+    "category_id": 121,
+    "category_name": "Carpet Installer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 694,
+        "subcategory_name": "Carpet Tiling",
+        "subcategory_job_title": "Carpet Tiling"
+      },
+      {
+        "subcategory_id": 834,
+        "subcategory_name": "Carpet Restretching",
+        "subcategory_job_title": "Carpet Restretching"
+      },
+      {
+        "subcategory_id": 2186,
+        "subcategory_name": "Carpet laying and installation",
+        "subcategory_job_title": "Carpet laying and installation"
+      },
+      {
+        "subcategory_id": 2187,
+        "subcategory_name": "Carpet removal",
+        "subcategory_job_title": "Carpet removal"
+      },
+      {
+        "subcategory_id": 2188,
+        "subcategory_name": "Carpet replacement",
+        "subcategory_job_title": "Carpet replacement"
+      }
+    ]
+  },
+  "Celebrant": {
+    "category_id": 123,
+    "category_name": "Celebrant",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2153,
+        "subcategory_name": "Wedding Celebrant",
+        "subcategory_job_title": "Wedding Celebrant"
+      },
+      {
+        "subcategory_id": 2337,
+        "subcategory_name": "Civil marriage celebrant",
+        "subcategory_job_title": "Civil marriage celebrant"
+      },
+      {
+        "subcategory_id": 2338,
+        "subcategory_name": "Commitment celebrant",
+        "subcategory_job_title": "Commitment celebrant"
+      },
+      {
+        "subcategory_id": 2339,
+        "subcategory_name": "Naming ceremonies",
+        "subcategory_job_title": "Naming ceremonies"
+      }
+    ]
+  },
+  "Cleaner": {
+    "category_id": 124,
+    "category_name": "Cleaner",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 202,
+        "subcategory_name": "Outdoor Cleaning",
+        "subcategory_job_title": "Concrete & Outdoor Cleaner"
+      },
+      {
+        "subcategory_id": 205,
+        "subcategory_name": "Curtains & Blinds",
+        "subcategory_job_title": "Curtains & Blinds Cleaner"
+      },
+      {
+        "subcategory_id": 209,
+        "subcategory_name": "House Cleaning",
+        "subcategory_job_title": "House Cleaner"
+      },
+      {
+        "subcategory_id": 213,
+        "subcategory_name": "Upholstery & Fabric Cleaning",
+        "subcategory_job_title": "Upholstery Cleaner"
+      },
+      {
+        "subcategory_id": 588,
+        "subcategory_name": "High Pressure Cleaning",
+        "subcategory_job_title": "High Pressure Cleaner"
+      },
+      {
+        "subcategory_id": 733,
+        "subcategory_name": "Tile & Grout Cleaning",
+        "subcategory_job_title": "Tile & Grout Cleaning"
+      },
+      {
+        "subcategory_id": 800,
+        "subcategory_name": "Grease Trap Cleaning",
+        "subcategory_job_title": "Grease Trap Cleaning"
+      },
+      {
+        "subcategory_id": 1243,
+        "subcategory_name": "Swimming Pool Cleaning",
+        "subcategory_job_title": "Swimming Pool Cleaning"
+      },
+      {
+        "subcategory_id": 2140,
+        "subcategory_name": "Mould Cleaning",
+        "subcategory_job_title": "Mould Cleaning"
+      },
+      {
+        "subcategory_id": 2341,
+        "subcategory_name": "Office cleaner",
+        "subcategory_job_title": "Office cleaner"
+      },
+      {
+        "subcategory_id": 2342,
+        "subcategory_name": "Bathroom cleaning",
+        "subcategory_job_title": "Bathroom cleaning"
+      },
+      {
+        "subcategory_id": 2343,
+        "subcategory_name": "Kitchen cleaning",
+        "subcategory_job_title": "Kitchen cleaning"
+      },
+      {
+        "subcategory_id": 2344,
+        "subcategory_name": "Room cleaning",
+        "subcategory_job_title": "Room cleaning"
+      },
+      {
+        "subcategory_id": 2345,
+        "subcategory_name": "Vacuum carpet",
+        "subcategory_job_title": "Vacuum carpet"
+      },
+      {
+        "subcategory_id": 2346,
+        "subcategory_name": "Unit and apartment cleaning",
+        "subcategory_job_title": "Unit and apartment cleaning"
+      },
+      {
+        "subcategory_id": 2347,
+        "subcategory_name": "End of lease bond refund clean",
+        "subcategory_job_title": "End of lease bond refund clean"
+      },
+      {
+        "subcategory_id": 2348,
+        "subcategory_name": "Routine cleaning",
+        "subcategory_job_title": "Routine cleaning"
+      },
+      {
+        "subcategory_id": 2349,
+        "subcategory_name": "Oven cleaning",
+        "subcategory_job_title": "Oven cleaning"
+      },
+      {
+        "subcategory_id": 2350,
+        "subcategory_name": "Fridge clean",
+        "subcategory_job_title": "Fridge clean"
+      },
+      {
+        "subcategory_id": 2351,
+        "subcategory_name": "Interior window cleaning",
+        "subcategory_job_title": "Interior window cleaning"
+      },
+      {
+        "subcategory_id": 2352,
+        "subcategory_name": "Garage clean",
+        "subcategory_job_title": "Garage clean"
+      },
+      {
+        "subcategory_id": 2353,
+        "subcategory_name": "Toilet cleaning",
+        "subcategory_job_title": "Toilet cleaning"
+      },
+      {
+        "subcategory_id": 2354,
+        "subcategory_name": "Stove clean",
+        "subcategory_job_title": "Stove clean"
+      },
+      {
+        "subcategory_id": 2355,
+        "subcategory_name": "Tidying and Decluttering",
+        "subcategory_job_title": "Tidying and Decluttering"
+      },
+      {
+        "subcategory_id": 2356,
+        "subcategory_name": "Shower cleaning",
+        "subcategory_job_title": "Shower cleaning"
+      },
+      {
+        "subcategory_id": 2711,
+        "subcategory_name": "Medical Cleaning",
+        "subcategory_job_title": "Medical Cleaning"
+      },
+      {
+        "subcategory_id": 2712,
+        "subcategory_name": "End of Lease Commercial Cleaning",
+        "subcategory_job_title": "End of Lease Commercial Cleaning"
+      },
+      {
+        "subcategory_id": 2713,
+        "subcategory_name": "Industrial Cleaning",
+        "subcategory_job_title": "Industrial Cleaning"
+      },
+      {
+        "subcategory_id": 2732,
+        "subcategory_name": "Post Construction Cleaning",
+        "subcategory_job_title": "Post Construction Cleaning"
+      }
+    ]
+  },
+  "Computer Repairer & IT Service Provider": {
+    "category_id": 125,
+    "category_name": "Computer Repairer & IT Service Provider",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 228,
+        "subcategory_name": "Network Setup & Administration",
+        "subcategory_job_title": "Network Administrator"
+      },
+      {
+        "subcategory_id": 236,
+        "subcategory_name": "Technical Support",
+        "subcategory_job_title": "Technical Support Expert"
+      },
+      {
+        "subcategory_id": 237,
+        "subcategory_name": "Telephony & VOIP",
+        "subcategory_job_title": "Telephony & VOIP Expert"
+      },
+      {
+        "subcategory_id": 240,
+        "subcategory_name": "IT Consulting",
+        "subcategory_job_title": "IT Consultant"
+      },
+      {
+        "subcategory_id": 498,
+        "subcategory_name": "Mobile Phone Repair",
+        "subcategory_job_title": "Mobile Phone Repairer"
+      },
+      {
+        "subcategory_id": 1151,
+        "subcategory_name": "Technical Support",
+        "subcategory_job_title": "Technical Support"
+      },
+      {
+        "subcategory_id": 1641,
+        "subcategory_name": "Printer Repair",
+        "subcategory_job_title": "Printer Repair"
+      },
+      {
+        "subcategory_id": 2357,
+        "subcategory_name": "Computer repair",
+        "subcategory_job_title": "Computer repair"
+      },
+      {
+        "subcategory_id": 2358,
+        "subcategory_name": "iPad and tablet repair",
+        "subcategory_job_title": "iPad and tablet repair"
+      },
+      {
+        "subcategory_id": 2359,
+        "subcategory_name": "Video game repairs",
+        "subcategory_job_title": "Video game repairs"
+      },
+      {
+        "subcategory_id": 2360,
+        "subcategory_name": "Apple computer repairs",
+        "subcategory_job_title": "Apple computer repairs"
+      }
+    ]
+  },
+  "Concreter": {
+    "category_id": 126,
+    "category_name": "Concreter",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 137,
+        "subcategory_name": "Concrete Slabs",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 508,
+        "subcategory_name": "Concrete Flooring",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 509,
+        "subcategory_name": "Concrete Paving",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 512,
+        "subcategory_name": "Foundations",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 561,
+        "subcategory_name": "Polished Concrete",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 578,
+        "subcategory_name": "Concreting",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 994,
+        "subcategory_name": "Acrylic Rendering",
+        "subcategory_job_title": "Acrylic Rendering"
+      },
+      {
+        "subcategory_id": 999,
+        "subcategory_name": "Bagging",
+        "subcategory_job_title": "Bagging"
+      },
+      {
+        "subcategory_id": 1006,
+        "subcategory_name": "Car Park Kerb Installation",
+        "subcategory_job_title": "Car Park Kerb Installation"
+      },
+      {
+        "subcategory_id": 1007,
+        "subcategory_name": "Coloured Concrete",
+        "subcategory_job_title": "Coloured Concrete"
+      },
+      {
+        "subcategory_id": 1008,
+        "subcategory_name": "Concrete Cutting",
+        "subcategory_job_title": "Concrete Cutting"
+      },
+      {
+        "subcategory_id": 1009,
+        "subcategory_name": "Concrete Footpaths",
+        "subcategory_job_title": "Concrete Footpaths"
+      },
+      {
+        "subcategory_id": 1012,
+        "subcategory_name": "Concrete Formwork",
+        "subcategory_job_title": "Concrete Formwork"
+      },
+      {
+        "subcategory_id": 1013,
+        "subcategory_name": "Concrete Foundations",
+        "subcategory_job_title": "Concrete Foundations"
+      },
+      {
+        "subcategory_id": 1015,
+        "subcategory_name": "Concrete Grinding",
+        "subcategory_job_title": "Concrete Grinding"
+      },
+      {
+        "subcategory_id": 1020,
+        "subcategory_name": "Concrete Removal",
+        "subcategory_job_title": "Concrete Removal"
+      },
+      {
+        "subcategory_id": 1021,
+        "subcategory_name": "Concrete Repair",
+        "subcategory_job_title": "Concrete Repair"
+      },
+      {
+        "subcategory_id": 1027,
+        "subcategory_name": "Concrete Retaining Walls",
+        "subcategory_job_title": "Concrete Retaining Walls"
+      },
+      {
+        "subcategory_id": 1029,
+        "subcategory_name": "Concrete Sealing",
+        "subcategory_job_title": "Concrete Sealing"
+      },
+      {
+        "subcategory_id": 1033,
+        "subcategory_name": "Decorative Concreting",
+        "subcategory_job_title": "Decorative Concreting"
+      },
+      {
+        "subcategory_id": 1035,
+        "subcategory_name": "Exposed Aggregate Concrete",
+        "subcategory_job_title": "Exposed Aggregate Concrete"
+      },
+      {
+        "subcategory_id": 1036,
+        "subcategory_name": "Spray On Concreting",
+        "subcategory_job_title": "Spray On Concreting"
+      },
+      {
+        "subcategory_id": 1037,
+        "subcategory_name": "Concrete Edging",
+        "subcategory_job_title": "Concrete Edging"
+      },
+      {
+        "subcategory_id": 1688,
+        "subcategory_name": "Concrete Cladding",
+        "subcategory_job_title": "Concrete Cladding"
+      },
+      {
+        "subcategory_id": 2083,
+        "subcategory_name": "Bollards",
+        "subcategory_job_title": "Bollards"
+      },
+      {
+        "subcategory_id": 2170,
+        "subcategory_name": "Concrete Core Drilling",
+        "subcategory_job_title": "Concrete Core Drilling"
+      },
+      {
+        "subcategory_id": 2361,
+        "subcategory_name": "Concrete driveways & paths",
+        "subcategory_job_title": "Concrete driveways & paths"
+      },
+      {
+        "subcategory_id": 2670,
+        "subcategory_name": "Concrete Restoration",
+        "subcategory_job_title": "Concrete Restoration"
+      },
+      {
+        "subcategory_id": 2686,
+        "subcategory_name": "Recolour Concrete",
+        "subcategory_job_title": "Recolour Concrete"
+      },
+      {
+        "subcategory_id": 2687,
+        "subcategory_name": "Concrete Fencing",
+        "subcategory_job_title": "Concrete Fencing"
+      },
+      {
+        "subcategory_id": 2688,
+        "subcategory_name": "Concrete Resurfacing",
+        "subcategory_job_title": "Concrete Resurfacing"
+      },
+      {
+        "subcategory_id": 2689,
+        "subcategory_name": "Resealing Concrete",
+        "subcategory_job_title": "Resealing Concrete"
+      },
+      {
+        "subcategory_id": 2690,
+        "subcategory_name": "Driveway Restoration",
+        "subcategory_job_title": "Driveway Restoration"
+      }
+    ]
+  },
+  "Crane Hire Company": {
+    "category_id": 127,
+    "category_name": "Crane Hire Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 899,
+        "subcategory_name": "Crane Hire",
+        "subcategory_job_title": "Crane Hire"
+      }
+    ]
+  },
+  "Demolition Company": {
+    "category_id": 128,
+    "category_name": "Demolition Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 685,
+        "subcategory_name": "Boring",
+        "subcategory_job_title": "Boring"
+      },
+      {
+        "subcategory_id": 686,
+        "subcategory_name": "Compacting",
+        "subcategory_job_title": "Compacting"
+      },
+      {
+        "subcategory_id": 715,
+        "subcategory_name": "Confined Space Demolition",
+        "subcategory_job_title": "Confined Space Demolition"
+      },
+      {
+        "subcategory_id": 716,
+        "subcategory_name": "Crushing & Pulverising",
+        "subcategory_job_title": "Crushing & Pulverising"
+      },
+      {
+        "subcategory_id": 717,
+        "subcategory_name": "Pit Installation",
+        "subcategory_job_title": "Pit Installation"
+      },
+      {
+        "subcategory_id": 719,
+        "subcategory_name": "Site Cut Excavating",
+        "subcategory_job_title": "Site Cut Excavating"
+      },
+      {
+        "subcategory_id": 720,
+        "subcategory_name": "Trenching",
+        "subcategory_job_title": "Trenching"
+      },
+      {
+        "subcategory_id": 721,
+        "subcategory_name": "Under Road Boring",
+        "subcategory_job_title": "Under Road Boring"
+      },
+      {
+        "subcategory_id": 1730,
+        "subcategory_name": "Excavator Hire",
+        "subcategory_job_title": "Excavator Hire"
+      },
+      {
+        "subcategory_id": 2362,
+        "subcategory_name": "Swimming pool excavation",
+        "subcategory_job_title": "Swimming pool excavation"
+      },
+      {
+        "subcategory_id": 2363,
+        "subcategory_name": "Demolitions",
+        "subcategory_job_title": "Demolitions"
+      },
+      {
+        "subcategory_id": 2364,
+        "subcategory_name": "House demolitions",
+        "subcategory_job_title": "House demolitions"
+      },
+      {
+        "subcategory_id": 2710,
+        "subcategory_name": "Bathroom Stripout",
+        "subcategory_job_title": "Bathroom Stripout"
+      }
+    ]
+  },
+  "Dishwasher Installation & Repair Company": {
+    "category_id": 129,
+    "category_name": "Dishwasher Installation & Repair Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 496,
+        "subcategory_name": "Dishwasher Repair",
+        "subcategory_job_title": "Dishwasher Repairer"
+      },
+      {
+        "subcategory_id": 954,
+        "subcategory_name": "Dishwasher Installation",
+        "subcategory_job_title": "Dishwasher Installation"
+      }
+    ]
+  },
+  "Door Installation Company": {
+    "category_id": 130,
+    "category_name": "Door Installation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 518,
+        "subcategory_name": "Door Installation",
+        "subcategory_job_title": "Door Fitter"
+      },
+      {
+        "subcategory_id": 519,
+        "subcategory_name": "Security Doors",
+        "subcategory_job_title": "Door Specialist"
+      },
+      {
+        "subcategory_id": 687,
+        "subcategory_name": "Aluminium Doors",
+        "subcategory_job_title": "Aluminium Doors"
+      },
+      {
+        "subcategory_id": 723,
+        "subcategory_name": "Entry Doors",
+        "subcategory_job_title": "Entry Doors"
+      },
+      {
+        "subcategory_id": 724,
+        "subcategory_name": "Fire Doors",
+        "subcategory_job_title": "Fire Doors"
+      },
+      {
+        "subcategory_id": 729,
+        "subcategory_name": "French Doors",
+        "subcategory_job_title": "French Doors"
+      },
+      {
+        "subcategory_id": 730,
+        "subcategory_name": "Garage Doors",
+        "subcategory_job_title": "Garage Doors"
+      },
+      {
+        "subcategory_id": 735,
+        "subcategory_name": "Internal Doors",
+        "subcategory_job_title": "Internal Doors"
+      },
+      {
+        "subcategory_id": 738,
+        "subcategory_name": "Sliding Doors",
+        "subcategory_job_title": "Sliding Doors"
+      },
+      {
+        "subcategory_id": 2084,
+        "subcategory_name": "Pet Doors",
+        "subcategory_job_title": "Pet Doors"
+      },
+      {
+        "subcategory_id": 2365,
+        "subcategory_name": "Insect and fly screens",
+        "subcategory_job_title": "Insect and fly screens"
+      },
+      {
+        "subcategory_id": 2366,
+        "subcategory_name": "Timber doors",
+        "subcategory_job_title": "Timber doors"
+      },
+      {
+        "subcategory_id": 2367,
+        "subcategory_name": "Bi-fold doors",
+        "subcategory_job_title": "Bi-fold doors"
+      },
+      {
+        "subcategory_id": 2368,
+        "subcategory_name": "Door removal",
+        "subcategory_job_title": "Door removal"
+      }
+    ]
+  },
+  "Draftsman": {
+    "category_id": 131,
+    "category_name": "Draftsman",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 56,
+        "subcategory_name": "Drawing & Drafting",
+        "subcategory_job_title": "Drawing & Drafting Expert"
+      },
+      {
+        "subcategory_id": 2369,
+        "subcategory_name": "Plans and Designs",
+        "subcategory_job_title": "Building designs"
+      }
+    ]
+  },
+  "Ducting and Ventiliation Company": {
+    "category_id": 132,
+    "category_name": "Ducting and Ventiliation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 144,
+        "subcategory_name": "Ducting & Ventilation",
+        "subcategory_job_title": "Ducting & Ventilation Suppliers"
+      },
+      {
+        "subcategory_id": 1038,
+        "subcategory_name": "Mechanical Ventilation",
+        "subcategory_job_title": "Mechanical Ventilation"
+      },
+      {
+        "subcategory_id": 1041,
+        "subcategory_name": "Roof Ventilation",
+        "subcategory_job_title": "Roof Ventilation"
+      },
+      {
+        "subcategory_id": 1044,
+        "subcategory_name": "Trapped Heat Ventilation",
+        "subcategory_job_title": "Trapped Heat Ventilation"
+      },
+      {
+        "subcategory_id": 2698,
+        "subcategory_name": "Sub Floor Ventilation",
+        "subcategory_job_title": "Sub Floor Ventilation"
+      }
+    ]
+  },
+  "Electrician": {
+    "category_id": 133,
+    "category_name": "Electrician",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 521,
+        "subcategory_name": "Appliance Installation",
+        "subcategory_job_title": "Appliance Installer"
+      },
+      {
+        "subcategory_id": 522,
+        "subcategory_name": "Data Cabling",
+        "subcategory_job_title": "Data Cabler"
+      },
+      {
+        "subcategory_id": 749,
+        "subcategory_name": "Ceiling Fan Installation",
+        "subcategory_job_title": "Ceiling Fan Installation"
+      },
+      {
+        "subcategory_id": 824,
+        "subcategory_name": "Rewiring",
+        "subcategory_job_title": "Rewiring"
+      },
+      {
+        "subcategory_id": 825,
+        "subcategory_name": "Safety Switches",
+        "subcategory_job_title": "Safety Switches"
+      },
+      {
+        "subcategory_id": 854,
+        "subcategory_name": "Switchboards",
+        "subcategory_job_title": "Switchboards"
+      },
+      {
+        "subcategory_id": 2154,
+        "subcategory_name": "Exhaust Fan",
+        "subcategory_job_title": "Exhaust Fan"
+      },
+      {
+        "subcategory_id": 2190,
+        "subcategory_name": "TV Antenna Technician",
+        "subcategory_job_title": "TV Antenna Technician"
+      },
+      {
+        "subcategory_id": 2370,
+        "subcategory_name": "Security alarm systems",
+        "subcategory_job_title": "Security alarm systems"
+      },
+      {
+        "subcategory_id": 2371,
+        "subcategory_name": "Electrician",
+        "subcategory_job_title": "Electrician"
+      },
+      {
+        "subcategory_id": 2372,
+        "subcategory_name": "Level 2 electricians",
+        "subcategory_job_title": "Level 2 electricians"
+      },
+      {
+        "subcategory_id": 2373,
+        "subcategory_name": "Powerpoint installation and repair",
+        "subcategory_job_title": "Powerpoint installation and repair"
+      },
+      {
+        "subcategory_id": 2374,
+        "subcategory_name": "Emergency electrician",
+        "subcategory_job_title": "Emergency electrician"
+      },
+      {
+        "subcategory_id": 2375,
+        "subcategory_name": "Electrical safety inspection",
+        "subcategory_job_title": "Electrical safety inspection"
+      },
+      {
+        "subcategory_id": 2376,
+        "subcategory_name": "Light switch installation and repair",
+        "subcategory_job_title": "Light switch installation and repair"
+      },
+      {
+        "subcategory_id": 2377,
+        "subcategory_name": "Solar panel installation and repair",
+        "subcategory_job_title": "Solar panel installation and repair"
+      },
+      {
+        "subcategory_id": 2378,
+        "subcategory_name": "Smoke alarm installation and replacement",
+        "subcategory_job_title": "Smoke alarm installation and replacement"
+      },
+      {
+        "subcategory_id": 2379,
+        "subcategory_name": "Energy efficiency checks",
+        "subcategory_job_title": "Energy efficiency checks"
+      },
+      {
+        "subcategory_id": 2699,
+        "subcategory_name": "Appliance Repair",
+        "subcategory_job_title": "Appliance Repair"
+      },
+      {
+        "subcategory_id": 2700,
+        "subcategory_name": "Cabling",
+        "subcategory_job_title": "Cabling"
+      }
+    ]
+  },
+  "Earthworks contractor": {
+    "category_id": 135,
+    "category_name": "Earthworks contractor",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 147,
+        "subcategory_name": "Excavation & Earthmoving",
+        "subcategory_job_title": "Excavator"
+      },
+      {
+        "subcategory_id": 1710,
+        "subcategory_name": "Bobcat Hire",
+        "subcategory_job_title": "Bobcat Hire"
+      },
+      {
+        "subcategory_id": 1725,
+        "subcategory_name": "Earthmoving Equipment Hire",
+        "subcategory_job_title": "Earthmoving Equipment Hire"
+      },
+      {
+        "subcategory_id": 2380,
+        "subcategory_name": "Tree stump removal",
+        "subcategory_job_title": "Tree stump removal"
+      },
+      {
+        "subcategory_id": 2381,
+        "subcategory_name": "Debris and rubbish removal",
+        "subcategory_job_title": "Debris and rubbish removal"
+      },
+      {
+        "subcategory_id": 2382,
+        "subcategory_name": "Site preparation and clearing",
+        "subcategory_job_title": "Site preperation and clearing"
+      },
+      {
+        "subcategory_id": 2383,
+        "subcategory_name": "Landscaping preparation",
+        "subcategory_job_title": "Landscaping preperation"
+      },
+      {
+        "subcategory_id": 2384,
+        "subcategory_name": "Rock breaking",
+        "subcategory_job_title": "Rock breaking"
+      }
+    ]
+  },
+  "Exterminator": {
+    "category_id": 136,
+    "category_name": "Exterminator",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1155,
+        "subcategory_name": "Ants",
+        "subcategory_job_title": "Ants"
+      },
+      {
+        "subcategory_id": 1156,
+        "subcategory_name": "Bed Bugs",
+        "subcategory_job_title": "Bed Bugs"
+      },
+      {
+        "subcategory_id": 1158,
+        "subcategory_name": "Bees",
+        "subcategory_job_title": "Bees"
+      },
+      {
+        "subcategory_id": 1159,
+        "subcategory_name": "Birds",
+        "subcategory_job_title": "Birds"
+      },
+      {
+        "subcategory_id": 1160,
+        "subcategory_name": "Cockroaches",
+        "subcategory_job_title": "Cockroaches"
+      },
+      {
+        "subcategory_id": 1161,
+        "subcategory_name": "Fleas",
+        "subcategory_job_title": "Fleas"
+      },
+      {
+        "subcategory_id": 1162,
+        "subcategory_name": "Possums",
+        "subcategory_job_title": "Possums"
+      },
+      {
+        "subcategory_id": 1165,
+        "subcategory_name": "Rabbits",
+        "subcategory_job_title": "Rabbits"
+      },
+      {
+        "subcategory_id": 1169,
+        "subcategory_name": "Snakes",
+        "subcategory_job_title": "Snakes"
+      },
+      {
+        "subcategory_id": 1170,
+        "subcategory_name": "Spiders",
+        "subcategory_job_title": "Spiders"
+      },
+      {
+        "subcategory_id": 1171,
+        "subcategory_name": "Termites",
+        "subcategory_job_title": "Termites"
+      },
+      {
+        "subcategory_id": 1174,
+        "subcategory_name": "Wasps",
+        "subcategory_job_title": "Wasps"
+      },
+      {
+        "subcategory_id": 2385,
+        "subcategory_name": "Fumigation",
+        "subcategory_job_title": "Fumigation"
+      },
+      {
+        "subcategory_id": 2386,
+        "subcategory_name": "Pest control",
+        "subcategory_job_title": "Pest control"
+      },
+      {
+        "subcategory_id": 2387,
+        "subcategory_name": "Rats and mice",
+        "subcategory_job_title": "Rats and mice"
+      },
+      {
+        "subcategory_id": 2388,
+        "subcategory_name": "Lice",
+        "subcategory_job_title": "Lice"
+      },
+      {
+        "subcategory_id": 2389,
+        "subcategory_name": "Mosquitos",
+        "subcategory_job_title": "Mosquitos"
+      }
+    ]
+  },
+  "Fencing & Gate Company": {
+    "category_id": 137,
+    "category_name": "Fencing & Gate Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 142,
+        "subcategory_name": "Fence Installation",
+        "subcategory_job_title": "Doors, Fences & Gates Expert"
+      },
+      {
+        "subcategory_id": 527,
+        "subcategory_name": "Gate Installation",
+        "subcategory_job_title": "Gate Installer"
+      },
+      {
+        "subcategory_id": 580,
+        "subcategory_name": "Brush Fence",
+        "subcategory_job_title": "Brush Fencer"
+      },
+      {
+        "subcategory_id": 583,
+        "subcategory_name": "Brick Fence",
+        "subcategory_job_title": "Brick Fencer"
+      },
+      {
+        "subcategory_id": 585,
+        "subcategory_name": "Wire Fence",
+        "subcategory_job_title": "Wire Fencer"
+      },
+      {
+        "subcategory_id": 586,
+        "subcategory_name": "Glass Fence",
+        "subcategory_job_title": "Glass Fencer"
+      },
+      {
+        "subcategory_id": 587,
+        "subcategory_name": "Fence Repair",
+        "subcategory_job_title": "Fence Repairer"
+      },
+      {
+        "subcategory_id": 653,
+        "subcategory_name": "Grilles",
+        "subcategory_job_title": "Grilles"
+      },
+      {
+        "subcategory_id": 661,
+        "subcategory_name": "Grilles",
+        "subcategory_job_title": "Grilles"
+      },
+      {
+        "subcategory_id": 695,
+        "subcategory_name": "Aluminium Fencing",
+        "subcategory_job_title": "Aluminium Fencing"
+      },
+      {
+        "subcategory_id": 707,
+        "subcategory_name": "Custom Gates",
+        "subcategory_job_title": "Custom Gates"
+      },
+      {
+        "subcategory_id": 769,
+        "subcategory_name": "Bamboo Fencing",
+        "subcategory_job_title": "Bamboo Fencing"
+      },
+      {
+        "subcategory_id": 773,
+        "subcategory_name": "Electric Fencing",
+        "subcategory_job_title": "Electric Fencing"
+      },
+      {
+        "subcategory_id": 775,
+        "subcategory_name": "Fencing Materials",
+        "subcategory_job_title": "Fencing Materials"
+      },
+      {
+        "subcategory_id": 778,
+        "subcategory_name": "PVC Fencing",
+        "subcategory_job_title": "PVC Fencing"
+      },
+      {
+        "subcategory_id": 781,
+        "subcategory_name": "Security Fencing",
+        "subcategory_job_title": "Security Fencing"
+      },
+      {
+        "subcategory_id": 782,
+        "subcategory_name": "Temporary Fencing",
+        "subcategory_job_title": "Temporary Fencing"
+      },
+      {
+        "subcategory_id": 1046,
+        "subcategory_name": "Gate Suppliers",
+        "subcategory_job_title": "Gate Suppliers"
+      },
+      {
+        "subcategory_id": 1051,
+        "subcategory_name": "Wrought Iron Gates",
+        "subcategory_job_title": "Wrought Iron Gates"
+      },
+      {
+        "subcategory_id": 2164,
+        "subcategory_name": "Steel Fencing",
+        "subcategory_job_title": "Steel Fencing"
+      },
+      {
+        "subcategory_id": 2390,
+        "subcategory_name": "Colorbond fencing",
+        "subcategory_job_title": "Colorbond fencing"
+      },
+      {
+        "subcategory_id": 2391,
+        "subcategory_name": "Swimming pool fencing and gates",
+        "subcategory_job_title": "Swimming pool fencing and gates"
+      },
+      {
+        "subcategory_id": 2392,
+        "subcategory_name": "Sliding gates",
+        "subcategory_job_title": "Sliding gates"
+      },
+      {
+        "subcategory_id": 2393,
+        "subcategory_name": "Hinged gates",
+        "subcategory_job_title": "Hinged gates"
+      },
+      {
+        "subcategory_id": 2394,
+        "subcategory_name": "Gate repair",
+        "subcategory_job_title": "Gate repair"
+      },
+      {
+        "subcategory_id": 2395,
+        "subcategory_name": "Glass fencing",
+        "subcategory_job_title": "Glass fencing"
+      },
+      {
+        "subcategory_id": 2396,
+        "subcategory_name": "Wood Fencing",
+        "subcategory_job_title": "Wood Fencing"
+      },
+      {
+        "subcategory_id": 2397,
+        "subcategory_name": "Tubular fencing",
+        "subcategory_job_title": "Tubular fencing"
+      },
+      {
+        "subcategory_id": 2398,
+        "subcategory_name": "Handrails and Balustrades",
+        "subcategory_job_title": "Handrails and Balustrades"
+      },
+      {
+        "subcategory_id": 2724,
+        "subcategory_name": "Rural Fencing",
+        "subcategory_job_title": "Rural Fencing"
+      }
+    ]
+  },
+  "Financial Planner": {
+    "category_id": 138,
+    "category_name": "Financial Planner",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 9,
+        "subcategory_name": "Superannuation",
+        "subcategory_job_title": "Superannuation Accountant"
+      },
+      {
+        "subcategory_id": 302,
+        "subcategory_name": "Superannuation",
+        "subcategory_job_title": "Superannuation Advisor"
+      },
+      {
+        "subcategory_id": 1627,
+        "subcategory_name": "Financial Planning",
+        "subcategory_job_title": "Financial Planning"
+      }
+    ]
+  },
+  "Flooring Company": {
+    "category_id": 139,
+    "category_name": "Flooring Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 151,
+        "subcategory_name": "New Floors",
+        "subcategory_job_title": "Flooring Expert"
+      },
+      {
+        "subcategory_id": 560,
+        "subcategory_name": "Timber Floors",
+        "subcategory_job_title": "Floorer"
+      },
+      {
+        "subcategory_id": 817,
+        "subcategory_name": "Bamboo Flooring",
+        "subcategory_job_title": "Bamboo Flooring"
+      },
+      {
+        "subcategory_id": 822,
+        "subcategory_name": "Concrete Polishing",
+        "subcategory_job_title": "Concrete Polishing"
+      },
+      {
+        "subcategory_id": 836,
+        "subcategory_name": "Laminate Flooring",
+        "subcategory_job_title": "Laminate Flooring"
+      },
+      {
+        "subcategory_id": 2399,
+        "subcategory_name": "Floor installation",
+        "subcategory_job_title": "Floor installation"
+      },
+      {
+        "subcategory_id": 2400,
+        "subcategory_name": "Cork floors",
+        "subcategory_job_title": "Cork floors"
+      },
+      {
+        "subcategory_id": 2401,
+        "subcategory_name": "Vinyl floors",
+        "subcategory_job_title": "Vinyl floors"
+      },
+      {
+        "subcategory_id": 2402,
+        "subcategory_name": "Hardwood floors",
+        "subcategory_job_title": "Hardwood floors"
+      },
+      {
+        "subcategory_id": 2403,
+        "subcategory_name": "Floating timber flooring",
+        "subcategory_job_title": "Floating timber flooring"
+      },
+      {
+        "subcategory_id": 2404,
+        "subcategory_name": "Parquetry flooring",
+        "subcategory_job_title": "Parquetry flooring"
+      },
+      {
+        "subcategory_id": 2733,
+        "subcategory_name": "Floor Sanding",
+        "subcategory_job_title": "Floor Sanding"
+      },
+      {
+        "subcategory_id": 2734,
+        "subcategory_name": "Timber Re-Surfacing",
+        "subcategory_job_title": "Timber Re-Surfacing"
+      }
+    ]
+  },
+  "Fridge & Freezer Repair & Installation Company": {
+    "category_id": 140,
+    "category_name": "Fridge & Freezer Repair & Installation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2405,
+        "subcategory_name": "Fridge repair",
+        "subcategory_job_title": "Fridge repair"
+      },
+      {
+        "subcategory_id": 2406,
+        "subcategory_name": "Freezer repair",
+        "subcategory_job_title": "Freezer repair"
+      }
+    ]
+  },
+  "Gardener": {
+    "category_id": 141,
+    "category_name": "Gardener",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 161,
+        "subcategory_name": "General Gardening",
+        "subcategory_job_title": "Gardener"
+      },
+      {
+        "subcategory_id": 575,
+        "subcategory_name": "Sprinklers",
+        "subcategory_job_title": "Sprinkler Specialist"
+      },
+      {
+        "subcategory_id": 577,
+        "subcategory_name": "Gravel",
+        "subcategory_job_title": "Gravel Specialist"
+      },
+      {
+        "subcategory_id": 1043,
+        "subcategory_name": "Artificial Turf Installation & Repair",
+        "subcategory_job_title": "Artificial Turf Installation & Repair"
+      },
+      {
+        "subcategory_id": 1045,
+        "subcategory_name": "Drip Irrigation Systems",
+        "subcategory_job_title": "Drip Irrigation Systems"
+      },
+      {
+        "subcategory_id": 1047,
+        "subcategory_name": "Fertilising",
+        "subcategory_job_title": "Fertilising"
+      },
+      {
+        "subcategory_id": 1048,
+        "subcategory_name": "Garden Clean Ups",
+        "subcategory_job_title": "Garden Clean Ups"
+      },
+      {
+        "subcategory_id": 1050,
+        "subcategory_name": "Grey Water Systems",
+        "subcategory_job_title": "Grey Water Systems"
+      },
+      {
+        "subcategory_id": 1066,
+        "subcategory_name": "Water Feature Installation",
+        "subcategory_job_title": "Water Feature Installation"
+      },
+      {
+        "subcategory_id": 1067,
+        "subcategory_name": "Weeding",
+        "subcategory_job_title": "Weeding"
+      },
+      {
+        "subcategory_id": 1200,
+        "subcategory_name": "Grey Water Systems",
+        "subcategory_job_title": "Grey Water Systems"
+      },
+      {
+        "subcategory_id": 2407,
+        "subcategory_name": "Garden and green rubbish removal",
+        "subcategory_job_title": "Garden and green rubbish removal"
+      },
+      {
+        "subcategory_id": 2408,
+        "subcategory_name": "Lawn mowing",
+        "subcategory_job_title": "Lawn mowing"
+      },
+      {
+        "subcategory_id": 2409,
+        "subcategory_name": "Lawn restoration and repair",
+        "subcategory_job_title": "Lawn restoration and repair"
+      },
+      {
+        "subcategory_id": 2410,
+        "subcategory_name": "Garden maintenance",
+        "subcategory_job_title": "Garden maintenance"
+      },
+      {
+        "subcategory_id": 2411,
+        "subcategory_name": "Garden irrigation systems",
+        "subcategory_job_title": "Garden irrigation systems"
+      },
+      {
+        "subcategory_id": 2412,
+        "subcategory_name": "Mulching",
+        "subcategory_job_title": "Mulching"
+      },
+      {
+        "subcategory_id": 2721,
+        "subcategory_name": "Hedge Trimming and Cutting",
+        "subcategory_job_title": "Hedge Trimming and Cutting"
+      }
+    ]
+  },
+  "Gas Fitter": {
+    "category_id": 142,
+    "category_name": "Gas Fitter",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2192,
+        "subcategory_name": "Gas conversions and installations",
+        "subcategory_job_title": "Gas conversions and installations"
+      },
+      {
+        "subcategory_id": 2193,
+        "subcategory_name": "Gas leaks",
+        "subcategory_job_title": "Gas leaks"
+      },
+      {
+        "subcategory_id": 2413,
+        "subcategory_name": "Gas hot water",
+        "subcategory_job_title": "Gas hot water"
+      },
+      {
+        "subcategory_id": 2414,
+        "subcategory_name": "Gas heating",
+        "subcategory_job_title": "Gas heating"
+      },
+      {
+        "subcategory_id": 2415,
+        "subcategory_name": "Gas ovens",
+        "subcategory_job_title": "Gas ovens"
+      }
+    ]
+  },
+  "Glass Repair Company": {
+    "category_id": 143,
+    "category_name": "Glass Repair Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2416,
+        "subcategory_name": "Glazier",
+        "subcategory_job_title": "Glazier"
+      },
+      {
+        "subcategory_id": 2417,
+        "subcategory_name": "Window glass repair",
+        "subcategory_job_title": "Window glass repair"
+      },
+      {
+        "subcategory_id": 2418,
+        "subcategory_name": "Window glass replacement",
+        "subcategory_job_title": "Window glass replacement"
+      }
+    ]
+  },
+  "Graphic Designer": {
+    "category_id": 144,
+    "category_name": "Graphic Designer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 69,
+        "subcategory_name": "Advertisements",
+        "subcategory_job_title": "Advertising Designer"
+      },
+      {
+        "subcategory_id": 73,
+        "subcategory_name": "Clothing Design",
+        "subcategory_job_title": "Clothing Designer"
+      },
+      {
+        "subcategory_id": 79,
+        "subcategory_name": "Illustration",
+        "subcategory_job_title": "Illustrator"
+      },
+      {
+        "subcategory_id": 82,
+        "subcategory_name": "Logo Design",
+        "subcategory_job_title": "Logos & Branding Expert"
+      },
+      {
+        "subcategory_id": 83,
+        "subcategory_name": "Painting & Drawing",
+        "subcategory_job_title": "Artist"
+      },
+      {
+        "subcategory_id": 1372,
+        "subcategory_name": "Website Design",
+        "subcategory_job_title": "Website Design"
+      },
+      {
+        "subcategory_id": 2419,
+        "subcategory_name": "Graphic design",
+        "subcategory_job_title": "Graphic design"
+      },
+      {
+        "subcategory_id": 2420,
+        "subcategory_name": "Company branding",
+        "subcategory_job_title": "Company branding"
+      },
+      {
+        "subcategory_id": 2421,
+        "subcategory_name": "Print designs",
+        "subcategory_job_title": "Print designs"
+      },
+      {
+        "subcategory_id": 2422,
+        "subcategory_name": "Labels and packaging",
+        "subcategory_job_title": "Labels and packaging"
+      },
+      {
+        "subcategory_id": 2423,
+        "subcategory_name": "Stationery and business cards",
+        "subcategory_job_title": "Stationery and business cards"
+      },
+      {
+        "subcategory_id": 2424,
+        "subcategory_name": "Photoshop",
+        "subcategory_job_title": "Photoshop"
+      },
+      {
+        "subcategory_id": 2425,
+        "subcategory_name": "Adobe Illustrator",
+        "subcategory_job_title": "Adobe Illustrator"
+      }
+    ]
+  },
+  "Hair Stylist": {
+    "category_id": 145,
+    "category_name": "Hair Stylist",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 319,
+        "subcategory_name": "Hair Styling",
+        "subcategory_job_title": "Hair Stylist"
+      },
+      {
+        "subcategory_id": 2426,
+        "subcategory_name": "Wedding hair stylist",
+        "subcategory_job_title": "Wedding hair stylist"
+      },
+      {
+        "subcategory_id": 2701,
+        "subcategory_name": "Mobile Hair",
+        "subcategory_job_title": "Mobile Hair"
+      },
+      {
+        "subcategory_id": 2702,
+        "subcategory_name": "Bridal Hair And Makeup",
+        "subcategory_job_title": "Bridal Hair And Makeup"
+      }
+    ]
+  },
+  "Handyman": {
+    "category_id": 146,
+    "category_name": "Handyman",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 93,
+        "subcategory_name": "Picture Hanging & Art Installation",
+        "subcategory_job_title": "Art Installer"
+      },
+      {
+        "subcategory_id": 155,
+        "subcategory_name": "Home Handiwork",
+        "subcategory_job_title": "Handyman"
+      },
+      {
+        "subcategory_id": 722,
+        "subcategory_name": "Door Repair",
+        "subcategory_job_title": "Door Repair"
+      },
+      {
+        "subcategory_id": 747,
+        "subcategory_name": "Curtain Repair",
+        "subcategory_job_title": "Curtain Repair"
+      },
+      {
+        "subcategory_id": 937,
+        "subcategory_name": "Shower Door Installation",
+        "subcategory_job_title": "Shower Door Installation"
+      },
+      {
+        "subcategory_id": 1060,
+        "subcategory_name": "Flat Pack Assembly",
+        "subcategory_job_title": "Flat Pack Assembly"
+      },
+      {
+        "subcategory_id": 1064,
+        "subcategory_name": "Furniture Assembly",
+        "subcategory_job_title": "Furniture Assembly"
+      },
+      {
+        "subcategory_id": 1068,
+        "subcategory_name": "Mounting Shelves",
+        "subcategory_job_title": "Mounting Shelves"
+      },
+      {
+        "subcategory_id": 1071,
+        "subcategory_name": "Odd Jobs",
+        "subcategory_job_title": "Odd Jobs"
+      },
+      {
+        "subcategory_id": 1073,
+        "subcategory_name": "Patching Holes",
+        "subcategory_job_title": "Patching Holes"
+      },
+      {
+        "subcategory_id": 1074,
+        "subcategory_name": "Picture & Mirror Hanging",
+        "subcategory_job_title": "Picture & Mirror Hanging"
+      },
+      {
+        "subcategory_id": 1076,
+        "subcategory_name": "Picture Framing",
+        "subcategory_job_title": "Picture Framing"
+      },
+      {
+        "subcategory_id": 1080,
+        "subcategory_name": "Pool Table Repair",
+        "subcategory_job_title": "Pool Table Repair"
+      },
+      {
+        "subcategory_id": 1089,
+        "subcategory_name": "Property Maintenance",
+        "subcategory_job_title": "Property Maintenance"
+      },
+      {
+        "subcategory_id": 1090,
+        "subcategory_name": "Shower Base Repair",
+        "subcategory_job_title": "Shower Base Repair"
+      },
+      {
+        "subcategory_id": 1093,
+        "subcategory_name": "TV Mounting",
+        "subcategory_job_title": "TV Mounting"
+      },
+      {
+        "subcategory_id": 1962,
+        "subcategory_name": "Shade Sail Installation",
+        "subcategory_job_title": "Shade Sail Installation"
+      },
+      {
+        "subcategory_id": 2138,
+        "subcategory_name": "Lock Repair",
+        "subcategory_job_title": "Lock Repair"
+      },
+      {
+        "subcategory_id": 2427,
+        "subcategory_name": "IKEA kitchen installation",
+        "subcategory_job_title": "IKEA kitchen installation"
+      },
+      {
+        "subcategory_id": 2428,
+        "subcategory_name": "Mailbox and letterboxes",
+        "subcategory_job_title": "Mailbox and letterboxes"
+      },
+      {
+        "subcategory_id": 2429,
+        "subcategory_name": "Tap repair and replacement",
+        "subcategory_job_title": "Tap repair and replacement"
+      },
+      {
+        "subcategory_id": 2430,
+        "subcategory_name": "Gutter cleaning",
+        "subcategory_job_title": "Gutter cleaning"
+      },
+      {
+        "subcategory_id": 2431,
+        "subcategory_name": "Broken sink repair and replacement",
+        "subcategory_job_title": "Broken sink repair and replacement"
+      }
+    ]
+  },
+  "High pressure cleaning company": {
+    "category_id": 147,
+    "category_name": "High pressure cleaning company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 208,
+        "subcategory_name": "High Pressure Cleaning",
+        "subcategory_job_title": "High Pressure Cleaner"
+      },
+      {
+        "subcategory_id": 789,
+        "subcategory_name": "Brick Cleaning",
+        "subcategory_job_title": "Brick Cleaning"
+      },
+      {
+        "subcategory_id": 811,
+        "subcategory_name": "Paving Cleaning",
+        "subcategory_job_title": "Paving Cleaning"
+      },
+      {
+        "subcategory_id": 2081,
+        "subcategory_name": "House Washing",
+        "subcategory_job_title": "House Washing"
+      },
+      {
+        "subcategory_id": 2163,
+        "subcategory_name": "Graffiti Removal",
+        "subcategory_job_title": "Graffiti Removal"
+      },
+      {
+        "subcategory_id": 2682,
+        "subcategory_name": "Powerwash",
+        "subcategory_job_title": "Powerwash"
+      }
+    ]
+  },
+  "Home theatre installation company": {
+    "category_id": 148,
+    "category_name": "Home theatre installation company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 360,
+        "subcategory_name": "Home Theatre Installations",
+        "subcategory_job_title": "Entertainment & Home Theatre Electrician"
+      }
+    ]
+  },
+  "Housekeeper": {
+    "category_id": 149,
+    "category_name": "Housekeeper",
+    "category_disabled": true,
+    "subcategories": [
+      {
+        "subcategory_id": 206,
+        "subcategory_name": "Dry Cleaning",
+        "subcategory_job_title": "Dry Cleaner"
+      },
+      {
+        "subcategory_id": 562,
+        "subcategory_name": "Ironing",
+        "subcategory_job_title": "Ironing Person"
+      },
+      {
+        "subcategory_id": 1909,
+        "subcategory_name": "Pet Minding",
+        "subcategory_job_title": "Pet Minding"
+      },
+      {
+        "subcategory_id": 2432,
+        "subcategory_name": "Laundry",
+        "subcategory_job_title": "Laundry"
+      },
+      {
+        "subcategory_id": 2433,
+        "subcategory_name": "Change sheets and linen",
+        "subcategory_job_title": "Change sheets and linen"
+      }
+    ]
+  },
+  "Insulation Company": {
+    "category_id": 150,
+    "category_name": "Insulation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 157,
+        "subcategory_name": "Insulation Installation",
+        "subcategory_job_title": "Insulation Supplier"
+      },
+      {
+        "subcategory_id": 1083,
+        "subcategory_name": "Ceiling Insulation",
+        "subcategory_job_title": "Ceiling Insulation"
+      },
+      {
+        "subcategory_id": 1084,
+        "subcategory_name": "Floor Insulation",
+        "subcategory_job_title": "Floor Insulation"
+      },
+      {
+        "subcategory_id": 1085,
+        "subcategory_name": "Roof Insulation",
+        "subcategory_job_title": "Roof Insulation"
+      },
+      {
+        "subcategory_id": 1086,
+        "subcategory_name": "Wall Insulation",
+        "subcategory_job_title": "Wall Insulation"
+      },
+      {
+        "subcategory_id": 2086,
+        "subcategory_name": "Spray Foam Insulation",
+        "subcategory_job_title": "Spray Foam Insulation"
+      },
+      {
+        "subcategory_id": 2434,
+        "subcategory_name": "Soundproof and acoustic insulation",
+        "subcategory_job_title": "Soundproof and acoustic insulation"
+      },
+      {
+        "subcategory_id": 2435,
+        "subcategory_name": "Undeslab insulation",
+        "subcategory_job_title": "Undeslab insulation"
+      },
+      {
+        "subcategory_id": 2436,
+        "subcategory_name": "Commercial insulation",
+        "subcategory_job_title": "Commercial insulation"
+      },
+      {
+        "subcategory_id": 2437,
+        "subcategory_name": "Home insulation",
+        "subcategory_job_title": "Home insulation"
+      },
+      {
+        "subcategory_id": 2438,
+        "subcategory_name": "HVAC and Industrial insulation",
+        "subcategory_job_title": "HVAC and Industrial insulation"
+      },
+      {
+        "subcategory_id": 2439,
+        "subcategory_name": "Insulation removal",
+        "subcategory_job_title": "Insulation removal"
+      },
+      {
+        "subcategory_id": 2440,
+        "subcategory_name": "Therman insulation",
+        "subcategory_job_title": "Therman insulation"
+      }
+    ]
+  },
+  "Interior Designer": {
+    "category_id": 151,
+    "category_name": "Interior Designer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1091,
+        "subcategory_name": "Colour Consulting",
+        "subcategory_job_title": "Colour Consulting"
+      },
+      {
+        "subcategory_id": 2441,
+        "subcategory_name": "Home interior design",
+        "subcategory_job_title": "Home interior design"
+      },
+      {
+        "subcategory_id": 2442,
+        "subcategory_name": "Interior decorating",
+        "subcategory_job_title": "Interior decorating"
+      },
+      {
+        "subcategory_id": 2443,
+        "subcategory_name": "Commercial interior design",
+        "subcategory_job_title": "Commercial interior design"
+      }
+    ]
+  },
+  "Kitchen Renovation Company": {
+    "category_id": 152,
+    "category_name": "Kitchen Renovation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 549,
+        "subcategory_name": "Kitchen Tiling",
+        "subcategory_job_title": "Tiler"
+      },
+      {
+        "subcategory_id": 908,
+        "subcategory_name": "Kitchen Benchtops",
+        "subcategory_job_title": "Kitchen Benchtops"
+      },
+      {
+        "subcategory_id": 2444,
+        "subcategory_name": "New kitchen planning",
+        "subcategory_job_title": "New kitchen planning"
+      },
+      {
+        "subcategory_id": 2445,
+        "subcategory_name": "Budget kitchen renovation",
+        "subcategory_job_title": "Budget kitchen renovation"
+      },
+      {
+        "subcategory_id": 2446,
+        "subcategory_name": "Kitchen sink installation",
+        "subcategory_job_title": "Kitchen sink installation"
+      },
+      {
+        "subcategory_id": 2447,
+        "subcategory_name": "Flat pack kitchen installation",
+        "subcategory_job_title": "Flat pack kitchen installation"
+      },
+      {
+        "subcategory_id": 2448,
+        "subcategory_name": "Kitchen cabinet installation",
+        "subcategory_job_title": "Kitchen cabinet installation"
+      },
+      {
+        "subcategory_id": 2449,
+        "subcategory_name": "Custom cabinets",
+        "subcategory_job_title": "Custom cabinets"
+      },
+      {
+        "subcategory_id": 2450,
+        "subcategory_name": "Kitchen backsplash",
+        "subcategory_job_title": "Kitchen backsplash"
+      },
+      {
+        "subcategory_id": 2451,
+        "subcategory_name": "Kitchen flooring",
+        "subcategory_job_title": "Kitchen flooring"
+      }
+    ]
+  },
+  "Labourer": {
+    "category_id": 153,
+    "category_name": "Labourer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 530,
+        "subcategory_name": "Builders Labourer",
+        "subcategory_job_title": "Labourer"
+      }
+    ]
+  },
+  "Landscaper": {
+    "category_id": 154,
+    "category_name": "Landscaper",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 160,
+        "subcategory_name": "Landscaping",
+        "subcategory_job_title": "Landscaper"
+      },
+      {
+        "subcategory_id": 1069,
+        "subcategory_name": "Structural Landscaping",
+        "subcategory_job_title": "Structural Landscaping"
+      },
+      {
+        "subcategory_id": 2141,
+        "subcategory_name": "Landscape Design",
+        "subcategory_job_title": "Landscape Design"
+      },
+      {
+        "subcategory_id": 2452,
+        "subcategory_name": "Garden landscaping",
+        "subcategory_job_title": "Garden landscaping"
+      },
+      {
+        "subcategory_id": 2453,
+        "subcategory_name": "Backyard renovations",
+        "subcategory_job_title": "Backyard renovations"
+      },
+      {
+        "subcategory_id": 2454,
+        "subcategory_name": "Vertical gardens",
+        "subcategory_job_title": "Vertical gardens"
+      },
+      {
+        "subcategory_id": 2455,
+        "subcategory_name": "Garden fish ponds",
+        "subcategory_job_title": "Garden fish ponds"
+      }
+    ]
+  },
+  "Lawyers and legal professionals": {
+    "category_id": 155,
+    "category_name": "Lawyers and legal professionals",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 388,
+        "subcategory_name": "Family & Divorce Lawyers",
+        "subcategory_job_title": "Family Lawyer"
+      },
+      {
+        "subcategory_id": 393,
+        "subcategory_name": "Disputes",
+        "subcategory_job_title": "Litigation & Dispute Resolution"
+      },
+      {
+        "subcategory_id": 399,
+        "subcategory_name": "Property Lawyers",
+        "subcategory_job_title": "Conveyancer"
+      },
+      {
+        "subcategory_id": 402,
+        "subcategory_name": "Wills & Probate",
+        "subcategory_job_title": "Wills & Probate Lawyer"
+      },
+      {
+        "subcategory_id": 531,
+        "subcategory_name": "Commercial Lawyers",
+        "subcategory_job_title": "Commercial Lawyer"
+      },
+      {
+        "subcategory_id": 1072,
+        "subcategory_name": "Bankruptcy Law",
+        "subcategory_job_title": "Bankruptcy Law"
+      },
+      {
+        "subcategory_id": 1075,
+        "subcategory_name": "Contracts",
+        "subcategory_job_title": "Contracts"
+      },
+      {
+        "subcategory_id": 1095,
+        "subcategory_name": "Employment Law",
+        "subcategory_job_title": "Employment Law"
+      },
+      {
+        "subcategory_id": 1097,
+        "subcategory_name": "Legal Research",
+        "subcategory_job_title": "Legal Research"
+      },
+      {
+        "subcategory_id": 1102,
+        "subcategory_name": "Personal Injury Law",
+        "subcategory_job_title": "Personal Injury Law"
+      },
+      {
+        "subcategory_id": 1104,
+        "subcategory_name": "Process Serving",
+        "subcategory_job_title": "Process Serving"
+      },
+      {
+        "subcategory_id": 1109,
+        "subcategory_name": "Visa / Immigration",
+        "subcategory_job_title": "Visa / Immigration"
+      },
+      {
+        "subcategory_id": 2159,
+        "subcategory_name": "Wills",
+        "subcategory_job_title": "Wills"
+      },
+      {
+        "subcategory_id": 2456,
+        "subcategory_name": "Conveyancer",
+        "subcategory_job_title": "Conveyancer"
+      },
+      {
+        "subcategory_id": 2695,
+        "subcategory_name": "Criminal Law",
+        "subcategory_job_title": "Criminal Law"
+      },
+      {
+        "subcategory_id": 2696,
+        "subcategory_name": "Traffic Law",
+        "subcategory_job_title": "Traffic Law"
+      },
+      {
+        "subcategory_id": 2697,
+        "subcategory_name": "Powers Of Attorney",
+        "subcategory_job_title": "Powers Of Attorney"
+      }
+    ]
+  },
+  "Lighting installation company": {
+    "category_id": 156,
+    "category_name": "Lighting installation company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 162,
+        "subcategory_name": "Lighting",
+        "subcategory_job_title": "Lighting Expert"
+      },
+      {
+        "subcategory_id": 758,
+        "subcategory_name": "Down Lighting",
+        "subcategory_job_title": "Down Lighting"
+      },
+      {
+        "subcategory_id": 798,
+        "subcategory_name": "LED Lighting",
+        "subcategory_job_title": "LED Lighting"
+      },
+      {
+        "subcategory_id": 812,
+        "subcategory_name": "Outdoor Lighting",
+        "subcategory_job_title": "Outdoor Lighting"
+      }
+    ]
+  },
+  "Locksmith": {
+    "category_id": 157,
+    "category_name": "Locksmith",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 91,
+        "subcategory_name": "Engraving",
+        "subcategory_job_title": "Engraver"
+      },
+      {
+        "subcategory_id": 1103,
+        "subcategory_name": "Key Cutting",
+        "subcategory_job_title": "Key Cutting"
+      },
+      {
+        "subcategory_id": 1105,
+        "subcategory_name": "Lockouts",
+        "subcategory_job_title": "Lockouts"
+      },
+      {
+        "subcategory_id": 1106,
+        "subcategory_name": "Master Key Systems",
+        "subcategory_job_title": "Master Key Systems"
+      },
+      {
+        "subcategory_id": 1107,
+        "subcategory_name": "Safes",
+        "subcategory_job_title": "Safes"
+      },
+      {
+        "subcategory_id": 2457,
+        "subcategory_name": "Locksmith services",
+        "subcategory_job_title": "Locksmith services"
+      },
+      {
+        "subcategory_id": 2458,
+        "subcategory_name": "Rekey lock",
+        "subcategory_job_title": "Rekey lock"
+      },
+      {
+        "subcategory_id": 2459,
+        "subcategory_name": "Automotive locksmith",
+        "subcategory_job_title": "Automotive locksmith"
+      },
+      {
+        "subcategory_id": 2460,
+        "subcategory_name": "House lock installation",
+        "subcategory_job_title": "House lock installation"
+      },
+      {
+        "subcategory_id": 2461,
+        "subcategory_name": "Emergency locksmith",
+        "subcategory_job_title": "Emergency locksmith"
+      },
+      {
+        "subcategory_id": 2462,
+        "subcategory_name": "Commercial locksmith",
+        "subcategory_job_title": "Commercial locksmith"
+      },
+      {
+        "subcategory_id": 2463,
+        "subcategory_name": "Digital door locks",
+        "subcategory_job_title": "Digital door locks"
+      },
+      {
+        "subcategory_id": 2464,
+        "subcategory_name": "Mobile locksmith",
+        "subcategory_job_title": "Mobile locksmith"
+      }
+    ]
+  },
+  "Make Up Artist": {
+    "category_id": 158,
+    "category_name": "Make Up Artist",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2465,
+        "subcategory_name": "Make Up Artist Services",
+        "subcategory_job_title": "Make Up Artist Services"
+      },
+      {
+        "subcategory_id": 2466,
+        "subcategory_name": "Wedding make up artist",
+        "subcategory_job_title": "Wedding make up artist"
+      }
+    ]
+  },
+  "Mechanic": {
+    "category_id": 159,
+    "category_name": "Mechanic",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 99,
+        "subcategory_name": "Pimp My Ride",
+        "subcategory_job_title": "Car Mods Expert"
+      },
+      {
+        "subcategory_id": 103,
+        "subcategory_name": "Mufflers & Exhausts",
+        "subcategory_job_title": "Muffler & Exhaust Expert"
+      },
+      {
+        "subcategory_id": 106,
+        "subcategory_name": "Spare Parts",
+        "subcategory_job_title": "Spare Parts Supplier"
+      },
+      {
+        "subcategory_id": 109,
+        "subcategory_name": "Wheels & Tyres",
+        "subcategory_job_title": "Wheels & Tyres Expert"
+      },
+      {
+        "subcategory_id": 979,
+        "subcategory_name": "Engine Reconditioning",
+        "subcategory_job_title": "Engine Reconditioning"
+      },
+      {
+        "subcategory_id": 990,
+        "subcategory_name": "Tyres",
+        "subcategory_job_title": "Tyres"
+      },
+      {
+        "subcategory_id": 2467,
+        "subcategory_name": "Motorcycle repair",
+        "subcategory_job_title": "Motorcycle repair"
+      },
+      {
+        "subcategory_id": 2468,
+        "subcategory_name": "Car repair",
+        "subcategory_job_title": "Car repair"
+      },
+      {
+        "subcategory_id": 2469,
+        "subcategory_name": "Mobile mechanic",
+        "subcategory_job_title": "Mobile mechanic"
+      },
+      {
+        "subcategory_id": 2470,
+        "subcategory_name": "Car servicing",
+        "subcategory_job_title": "Car servicing"
+      }
+    ]
+  },
+  "Musician & Entertainer": {
+    "category_id": 160,
+    "category_name": "Musician & Entertainer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1898,
+        "subcategory_name": "Band Entertainment",
+        "subcategory_job_title": "Band Entertainment"
+      },
+      {
+        "subcategory_id": 1906,
+        "subcategory_name": "Comedy Entertainment",
+        "subcategory_job_title": "Comedy Entertainment"
+      },
+      {
+        "subcategory_id": 1925,
+        "subcategory_name": "Magician",
+        "subcategory_job_title": "Magician"
+      },
+      {
+        "subcategory_id": 2471,
+        "subcategory_name": "Wedding singer",
+        "subcategory_job_title": "Wedding singer"
+      },
+      {
+        "subcategory_id": 2472,
+        "subcategory_name": "Clown",
+        "subcategory_job_title": "Clown"
+      },
+      {
+        "subcategory_id": 2473,
+        "subcategory_name": "Master of Ceremonies",
+        "subcategory_job_title": "Master of Ceremonies"
+      },
+      {
+        "subcategory_id": 2474,
+        "subcategory_name": "Disc Jockey",
+        "subcategory_job_title": "Disc Jockey"
+      }
+    ]
+  },
+  "Oven Installation & Repairs": {
+    "category_id": 162,
+    "category_name": "Oven Installation & Repairs",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 952,
+        "subcategory_name": "Cooktop Installation",
+        "subcategory_job_title": "Cooktop Installation"
+      },
+      {
+        "subcategory_id": 953,
+        "subcategory_name": "Cooktop Repair",
+        "subcategory_job_title": "Cooktop Repair"
+      },
+      {
+        "subcategory_id": 958,
+        "subcategory_name": "Oven Installation",
+        "subcategory_job_title": "Oven Installation"
+      },
+      {
+        "subcategory_id": 959,
+        "subcategory_name": "Rangehood Installation",
+        "subcategory_job_title": "Rangehood Installation"
+      },
+      {
+        "subcategory_id": 960,
+        "subcategory_name": "Rangehood Repair",
+        "subcategory_job_title": "Rangehood Repair"
+      },
+      {
+        "subcategory_id": 2479,
+        "subcategory_name": "Oven repair",
+        "subcategory_job_title": "Oven repair"
+      },
+      {
+        "subcategory_id": 2480,
+        "subcategory_name": "Electric ovens",
+        "subcategory_job_title": "Electric ovens"
+      }
+    ]
+  },
+  "Painter": {
+    "category_id": 163,
+    "category_name": "Painter",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 165,
+        "subcategory_name": "Exterior House Painting",
+        "subcategory_job_title": "House Painter"
+      },
+      {
+        "subcategory_id": 534,
+        "subcategory_name": "Interior House Painting",
+        "subcategory_job_title": "Painter"
+      },
+      {
+        "subcategory_id": 579,
+        "subcategory_name": "Roof Painting",
+        "subcategory_job_title": "Roof Painter"
+      },
+      {
+        "subcategory_id": 1094,
+        "subcategory_name": "Wallpapering",
+        "subcategory_job_title": "Wallpapering"
+      },
+      {
+        "subcategory_id": 1130,
+        "subcategory_name": "Commercial Painting",
+        "subcategory_job_title": "Commercial Painting"
+      },
+      {
+        "subcategory_id": 1131,
+        "subcategory_name": "Fence Painting",
+        "subcategory_job_title": "Fence Painting"
+      },
+      {
+        "subcategory_id": 1132,
+        "subcategory_name": "Paint Removal",
+        "subcategory_job_title": "Paint Removal"
+      },
+      {
+        "subcategory_id": 2481,
+        "subcategory_name": "House Painting",
+        "subcategory_job_title": "House Painting"
+      },
+      {
+        "subcategory_id": 2703,
+        "subcategory_name": "Floor Painting",
+        "subcategory_job_title": "Floor Painting"
+      },
+      {
+        "subcategory_id": 2704,
+        "subcategory_name": "Concrete Painting",
+        "subcategory_job_title": "Concrete Painting"
+      }
+    ]
+  },
+  "Paver": {
+    "category_id": 164,
+    "category_name": "Paver",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 535,
+        "subcategory_name": "Paving Installation",
+        "subcategory_job_title": "Paver"
+      },
+      {
+        "subcategory_id": 704,
+        "subcategory_name": "Outdoor Paving",
+        "subcategory_job_title": "Outdoor Paving"
+      },
+      {
+        "subcategory_id": 1141,
+        "subcategory_name": "Asphalt Paving",
+        "subcategory_job_title": "Asphalt Paving"
+      },
+      {
+        "subcategory_id": 1143,
+        "subcategory_name": "Driveway Paving",
+        "subcategory_job_title": "Driveway Paving"
+      },
+      {
+        "subcategory_id": 1144,
+        "subcategory_name": "Path Paving",
+        "subcategory_job_title": "Path Paving"
+      },
+      {
+        "subcategory_id": 1146,
+        "subcategory_name": "Patio Paving",
+        "subcategory_job_title": "Patio Paving"
+      },
+      {
+        "subcategory_id": 1149,
+        "subcategory_name": "Pebble Paving",
+        "subcategory_job_title": "Pebble Paving"
+      },
+      {
+        "subcategory_id": 1152,
+        "subcategory_name": "Pool Paving",
+        "subcategory_job_title": "Pool Paving"
+      },
+      {
+        "subcategory_id": 1153,
+        "subcategory_name": "Stone Paving",
+        "subcategory_job_title": "Stone Paving"
+      },
+      {
+        "subcategory_id": 2482,
+        "subcategory_name": "General paving",
+        "subcategory_job_title": "General paving"
+      },
+      {
+        "subcategory_id": 2483,
+        "subcategory_name": "Garden paving",
+        "subcategory_job_title": "Garden paving"
+      },
+      {
+        "subcategory_id": 2484,
+        "subcategory_name": "Sandstone paving",
+        "subcategory_job_title": "Sandstone paving"
+      },
+      {
+        "subcategory_id": 2671,
+        "subcategory_name": "Spray On Paving",
+        "subcategory_job_title": "Spray On Paving"
+      },
+      {
+        "subcategory_id": 2672,
+        "subcategory_name": "Recolour Pavers",
+        "subcategory_job_title": "Recolour Pavers"
+      },
+      {
+        "subcategory_id": 2673,
+        "subcategory_name": "Resin Bound Stones",
+        "subcategory_job_title": "Resin Bound Stones"
+      },
+      {
+        "subcategory_id": 2674,
+        "subcategory_name": "Permeable Paving",
+        "subcategory_job_title": "Permeable Paving"
+      }
+    ]
+  },
+  "Photographer": {
+    "category_id": 168,
+    "category_name": "Photographer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 84,
+        "subcategory_name": "Product Photography",
+        "subcategory_job_title": "Photographer"
+      },
+      {
+        "subcategory_id": 277,
+        "subcategory_name": "Wedding Photography",
+        "subcategory_job_title": "Photographer"
+      },
+      {
+        "subcategory_id": 536,
+        "subcategory_name": "Event Photography",
+        "subcategory_job_title": "Event Photographer"
+      },
+      {
+        "subcategory_id": 537,
+        "subcategory_name": "Family & Portrait Photography",
+        "subcategory_job_title": "Family & Portrait Photographer"
+      },
+      {
+        "subcategory_id": 568,
+        "subcategory_name": "Baby Photography",
+        "subcategory_job_title": "Baby Photographer"
+      },
+      {
+        "subcategory_id": 980,
+        "subcategory_name": "Photo Editing",
+        "subcategory_job_title": "Photo Editing"
+      },
+      {
+        "subcategory_id": 1177,
+        "subcategory_name": "Commercial Photography",
+        "subcategory_job_title": "Commercial Photography"
+      },
+      {
+        "subcategory_id": 1179,
+        "subcategory_name": "Headshot Photography",
+        "subcategory_job_title": "Headshot Photography"
+      },
+      {
+        "subcategory_id": 1187,
+        "subcategory_name": "Real Estate Photography",
+        "subcategory_job_title": "Real Estate Photography"
+      },
+      {
+        "subcategory_id": 2496,
+        "subcategory_name": "Photography services",
+        "subcategory_job_title": "Photography services"
+      },
+      {
+        "subcategory_id": 2497,
+        "subcategory_name": "Corporate photography",
+        "subcategory_job_title": "Corporate photography"
+      },
+      {
+        "subcategory_id": 2498,
+        "subcategory_name": "Aerial and drone photography",
+        "subcategory_job_title": "Aerial and drone photography"
+      },
+      {
+        "subcategory_id": 2705,
+        "subcategory_name": "Drone Photography",
+        "subcategory_job_title": "Drone Photography"
+      }
+    ]
+  },
+  "Plasterer": {
+    "category_id": 169,
+    "category_name": "Plasterer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 136,
+        "subcategory_name": "Ceilings",
+        "subcategory_job_title": "Ceiling Expert"
+      },
+      {
+        "subcategory_id": 1054,
+        "subcategory_name": "Plasterboard Sheets",
+        "subcategory_job_title": "Plasterboard Sheets"
+      },
+      {
+        "subcategory_id": 1188,
+        "subcategory_name": "Drywall",
+        "subcategory_job_title": "Drywall"
+      },
+      {
+        "subcategory_id": 1676,
+        "subcategory_name": "Plasterboard",
+        "subcategory_job_title": "Plasterboard"
+      },
+      {
+        "subcategory_id": 2172,
+        "subcategory_name": "Cornices",
+        "subcategory_job_title": "Cornices"
+      },
+      {
+        "subcategory_id": 2499,
+        "subcategory_name": "Plastering",
+        "subcategory_job_title": "Plastering"
+      },
+      {
+        "subcategory_id": 2500,
+        "subcategory_name": "Internal Walls and Partitioning",
+        "subcategory_job_title": "Internal Walls and Partitioning"
+      },
+      {
+        "subcategory_id": 2501,
+        "subcategory_name": "Gyprock",
+        "subcategory_job_title": "Gyprock"
+      },
+      {
+        "subcategory_id": 2502,
+        "subcategory_name": "Stud walls",
+        "subcategory_job_title": "Stud walls"
+      },
+      {
+        "subcategory_id": 2715,
+        "subcategory_name": "Plasterboard Repair",
+        "subcategory_job_title": "Plasterboard Repair"
+      }
+    ]
+  },
+  "Plumber": {
+    "category_id": 170,
+    "category_name": "Plumber",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 156,
+        "subcategory_name": "Hot Water Systems",
+        "subcategory_job_title": "Hot Water System Expert"
+      },
+      {
+        "subcategory_id": 168,
+        "subcategory_name": "General Plumbing",
+        "subcategory_job_title": "Plumber"
+      },
+      {
+        "subcategory_id": 188,
+        "subcategory_name": "Water Recycling",
+        "subcategory_job_title": "Water Recycling Expert"
+      },
+      {
+        "subcategory_id": 1192,
+        "subcategory_name": "Drain Repairs",
+        "subcategory_job_title": "Drain Repairs"
+      },
+      {
+        "subcategory_id": 1195,
+        "subcategory_name": "Electric Hot Water Systems",
+        "subcategory_job_title": "Electric Hot Water Systems"
+      },
+      {
+        "subcategory_id": 1197,
+        "subcategory_name": "Emergency Plumbing",
+        "subcategory_job_title": "Emergency Plumbing"
+      },
+      {
+        "subcategory_id": 1198,
+        "subcategory_name": "Gas Hot Water Systems",
+        "subcategory_job_title": "Gas Hot Water Systems"
+      },
+      {
+        "subcategory_id": 1208,
+        "subcategory_name": "Plumbing Installation",
+        "subcategory_job_title": "Plumbing Installation"
+      },
+      {
+        "subcategory_id": 1209,
+        "subcategory_name": "Rain Water Tank Installation",
+        "subcategory_job_title": "Rain Water Tank Installation"
+      },
+      {
+        "subcategory_id": 1218,
+        "subcategory_name": "Sink Installation",
+        "subcategory_job_title": "Sink Installation"
+      },
+      {
+        "subcategory_id": 1223,
+        "subcategory_name": "Solar Hot Water Systems",
+        "subcategory_job_title": "Solar Hot Water Systems"
+      },
+      {
+        "subcategory_id": 1224,
+        "subcategory_name": "Toilet Installation",
+        "subcategory_job_title": "Toilet Installation"
+      },
+      {
+        "subcategory_id": 1225,
+        "subcategory_name": "Toilet Repairs",
+        "subcategory_job_title": "Toilet Repairs"
+      },
+      {
+        "subcategory_id": 2155,
+        "subcategory_name": "Stormwater Pits & Drains",
+        "subcategory_job_title": "Stormwater Pits & Drains"
+      },
+      {
+        "subcategory_id": 2196,
+        "subcategory_name": "Gas fitting",
+        "subcategory_job_title": "Gas fitting"
+      },
+      {
+        "subcategory_id": 2503,
+        "subcategory_name": "Clogged and blocked sink",
+        "subcategory_job_title": "Clogged and blocked sink"
+      },
+      {
+        "subcategory_id": 2504,
+        "subcategory_name": "Clogged and block drain",
+        "subcategory_job_title": "Clogged and block drain"
+      },
+      {
+        "subcategory_id": 2505,
+        "subcategory_name": "Pipe repair",
+        "subcategory_job_title": "Pipe repair"
+      },
+      {
+        "subcategory_id": 2506,
+        "subcategory_name": "Water leaks",
+        "subcategory_job_title": "Water leaks"
+      },
+      {
+        "subcategory_id": 2507,
+        "subcategory_name": "Overflowing drain",
+        "subcategory_job_title": "Overflowing drain"
+      },
+      {
+        "subcategory_id": 2508,
+        "subcategory_name": "Blocked toilet",
+        "subcategory_job_title": "Blocked toilet"
+      },
+      {
+        "subcategory_id": 2509,
+        "subcategory_name": "Commercial plumbing",
+        "subcategory_job_title": "Commercial plumbing"
+      },
+      {
+        "subcategory_id": 2510,
+        "subcategory_name": "Reticulation system",
+        "subcategory_job_title": "Reticulation system"
+      },
+      {
+        "subcategory_id": 2511,
+        "subcategory_name": "Leaking taps",
+        "subcategory_job_title": "Leaking taps"
+      }
+    ]
+  },
+  "Pool & Spa Company": {
+    "category_id": 171,
+    "category_name": "Pool & Spa Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 539,
+        "subcategory_name": "Pool Maintenance",
+        "subcategory_job_title": "Pool Cleaner"
+      },
+      {
+        "subcategory_id": 1196,
+        "subcategory_name": "Above Ground Swimming Pool Installation",
+        "subcategory_job_title": "Above Ground Swimming Pool Installation"
+      },
+      {
+        "subcategory_id": 1207,
+        "subcategory_name": "In-Ground Swimming Pool Installation",
+        "subcategory_job_title": "In-Ground Swimming Pool Installation"
+      },
+      {
+        "subcategory_id": 1210,
+        "subcategory_name": "Plunge Pools",
+        "subcategory_job_title": "Plunge Pools"
+      },
+      {
+        "subcategory_id": 1211,
+        "subcategory_name": "Pool Fencing",
+        "subcategory_job_title": "Pool Fencing"
+      },
+      {
+        "subcategory_id": 1213,
+        "subcategory_name": "Pool Filters",
+        "subcategory_job_title": "Pool Filters"
+      },
+      {
+        "subcategory_id": 1214,
+        "subcategory_name": "Pool Heating",
+        "subcategory_job_title": "Pool Heating"
+      },
+      {
+        "subcategory_id": 1222,
+        "subcategory_name": "Pool Leak Repair",
+        "subcategory_job_title": "Pool Leak Repair"
+      },
+      {
+        "subcategory_id": 1239,
+        "subcategory_name": "Spa Installation",
+        "subcategory_job_title": "Spa Installation"
+      },
+      {
+        "subcategory_id": 1241,
+        "subcategory_name": "Spa Repair",
+        "subcategory_job_title": "Spa Repair"
+      },
+      {
+        "subcategory_id": 2512,
+        "subcategory_name": "Swimming Pool Renovation",
+        "subcategory_job_title": "Swimming Pool Renovation"
+      },
+      {
+        "subcategory_id": 2513,
+        "subcategory_name": "Swimming Pool Resurfacing",
+        "subcategory_job_title": "Swimming Pool Resurfacing"
+      },
+      {
+        "subcategory_id": 2514,
+        "subcategory_name": "Pool construction and installation",
+        "subcategory_job_title": "Pool construction and installation"
+      },
+      {
+        "subcategory_id": 2515,
+        "subcategory_name": "Spa maintenance",
+        "subcategory_job_title": "Spa maintenance"
+      },
+      {
+        "subcategory_id": 2516,
+        "subcategory_name": "Swimming pool waterproofing",
+        "subcategory_job_title": "Swimming pool waterproofing"
+      },
+      {
+        "subcategory_id": 2517,
+        "subcategory_name": "Pool filter repair and installation",
+        "subcategory_job_title": "Pool filter repair and installation"
+      }
+    ]
+  },
+  "Printer": {
+    "category_id": 172,
+    "category_name": "Printer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 438,
+        "subcategory_name": "Promotional Items",
+        "subcategory_job_title": "Promotional Items Printer"
+      },
+      {
+        "subcategory_id": 439,
+        "subcategory_name": "Books & Bookbinding",
+        "subcategory_job_title": "Book Binder"
+      },
+      {
+        "subcategory_id": 440,
+        "subcategory_name": "Brochures & Flyers",
+        "subcategory_job_title": "Brochure & Flyer Printer"
+      },
+      {
+        "subcategory_id": 443,
+        "subcategory_name": "Clothing",
+        "subcategory_job_title": "Clothing & Textiles Printer"
+      },
+      {
+        "subcategory_id": 444,
+        "subcategory_name": "Commercial Printing",
+        "subcategory_job_title": "Digital Printer"
+      },
+      {
+        "subcategory_id": 447,
+        "subcategory_name": "Magazines & Catalogues",
+        "subcategory_job_title": "Magazines & Catalogues Printer"
+      },
+      {
+        "subcategory_id": 448,
+        "subcategory_name": "Packaging",
+        "subcategory_job_title": "Packaging Printer"
+      },
+      {
+        "subcategory_id": 450,
+        "subcategory_name": "Screen Printing",
+        "subcategory_job_title": "Screen Printer"
+      },
+      {
+        "subcategory_id": 451,
+        "subcategory_name": "Signs & Signage",
+        "subcategory_job_title": "Signs Printer"
+      },
+      {
+        "subcategory_id": 452,
+        "subcategory_name": "Embroidery",
+        "subcategory_job_title": "Embroidery Printer"
+      },
+      {
+        "subcategory_id": 567,
+        "subcategory_name": "Business Printing",
+        "subcategory_job_title": "Business Printer"
+      },
+      {
+        "subcategory_id": 918,
+        "subcategory_name": "Business Cards",
+        "subcategory_job_title": "Business Cards"
+      },
+      {
+        "subcategory_id": 1250,
+        "subcategory_name": "T-Shirt Printing",
+        "subcategory_job_title": "T-Shirts"
+      },
+      {
+        "subcategory_id": 2518,
+        "subcategory_name": "Labels",
+        "subcategory_job_title": "Labels"
+      },
+      {
+        "subcategory_id": 2519,
+        "subcategory_name": "Stickers",
+        "subcategory_job_title": "Stickers"
+      },
+      {
+        "subcategory_id": 2520,
+        "subcategory_name": "Wedding invitations",
+        "subcategory_job_title": "Wedding invitations"
+      },
+      {
+        "subcategory_id": 2521,
+        "subcategory_name": "Posters",
+        "subcategory_job_title": "Posters"
+      },
+      {
+        "subcategory_id": 2522,
+        "subcategory_name": "Banners",
+        "subcategory_job_title": "Banners"
+      }
+    ]
+  },
+  "Removalist": {
+    "category_id": 173,
+    "category_name": "Removalist",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 705,
+        "subcategory_name": "Couriers",
+        "subcategory_job_title": "Couriers"
+      },
+      {
+        "subcategory_id": 852,
+        "subcategory_name": "Car Transporting",
+        "subcategory_job_title": "Car Transporting"
+      },
+      {
+        "subcategory_id": 856,
+        "subcategory_name": "Deliveries",
+        "subcategory_job_title": "Deliveries"
+      },
+      {
+        "subcategory_id": 862,
+        "subcategory_name": "Furniture Storage",
+        "subcategory_job_title": "Furniture Storage"
+      },
+      {
+        "subcategory_id": 877,
+        "subcategory_name": "Packing",
+        "subcategory_job_title": "Packing"
+      },
+      {
+        "subcategory_id": 879,
+        "subcategory_name": "Piano Removals",
+        "subcategory_job_title": "Piano Removals"
+      },
+      {
+        "subcategory_id": 888,
+        "subcategory_name": "Unpacking",
+        "subcategory_job_title": "Unpacking"
+      },
+      {
+        "subcategory_id": 2523,
+        "subcategory_name": "Interstate removals",
+        "subcategory_job_title": "Interstate removals"
+      },
+      {
+        "subcategory_id": 2524,
+        "subcategory_name": "Truck removalist",
+        "subcategory_job_title": "Truck removalist"
+      },
+      {
+        "subcategory_id": 2525,
+        "subcategory_name": "Van removalist",
+        "subcategory_job_title": "Van removalist"
+      },
+      {
+        "subcategory_id": 2526,
+        "subcategory_name": "Local removalist",
+        "subcategory_job_title": "Local removalist"
+      },
+      {
+        "subcategory_id": 2527,
+        "subcategory_name": "Overseas removalist",
+        "subcategory_job_title": "Overseas removalist"
+      },
+      {
+        "subcategory_id": 2528,
+        "subcategory_name": "Office movers",
+        "subcategory_job_title": "Office movers"
+      }
+    ]
+  },
+  "Rendering Company": {
+    "category_id": 174,
+    "category_name": "Rendering Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 507,
+        "subcategory_name": "Cement Rendering",
+        "subcategory_job_title": "Cement Renderer"
+      }
+    ]
+  },
+  "Roofer": {
+    "category_id": 175,
+    "category_name": "Roofer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 170,
+        "subcategory_name": "Roof Installation",
+        "subcategory_job_title": "Roofing & Guttering Expert"
+      },
+      {
+        "subcategory_id": 541,
+        "subcategory_name": "Roof Repairs",
+        "subcategory_job_title": "Roof Repairer"
+      },
+      {
+        "subcategory_id": 563,
+        "subcategory_name": "Roof Tiling",
+        "subcategory_job_title": "Roof Tiler"
+      },
+      {
+        "subcategory_id": 913,
+        "subcategory_name": "Metal Roofing",
+        "subcategory_job_title": "Metal Roofing"
+      },
+      {
+        "subcategory_id": 1246,
+        "subcategory_name": "Gutter Guards",
+        "subcategory_job_title": "Gutter Guards"
+      },
+      {
+        "subcategory_id": 1247,
+        "subcategory_name": "Flat Roofing",
+        "subcategory_job_title": "Flat Roofing"
+      },
+      {
+        "subcategory_id": 1251,
+        "subcategory_name": "Repointing",
+        "subcategory_job_title": "Repointing"
+      },
+      {
+        "subcategory_id": 1253,
+        "subcategory_name": "Roof Cleaning",
+        "subcategory_job_title": "Roof Cleaning"
+      },
+      {
+        "subcategory_id": 1257,
+        "subcategory_name": "Roof Restoration",
+        "subcategory_job_title": "Roof Restoration"
+      },
+      {
+        "subcategory_id": 1259,
+        "subcategory_name": "Roof Trusses & Wall Frames",
+        "subcategory_job_title": "Roof Trusses & Wall Frames"
+      },
+      {
+        "subcategory_id": 1268,
+        "subcategory_name": "Slate Roofing",
+        "subcategory_job_title": "Slate Roofing"
+      },
+      {
+        "subcategory_id": 2125,
+        "subcategory_name": "Roof Plumbing",
+        "subcategory_job_title": "Roof Plumbing"
+      },
+      {
+        "subcategory_id": 2529,
+        "subcategory_name": "Roof gutter and downpipe repair",
+        "subcategory_job_title": "Roof gutter and downpipe repair"
+      },
+      {
+        "subcategory_id": 2530,
+        "subcategory_name": "Roof gutter and downpipe installation",
+        "subcategory_job_title": "Roof gutter and downpipe installation"
+      },
+      {
+        "subcategory_id": 2531,
+        "subcategory_name": "Re-roofing",
+        "subcategory_job_title": "Re-roofing"
+      },
+      {
+        "subcategory_id": 2532,
+        "subcategory_name": "Roof construction and installation",
+        "subcategory_job_title": "Roof construction and installation"
+      },
+      {
+        "subcategory_id": 2533,
+        "subcategory_name": "Colorbond roofs",
+        "subcategory_job_title": "Colorbond roofs"
+      }
+    ]
+  },
+  "Rubbish Removalist": {
+    "category_id": 176,
+    "category_name": "Rubbish Removalist",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 542,
+        "subcategory_name": "Commercial Waste",
+        "subcategory_job_title": "Rubbish Collector"
+      },
+      {
+        "subcategory_id": 544,
+        "subcategory_name": "Industrial Waste",
+        "subcategory_job_title": "Industrial Waste Collector"
+      },
+      {
+        "subcategory_id": 1256,
+        "subcategory_name": "Junk Removal",
+        "subcategory_job_title": "Junk Removal"
+      },
+      {
+        "subcategory_id": 2162,
+        "subcategory_name": "Trailer Bins",
+        "subcategory_job_title": "Trailer Bins"
+      },
+      {
+        "subcategory_id": 2534,
+        "subcategory_name": "Skip bins",
+        "subcategory_job_title": "Skip bins"
+      },
+      {
+        "subcategory_id": 2535,
+        "subcategory_name": "Household waste and rubbish",
+        "subcategory_job_title": "Household waste and rubbish"
+      },
+      {
+        "subcategory_id": 2723,
+        "subcategory_name": "Rubbish removals",
+        "subcategory_job_title": "Rubbish removals"
+      }
+    ]
+  },
+  "Scaffolding Company": {
+    "category_id": 177,
+    "category_name": "Scaffolding Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 172,
+        "subcategory_name": "Scaffolding",
+        "subcategory_job_title": "Scaffold Supplier"
+      },
+      {
+        "subcategory_id": 1228,
+        "subcategory_name": "Aluminium Scaffolding",
+        "subcategory_job_title": "Aluminium Scaffolding"
+      },
+      {
+        "subcategory_id": 1230,
+        "subcategory_name": "Fold Up Scaffolding",
+        "subcategory_job_title": "Fold Up Scaffolding"
+      },
+      {
+        "subcategory_id": 1231,
+        "subcategory_name": "Mobile Scaffolding",
+        "subcategory_job_title": "Mobile Scaffolding"
+      },
+      {
+        "subcategory_id": 1233,
+        "subcategory_name": "Rigging",
+        "subcategory_job_title": "Rigging"
+      },
+      {
+        "subcategory_id": 1237,
+        "subcategory_name": "Scaffolding Hire",
+        "subcategory_job_title": "Scaffolding Hire"
+      }
+    ]
+  },
+  "Security Company": {
+    "category_id": 178,
+    "category_name": "Security Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 186,
+        "subcategory_name": "Security Systems",
+        "subcategory_job_title": "Security Device Specialist"
+      },
+      {
+        "subcategory_id": 637,
+        "subcategory_name": "24/7 Monitoring",
+        "subcategory_job_title": "24/7 Monitoring"
+      },
+      {
+        "subcategory_id": 655,
+        "subcategory_name": "Home Security",
+        "subcategory_job_title": "Home Security"
+      },
+      {
+        "subcategory_id": 656,
+        "subcategory_name": "Intercom Systems",
+        "subcategory_job_title": "Intercom Systems"
+      },
+      {
+        "subcategory_id": 660,
+        "subcategory_name": "Security Guards",
+        "subcategory_job_title": "Security Guards"
+      },
+      {
+        "subcategory_id": 663,
+        "subcategory_name": "Security Lighting",
+        "subcategory_job_title": "Security Lighting"
+      },
+      {
+        "subcategory_id": 2148,
+        "subcategory_name": "Fire Sprinklers",
+        "subcategory_job_title": "Fire Sprinklers"
+      },
+      {
+        "subcategory_id": 2536,
+        "subcategory_name": "CCTV systems",
+        "subcategory_job_title": "CCTV systems"
+      },
+      {
+        "subcategory_id": 2537,
+        "subcategory_name": "Roller shutters and doors",
+        "subcategory_job_title": "Roller shutters and doors"
+      },
+      {
+        "subcategory_id": 2668,
+        "subcategory_name": "Access Control",
+        "subcategory_job_title": "Access Control"
+      }
+    ]
+  },
+  "Sign Company": {
+    "category_id": 179,
+    "category_name": "Sign Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 75,
+        "subcategory_name": "Sign Design",
+        "subcategory_job_title": "Display & Signange Designer"
+      },
+      {
+        "subcategory_id": 174,
+        "subcategory_name": "Sign & Banner Printing",
+        "subcategory_job_title": "Signage Expert"
+      },
+      {
+        "subcategory_id": 546,
+        "subcategory_name": "Commercial Signage",
+        "subcategory_job_title": "Signwriter"
+      },
+      {
+        "subcategory_id": 547,
+        "subcategory_name": "Vehicle Signage",
+        "subcategory_job_title": "Signwriter"
+      },
+      {
+        "subcategory_id": 1254,
+        "subcategory_name": "Electronic Signs",
+        "subcategory_job_title": "Electronic Signs"
+      },
+      {
+        "subcategory_id": 1258,
+        "subcategory_name": "Metal Signs",
+        "subcategory_job_title": "Metal Signs"
+      },
+      {
+        "subcategory_id": 1260,
+        "subcategory_name": "Neon Signs",
+        "subcategory_job_title": "Neon Signs"
+      },
+      {
+        "subcategory_id": 1262,
+        "subcategory_name": "Plastic Signs",
+        "subcategory_job_title": "Plastic Signs"
+      },
+      {
+        "subcategory_id": 1265,
+        "subcategory_name": "Safety & Traffic Signs",
+        "subcategory_job_title": "Safety & Traffic Signs"
+      },
+      {
+        "subcategory_id": 1269,
+        "subcategory_name": "Signwriting",
+        "subcategory_job_title": "Signwriting"
+      }
+    ]
+  },
+  "Skylight Installation Company": {
+    "category_id": 180,
+    "category_name": "Skylight Installation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2538,
+        "subcategory_name": "Skylight Installation",
+        "subcategory_job_title": "Skylight Installation"
+      },
+      {
+        "subcategory_id": 2539,
+        "subcategory_name": "Fixed skylight",
+        "subcategory_job_title": "Fixed skylight"
+      },
+      {
+        "subcategory_id": 2540,
+        "subcategory_name": "Electric skylight",
+        "subcategory_job_title": "Electric skylight"
+      },
+      {
+        "subcategory_id": 2541,
+        "subcategory_name": "Manual skylight",
+        "subcategory_job_title": "Manual skylight"
+      },
+      {
+        "subcategory_id": 2542,
+        "subcategory_name": "Flat roof skylight",
+        "subcategory_job_title": "Flat roof skylight"
+      },
+      {
+        "subcategory_id": 2543,
+        "subcategory_name": "Solar powered skylight",
+        "subcategory_job_title": "Solar powered skylight"
+      },
+      {
+        "subcategory_id": 2544,
+        "subcategory_name": "Sun tunnels",
+        "subcategory_job_title": "Sun tunnels"
+      },
+      {
+        "subcategory_id": 2545,
+        "subcategory_name": "Acrylic dome replacement",
+        "subcategory_job_title": "Acrylic dome replacement"
+      },
+      {
+        "subcategory_id": 2546,
+        "subcategory_name": "Roof windows",
+        "subcategory_job_title": "Roof windows"
+      },
+      {
+        "subcategory_id": 2547,
+        "subcategory_name": "Skylight blinds",
+        "subcategory_job_title": "Skylight blinds"
+      },
+      {
+        "subcategory_id": 2548,
+        "subcategory_name": "Skylight glazing",
+        "subcategory_job_title": "Skylight glazing"
+      }
+    ]
+  },
+  "Shades and Sails Company": {
+    "category_id": 181,
+    "category_name": "Shades and Sails Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1667,
+        "subcategory_name": "Shade Sail Awnings",
+        "subcategory_job_title": "Shade Sail Awnings"
+      },
+      {
+        "subcategory_id": 1953,
+        "subcategory_name": "Custom Made Shades",
+        "subcategory_job_title": "Custom Made Shades"
+      },
+      {
+        "subcategory_id": 1955,
+        "subcategory_name": "Outdoor Shade Sails",
+        "subcategory_job_title": "Outdoor Shade Sails"
+      },
+      {
+        "subcategory_id": 1957,
+        "subcategory_name": "Patio Shades",
+        "subcategory_job_title": "Patio Shades"
+      },
+      {
+        "subcategory_id": 1967,
+        "subcategory_name": "Shade Sail Posts",
+        "subcategory_job_title": "Shade Sail Posts"
+      },
+      {
+        "subcategory_id": 1969,
+        "subcategory_name": "Shade Sails",
+        "subcategory_job_title": "Shade Sails"
+      },
+      {
+        "subcategory_id": 1973,
+        "subcategory_name": "Shade Umbrellas",
+        "subcategory_job_title": "Shade Umbrellas"
+      },
+      {
+        "subcategory_id": 1982,
+        "subcategory_name": "Triangle Shade Sails",
+        "subcategory_job_title": "Triangle Shade Sails"
+      },
+      {
+        "subcategory_id": 1983,
+        "subcategory_name": "Waterproof Shade Sails",
+        "subcategory_job_title": "Waterproof Shade Sails"
+      }
+    ]
+  },
+  "Solar Company": {
+    "category_id": 182,
+    "category_name": "Solar Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 2171,
+        "subcategory_name": "Solar Panel Cleaning",
+        "subcategory_job_title": "Solar Panel Cleaning"
+      },
+      {
+        "subcategory_id": 2549,
+        "subcategory_name": "Solar panel maintanence",
+        "subcategory_job_title": "Solar panel maintanence"
+      },
+      {
+        "subcategory_id": 2550,
+        "subcategory_name": "Remote area solar power",
+        "subcategory_job_title": "Remote area solar power"
+      },
+      {
+        "subcategory_id": 2551,
+        "subcategory_name": "Grid feed solar systems",
+        "subcategory_job_title": "Grid feed solar systems"
+      },
+      {
+        "subcategory_id": 2552,
+        "subcategory_name": "Solar power batteries",
+        "subcategory_job_title": "Solar power batteries"
+      },
+      {
+        "subcategory_id": 2553,
+        "subcategory_name": "Solar inverters",
+        "subcategory_job_title": "Solar inverters"
+      },
+      {
+        "subcategory_id": 2554,
+        "subcategory_name": "Hybrid solar systems",
+        "subcategory_job_title": "Hybrid solar systems"
+      },
+      {
+        "subcategory_id": 2735,
+        "subcategory_name": "Solar Power Systems",
+        "subcategory_job_title": "Solar Power Systems"
+      }
+    ]
+  },
+  "Stonemason": {
+    "category_id": 183,
+    "category_name": "Stonemason",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 177,
+        "subcategory_name": "Stonework & Masonry",
+        "subcategory_job_title": "Stoneworker"
+      },
+      {
+        "subcategory_id": 513,
+        "subcategory_name": "Retaining Walls",
+        "subcategory_job_title": "Concreter"
+      },
+      {
+        "subcategory_id": 1261,
+        "subcategory_name": "Stone Flagging",
+        "subcategory_job_title": "Stone Flagging"
+      },
+      {
+        "subcategory_id": 1266,
+        "subcategory_name": "Stonework Restoration",
+        "subcategory_job_title": "Stonework Restoration"
+      },
+      {
+        "subcategory_id": 1941,
+        "subcategory_name": "Retaining Wall Blocks",
+        "subcategory_job_title": "Retaining Wall Blocks"
+      },
+      {
+        "subcategory_id": 2149,
+        "subcategory_name": "Limestone Retaining Walls",
+        "subcategory_job_title": "Limestone Retaining Walls"
+      },
+      {
+        "subcategory_id": 2555,
+        "subcategory_name": "Feature walls",
+        "subcategory_job_title": "Feature walls"
+      },
+      {
+        "subcategory_id": 2556,
+        "subcategory_name": "Mortar pointing",
+        "subcategory_job_title": "Mortar pointing"
+      },
+      {
+        "subcategory_id": 2557,
+        "subcategory_name": "Paver",
+        "subcategory_job_title": "Paver"
+      },
+      {
+        "subcategory_id": 2558,
+        "subcategory_name": "Sandstone cladding",
+        "subcategory_job_title": "Sandstone cladding"
+      },
+      {
+        "subcategory_id": 2559,
+        "subcategory_name": "Sandstone capping",
+        "subcategory_job_title": "Sandstone capping"
+      },
+      {
+        "subcategory_id": 2560,
+        "subcategory_name": "Sea walls",
+        "subcategory_job_title": "Sea walls"
+      },
+      {
+        "subcategory_id": 2561,
+        "subcategory_name": "Honing stone",
+        "subcategory_job_title": "Honing stone"
+      },
+      {
+        "subcategory_id": 2706,
+        "subcategory_name": "Sandstone Restoration",
+        "subcategory_job_title": "Sandstone Restoration"
+      },
+      {
+        "subcategory_id": 2707,
+        "subcategory_name": "Marble Coating",
+        "subcategory_job_title": "Marble Coating"
+      }
+    ]
+  },
+  "Structural Engineer": {
+    "category_id": 184,
+    "category_name": "Structural Engineer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1727,
+        "subcategory_name": "Dilapidation Reports",
+        "subcategory_job_title": "Dilapidation Reports"
+      },
+      {
+        "subcategory_id": 2562,
+        "subcategory_name": "Structural certificates",
+        "subcategory_job_title": "Structural certificates"
+      },
+      {
+        "subcategory_id": 2563,
+        "subcategory_name": "Structural reports",
+        "subcategory_job_title": "Structural reports"
+      },
+      {
+        "subcategory_id": 2564,
+        "subcategory_name": "Vibration monitoring",
+        "subcategory_job_title": "Vibration monitoring"
+      },
+      {
+        "subcategory_id": 2565,
+        "subcategory_name": "Structural drawings",
+        "subcategory_job_title": "Structural drawings"
+      },
+      {
+        "subcategory_id": 2566,
+        "subcategory_name": "Inspection report - wall removal",
+        "subcategory_job_title": "Inspection report - wall removal"
+      },
+      {
+        "subcategory_id": 2567,
+        "subcategory_name": "Inspection report - wall cracking",
+        "subcategory_job_title": "Inspection report - wall cracking"
+      },
+      {
+        "subcategory_id": 2568,
+        "subcategory_name": "Inspection report - concrete spalling",
+        "subcategory_job_title": "Inspection report - concrete spalling"
+      },
+      {
+        "subcategory_id": 2569,
+        "subcategory_name": "Inspection report - tree root damage",
+        "subcategory_job_title": "Inspection report - tree root damage"
+      }
+    ]
+  },
+  "Surveyor": {
+    "category_id": 185,
+    "category_name": "Surveyor",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 178,
+        "subcategory_name": "Land Surveying",
+        "subcategory_job_title": "Land Surveyor"
+      },
+      {
+        "subcategory_id": 1279,
+        "subcategory_name": "Building Surveying",
+        "subcategory_job_title": "Building Surveying"
+      },
+      {
+        "subcategory_id": 1281,
+        "subcategory_name": "Quantity Surveying",
+        "subcategory_job_title": "Quantity Surveying"
+      },
+      {
+        "subcategory_id": 2570,
+        "subcategory_name": "Residential surveying",
+        "subcategory_job_title": "Residential surveying"
+      },
+      {
+        "subcategory_id": 2571,
+        "subcategory_name": "Commercial surveying",
+        "subcategory_job_title": "Commercial surveying"
+      },
+      {
+        "subcategory_id": 2572,
+        "subcategory_name": "Boundary surveys",
+        "subcategory_job_title": "Boundary surveys"
+      },
+      {
+        "subcategory_id": 2573,
+        "subcategory_name": "Mining surveys",
+        "subcategory_job_title": "Mining surveys"
+      },
+      {
+        "subcategory_id": 2574,
+        "subcategory_name": "Contour Plans & Detail Surveys",
+        "subcategory_job_title": "Contour Plans & Detail Surveys"
+      },
+      {
+        "subcategory_id": 2575,
+        "subcategory_name": "Subdivision & Redefinition Plans",
+        "subcategory_job_title": "Subdivision & Redefinition Plans"
+      },
+      {
+        "subcategory_id": 2576,
+        "subcategory_name": "Identification Surveys",
+        "subcategory_job_title": "Identification Surveys"
+      },
+      {
+        "subcategory_id": 2577,
+        "subcategory_name": "Easement Plans",
+        "subcategory_job_title": "Easement Plans"
+      },
+      {
+        "subcategory_id": 2578,
+        "subcategory_name": "GIS Data Surveys",
+        "subcategory_job_title": "GIS Data Surveys"
+      },
+      {
+        "subcategory_id": 2579,
+        "subcategory_name": "Building Surveys",
+        "subcategory_job_title": "Building Surveys"
+      },
+      {
+        "subcategory_id": 2580,
+        "subcategory_name": "Strata Surveys & Community Plans",
+        "subcategory_job_title": "Strata Surveys & Community Plans"
+      },
+      {
+        "subcategory_id": 2581,
+        "subcategory_name": "Rural Surveys",
+        "subcategory_job_title": "Rural Surveys"
+      },
+      {
+        "subcategory_id": 2582,
+        "subcategory_name": "Volume Surveys",
+        "subcategory_job_title": "Volume Surveys"
+      }
+    ]
+  },
+  "Test and tag company": {
+    "category_id": 187,
+    "category_name": "Test and tag company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 858,
+        "subcategory_name": "Test & Tag Services",
+        "subcategory_job_title": "Test & Tag Services"
+      },
+      {
+        "subcategory_id": 2590,
+        "subcategory_name": "Appliance test report",
+        "subcategory_job_title": "Appliance test report"
+      },
+      {
+        "subcategory_id": 2591,
+        "subcategory_name": "Test and tag training",
+        "subcategory_job_title": "Test and tag training"
+      },
+      {
+        "subcategory_id": 2592,
+        "subcategory_name": "RCD safety switch testing",
+        "subcategory_job_title": "RCD safety switch testing"
+      },
+      {
+        "subcategory_id": 2593,
+        "subcategory_name": "3 Phase Testing",
+        "subcategory_job_title": "3 Phase Testing"
+      },
+      {
+        "subcategory_id": 2594,
+        "subcategory_name": "Electrical risk assessment",
+        "subcategory_job_title": "Electrical risk assessment"
+      },
+      {
+        "subcategory_id": 2595,
+        "subcategory_name": "Microwave testing",
+        "subcategory_job_title": "Microwave testing"
+      },
+      {
+        "subcategory_id": 2596,
+        "subcategory_name": "Emergency Lighting and Exit Light Testing",
+        "subcategory_job_title": "Emergency Lighting and Exit Light Testing"
+      }
+    ]
+  },
+  "Tiler": {
+    "category_id": 188,
+    "category_name": "Tiler",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 550,
+        "subcategory_name": "Outdoor Tiling",
+        "subcategory_job_title": "Tiler"
+      },
+      {
+        "subcategory_id": 556,
+        "subcategory_name": "Floor Tiling",
+        "subcategory_job_title": "Floor Tiler"
+      },
+      {
+        "subcategory_id": 569,
+        "subcategory_name": "General Tiling",
+        "subcategory_job_title": "Tilers"
+      },
+      {
+        "subcategory_id": 696,
+        "subcategory_name": "Ceramic Tiling",
+        "subcategory_job_title": "Ceramic Tiling"
+      },
+      {
+        "subcategory_id": 697,
+        "subcategory_name": "Granite Tiling",
+        "subcategory_job_title": "Granite Tiling"
+      },
+      {
+        "subcategory_id": 699,
+        "subcategory_name": "Marble Tiling",
+        "subcategory_job_title": "Marble Tiling"
+      },
+      {
+        "subcategory_id": 701,
+        "subcategory_name": "Mosaic Tiling",
+        "subcategory_job_title": "Mosaic Tiling"
+      },
+      {
+        "subcategory_id": 731,
+        "subcategory_name": "Stone Tiling",
+        "subcategory_job_title": "Stone Tiling"
+      },
+      {
+        "subcategory_id": 734,
+        "subcategory_name": "Tile Removal",
+        "subcategory_job_title": "Tile Removal"
+      },
+      {
+        "subcategory_id": 736,
+        "subcategory_name": "Tile Resurfacing",
+        "subcategory_job_title": "Tile Resurfacing"
+      },
+      {
+        "subcategory_id": 739,
+        "subcategory_name": "Wall Tiling",
+        "subcategory_job_title": "Wall Tiling"
+      },
+      {
+        "subcategory_id": 740,
+        "subcategory_name": "Tile Sealing",
+        "subcategory_job_title": "Tile Sealing"
+      },
+      {
+        "subcategory_id": 1920,
+        "subcategory_name": "Bathroom Resurfacing",
+        "subcategory_job_title": "Bathroom Resurfacing"
+      },
+      {
+        "subcategory_id": 2597,
+        "subcategory_name": "Re-grouting",
+        "subcategory_job_title": "Re-grouting"
+      },
+      {
+        "subcategory_id": 2598,
+        "subcategory_name": "Swimming pool tiling",
+        "subcategory_job_title": "Swimming pool tiling"
+      },
+      {
+        "subcategory_id": 2599,
+        "subcategory_name": "Kitchen splashback",
+        "subcategory_job_title": "Kitchen splashback"
+      },
+      {
+        "subcategory_id": 2600,
+        "subcategory_name": "Waterline tiles",
+        "subcategory_job_title": "Waterline tiles"
+      },
+      {
+        "subcategory_id": 2601,
+        "subcategory_name": "External tiling",
+        "subcategory_job_title": "External tiling"
+      },
+      {
+        "subcategory_id": 2709,
+        "subcategory_name": "Regrouting",
+        "subcategory_job_title": "Regrouting"
+      }
+    ]
+  },
+  "TV Antenna Technician": {
+    "category_id": 189,
+    "category_name": "TV Antenna Technician",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1648,
+        "subcategory_name": "Antenna Relocation",
+        "subcategory_job_title": "Antenna Relocation"
+      },
+      {
+        "subcategory_id": 1655,
+        "subcategory_name": "Foxtel Installation",
+        "subcategory_job_title": "Foxtel Installation"
+      },
+      {
+        "subcategory_id": 2191,
+        "subcategory_name": "TV aerial repair",
+        "subcategory_job_title": "TV aerial repair"
+      },
+      {
+        "subcategory_id": 2602,
+        "subcategory_name": "TV antenna installation",
+        "subcategory_job_title": "TV antenna installation"
+      },
+      {
+        "subcategory_id": 2603,
+        "subcategory_name": "Digital TV antenna installation",
+        "subcategory_job_title": "Digital TV antenna installation"
+      },
+      {
+        "subcategory_id": 2604,
+        "subcategory_name": "Satellite dish installation and repair",
+        "subcategory_job_title": "Satellite dish installation and repair"
+      }
+    ]
+  },
+  "TV repair technician": {
+    "category_id": 190,
+    "category_name": "TV repair technician",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 500,
+        "subcategory_name": "Television & DVD Repair",
+        "subcategory_job_title": "Television Repairer"
+      }
+    ]
+  },
+  "Upholsterer": {
+    "category_id": 192,
+    "category_name": "Upholsterer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 846,
+        "subcategory_name": "Upholstery Repair",
+        "subcategory_job_title": "Upholstery Repair"
+      },
+      {
+        "subcategory_id": 2239,
+        "subcategory_name": "Bar Stools",
+        "subcategory_job_title": "Bar Stools"
+      },
+      {
+        "subcategory_id": 2618,
+        "subcategory_name": "Lounge Suites",
+        "subcategory_job_title": "Lounge Suites"
+      },
+      {
+        "subcategory_id": 2619,
+        "subcategory_name": "Sofa Beds",
+        "subcategory_job_title": "Sofa Beds"
+      },
+      {
+        "subcategory_id": 2620,
+        "subcategory_name": "Recliners",
+        "subcategory_job_title": "Recliners"
+      },
+      {
+        "subcategory_id": 2621,
+        "subcategory_name": "Wingback Chairs",
+        "subcategory_job_title": "Wingback Chairs"
+      },
+      {
+        "subcategory_id": 2622,
+        "subcategory_name": "Dining Chairs",
+        "subcategory_job_title": "Dining Chairs"
+      },
+      {
+        "subcategory_id": 2623,
+        "subcategory_name": "Bedheads",
+        "subcategory_job_title": "Bedheads"
+      },
+      {
+        "subcategory_id": 2624,
+        "subcategory_name": "Ottomans",
+        "subcategory_job_title": "Ottomans"
+      },
+      {
+        "subcategory_id": 2625,
+        "subcategory_name": "Antique Restoration",
+        "subcategory_job_title": "Antique Restoration"
+      },
+      {
+        "subcategory_id": 2626,
+        "subcategory_name": "Timber re-polishing",
+        "subcategory_job_title": "Timber re-polishing"
+      },
+      {
+        "subcategory_id": 2627,
+        "subcategory_name": "Outdoor cushions",
+        "subcategory_job_title": "Outdoor cushions"
+      },
+      {
+        "subcategory_id": 2667,
+        "subcategory_name": "Custom made furniture",
+        "subcategory_job_title": "Custom made furniture"
+      },
+      {
+        "subcategory_id": 2714,
+        "subcategory_name": "Leather Cleaning and Repair",
+        "subcategory_job_title": "Leather Cleaning and Repair"
+      }
+    ]
+  },
+  "Videographer": {
+    "category_id": 193,
+    "category_name": "Videographer",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 76,
+        "subcategory_name": "Film Production",
+        "subcategory_job_title": "Film Producer"
+      },
+      {
+        "subcategory_id": 592,
+        "subcategory_name": "Video Editing or Production",
+        "subcategory_job_title": "Video Producer"
+      },
+      {
+        "subcategory_id": 2628,
+        "subcategory_name": "Wedding videos and wedding videographer",
+        "subcategory_job_title": "Wedding videos and wedding videographer"
+      },
+      {
+        "subcategory_id": 2629,
+        "subcategory_name": "Corporate videographer and advertisements",
+        "subcategory_job_title": "Corporate videographer and advertisements"
+      },
+      {
+        "subcategory_id": 2630,
+        "subcategory_name": "Event videos",
+        "subcategory_job_title": "Event videos"
+      }
+    ]
+  },
+  "Washing Machine and Dryer Technician": {
+    "category_id": 194,
+    "category_name": "Washing Machine and Dryer Technician",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 356,
+        "subcategory_name": "Washing Machine Repair",
+        "subcategory_job_title": "Appliance Repairs & Servicing Expert"
+      },
+      {
+        "subcategory_id": 495,
+        "subcategory_name": "Clothes Dryer Repair",
+        "subcategory_job_title": "Clothes Dryer Repairer"
+      },
+      {
+        "subcategory_id": 951,
+        "subcategory_name": "Clothes Dryer Installation",
+        "subcategory_job_title": "Clothes Dryer Installation"
+      },
+      {
+        "subcategory_id": 965,
+        "subcategory_name": "Washing Machine Installation",
+        "subcategory_job_title": "Washing Machine Installation"
+      }
+    ]
+  },
+  "Waterproofing Company": {
+    "category_id": 195,
+    "category_name": "Waterproofing Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 181,
+        "subcategory_name": "Waterproofing",
+        "subcategory_job_title": "Waterproofer"
+      },
+      {
+        "subcategory_id": 889,
+        "subcategory_name": "Caulking",
+        "subcategory_job_title": "Caulking"
+      },
+      {
+        "subcategory_id": 2032,
+        "subcategory_name": "Balcony Waterproofing",
+        "subcategory_job_title": "Balcony Waterproofing"
+      },
+      {
+        "subcategory_id": 2035,
+        "subcategory_name": "Bathroom Waterproofing",
+        "subcategory_job_title": "Bathroom Waterproofing"
+      },
+      {
+        "subcategory_id": 2040,
+        "subcategory_name": "Chimney Waterproofing",
+        "subcategory_job_title": "Chimney Waterproofing"
+      },
+      {
+        "subcategory_id": 2042,
+        "subcategory_name": "Grout Seepage",
+        "subcategory_job_title": "Grout Seepage"
+      },
+      {
+        "subcategory_id": 2047,
+        "subcategory_name": "Rising Damp",
+        "subcategory_job_title": "Rising Damp"
+      },
+      {
+        "subcategory_id": 2051,
+        "subcategory_name": "Tile Seepage",
+        "subcategory_job_title": "Tile Seepage"
+      },
+      {
+        "subcategory_id": 2631,
+        "subcategory_name": "Shower waterproofing",
+        "subcategory_job_title": "Shower waterproofing"
+      },
+      {
+        "subcategory_id": 2632,
+        "subcategory_name": "Laundry waterproofing",
+        "subcategory_job_title": "Laundry waterproofing"
+      },
+      {
+        "subcategory_id": 2633,
+        "subcategory_name": "Detention tanks",
+        "subcategory_job_title": "Detention tanks"
+      },
+      {
+        "subcategory_id": 2634,
+        "subcategory_name": "Epoxy coatings",
+        "subcategory_job_title": "Epoxy coatings"
+      },
+      {
+        "subcategory_id": 2635,
+        "subcategory_name": "Lift pits",
+        "subcategory_job_title": "Lift pits"
+      },
+      {
+        "subcategory_id": 2636,
+        "subcategory_name": "Below ground tanking",
+        "subcategory_job_title": "Below ground tanking"
+      },
+      {
+        "subcategory_id": 2708,
+        "subcategory_name": "Shower Sealing",
+        "subcategory_job_title": "Shower Sealing"
+      },
+      {
+        "subcategory_id": 2736,
+        "subcategory_name": "Screeding",
+        "subcategory_job_title": "Screeding"
+      }
+    ]
+  },
+  "Website Developers and Designers": {
+    "category_id": 196,
+    "category_name": "Website Developers and Designers",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 1393,
+        "subcategory_name": "Wordpress Development",
+        "subcategory_job_title": "Wordpress Development"
+      },
+      {
+        "subcategory_id": 2637,
+        "subcategory_name": "Website development",
+        "subcategory_job_title": "Website development"
+      },
+      {
+        "subcategory_id": 2638,
+        "subcategory_name": "E-commerce websites",
+        "subcategory_job_title": "E-commerce websites"
+      },
+      {
+        "subcategory_id": 2639,
+        "subcategory_name": "Magento websites",
+        "subcategory_job_title": "Magento websites"
+      },
+      {
+        "subcategory_id": 2640,
+        "subcategory_name": "Joomla websites",
+        "subcategory_job_title": "Joomla websites"
+      },
+      {
+        "subcategory_id": 2669,
+        "subcategory_name": "Drupal websites",
+        "subcategory_job_title": "Drupal websites"
+      }
+    ]
+  },
+  "Wedding & Event Supplier": {
+    "category_id": 197,
+    "category_name": "Wedding & Event Supplier",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 263,
+        "subcategory_name": "Business Conferences",
+        "subcategory_job_title": "Business Conference Venue Expert"
+      },
+      {
+        "subcategory_id": 264,
+        "subcategory_name": "Catering",
+        "subcategory_job_title": "Caterer"
+      },
+      {
+        "subcategory_id": 265,
+        "subcategory_name": "Children's Parties",
+        "subcategory_job_title": "Children's Parties Specialist"
+      },
+      {
+        "subcategory_id": 266,
+        "subcategory_name": "Event Security",
+        "subcategory_job_title": "Security Guard"
+      },
+      {
+        "subcategory_id": 267,
+        "subcategory_name": "Flowers & Decorations",
+        "subcategory_job_title": "Florist"
+      },
+      {
+        "subcategory_id": 268,
+        "subcategory_name": "Function Venues",
+        "subcategory_job_title": "Function Venue Specialist"
+      },
+      {
+        "subcategory_id": 269,
+        "subcategory_name": "Hair & Makeup",
+        "subcategory_job_title": "Hair & Makeup Artist"
+      },
+      {
+        "subcategory_id": 270,
+        "subcategory_name": "Harbour Cruises",
+        "subcategory_job_title": "Harbour Cruise Specialist"
+      },
+      {
+        "subcategory_id": 271,
+        "subcategory_name": "Invitations & Cards",
+        "subcategory_job_title": "Invitiation Designer"
+      },
+      {
+        "subcategory_id": 273,
+        "subcategory_name": "Music & Entertainment",
+        "subcategory_job_title": "Musician"
+      },
+      {
+        "subcategory_id": 274,
+        "subcategory_name": "Party Equipment Hire",
+        "subcategory_job_title": "Party Equipment Supplier"
+      },
+      {
+        "subcategory_id": 276,
+        "subcategory_name": "Party Supplies",
+        "subcategory_job_title": "Party Supplier"
+      },
+      {
+        "subcategory_id": 278,
+        "subcategory_name": "Wedding Dresses",
+        "subcategory_job_title": "Costume Designer"
+      },
+      {
+        "subcategory_id": 279,
+        "subcategory_name": "Wait Staff & Bar Staff",
+        "subcategory_job_title": "Waiter"
+      },
+      {
+        "subcategory_id": 280,
+        "subcategory_name": "Wedding Planning",
+        "subcategory_job_title": "Wedding Planner"
+      },
+      {
+        "subcategory_id": 557,
+        "subcategory_name": "Cakes",
+        "subcategory_job_title": "Wedding Cake Maker"
+      },
+      {
+        "subcategory_id": 2641,
+        "subcategory_name": "Event planner",
+        "subcategory_job_title": "Event planner"
+      },
+      {
+        "subcategory_id": 2642,
+        "subcategory_name": "Wedding stylist",
+        "subcategory_job_title": "Wedding stylist"
+      },
+      {
+        "subcategory_id": 2643,
+        "subcategory_name": "Wedding car hire",
+        "subcategory_job_title": "Wedding car hire"
+      },
+      {
+        "subcategory_id": 2644,
+        "subcategory_name": "Celebrant",
+        "subcategory_job_title": "Celebrant"
+      },
+      {
+        "subcategory_id": 2645,
+        "subcategory_name": "Chair Hire & Covers",
+        "subcategory_job_title": "Chair Hire & Covers"
+      }
+    ]
+  },
+  "Welders and Boilermakers": {
+    "category_id": 198,
+    "category_name": "Welders and Boilermakers",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 164,
+        "subcategory_name": "Metalwork",
+        "subcategory_job_title": "Metalworker"
+      },
+      {
+        "subcategory_id": 910,
+        "subcategory_name": "Metal Fabrication",
+        "subcategory_job_title": "Metal Fabrication"
+      },
+      {
+        "subcategory_id": 919,
+        "subcategory_name": "Metalwork",
+        "subcategory_job_title": "Metalwork"
+      },
+      {
+        "subcategory_id": 2078,
+        "subcategory_name": "Welding",
+        "subcategory_job_title": "Welding"
+      },
+      {
+        "subcategory_id": 2646,
+        "subcategory_name": "Mobile welder",
+        "subcategory_job_title": "Mobile welder"
+      },
+      {
+        "subcategory_id": 2647,
+        "subcategory_name": "Welding repairs",
+        "subcategory_job_title": "Welding repairs"
+      },
+      {
+        "subcategory_id": 2648,
+        "subcategory_name": "Boilermaker",
+        "subcategory_job_title": "Boilermaker"
+      }
+    ]
+  },
+  "Window Cleaner": {
+    "category_id": 199,
+    "category_name": "Window Cleaner",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 790,
+        "subcategory_name": "Abseiling Window Cleaning",
+        "subcategory_job_title": "Abseiling Window Cleaning"
+      },
+      {
+        "subcategory_id": 2649,
+        "subcategory_name": "Exterior window cleaning",
+        "subcategory_job_title": "Exterior window cleaning"
+      },
+      {
+        "subcategory_id": 2650,
+        "subcategory_name": "Commercial window cleaning",
+        "subcategory_job_title": "Commercial window cleaning"
+      },
+      {
+        "subcategory_id": 2651,
+        "subcategory_name": "Post construction window cleaning",
+        "subcategory_job_title": "Post construction window cleaning"
+      },
+      {
+        "subcategory_id": 2652,
+        "subcategory_name": "High rise office window cleaning",
+        "subcategory_job_title": "High rise office window cleaning"
+      },
+      {
+        "subcategory_id": 2653,
+        "subcategory_name": "Gutter cleaning services",
+        "subcategory_job_title": "Gutter cleaning services"
+      },
+      {
+        "subcategory_id": 2654,
+        "subcategory_name": "Elevated lift platform access cleaning",
+        "subcategory_job_title": "Elevated lift platform access cleaning"
+      },
+      {
+        "subcategory_id": 2655,
+        "subcategory_name": "Unit and apartment window cleaning",
+        "subcategory_job_title": "Unit and apartment window cleaning"
+      }
+    ]
+  },
+  "Window and Glass Installation Company": {
+    "category_id": 200,
+    "category_name": "Window and Glass Installation Company",
+    "category_disabled": false,
+    "subcategories": [
+      {
+        "subcategory_id": 553,
+        "subcategory_name": "Skylights",
+        "subcategory_job_title": "Skylight Installer"
+      },
+      {
+        "subcategory_id": 554,
+        "subcategory_name": "Window Installation",
+        "subcategory_job_title": "Window Installer"
+      },
+      {
+        "subcategory_id": 573,
+        "subcategory_name": "Shower Screens",
+        "subcategory_job_title": "Shower Screen Specialist"
+      },
+      {
+        "subcategory_id": 1201,
+        "subcategory_name": "Glass Pool Fencing",
+        "subcategory_job_title": "Glass Pool Fencing"
+      },
+      {
+        "subcategory_id": 1294,
+        "subcategory_name": "Aluminium Windows",
+        "subcategory_job_title": "Aluminium Windows"
+      },
+      {
+        "subcategory_id": 1297,
+        "subcategory_name": "Awning Windows",
+        "subcategory_job_title": "Awning Windows"
+      },
+      {
+        "subcategory_id": 1298,
+        "subcategory_name": "Bi Fold Windows",
+        "subcategory_job_title": "Bi Fold Windows"
+      },
+      {
+        "subcategory_id": 1301,
+        "subcategory_name": "Casement Windows",
+        "subcategory_job_title": "Casement Windows"
+      },
+      {
+        "subcategory_id": 1302,
+        "subcategory_name": "Double Glazed Windows",
+        "subcategory_job_title": "Double Glazed Windows"
+      },
+      {
+        "subcategory_id": 1305,
+        "subcategory_name": "Double Hung Windows",
+        "subcategory_job_title": "Double Hung Windows"
+      },
+      {
+        "subcategory_id": 1316,
+        "subcategory_name": "Glass Cutting",
+        "subcategory_job_title": "Glass Cutting"
+      },
+      {
+        "subcategory_id": 1324,
+        "subcategory_name": "Louvre Windows",
+        "subcategory_job_title": "Louvre Windows"
+      },
+      {
+        "subcategory_id": 1328,
+        "subcategory_name": "Sliding Windows",
+        "subcategory_job_title": "Sliding Windows"
+      },
+      {
+        "subcategory_id": 1335,
+        "subcategory_name": "Timber Windows",
+        "subcategory_job_title": "Timber Windows"
+      },
+      {
+        "subcategory_id": 2656,
+        "subcategory_name": "Sashless glass",
+        "subcategory_job_title": "Sashless glass"
+      },
+      {
+        "subcategory_id": 2657,
+        "subcategory_name": "Decorative glass",
+        "subcategory_job_title": "Decorative glass"
+      },
+      {
+        "subcategory_id": 2658,
+        "subcategory_name": "Emergency repairs",
+        "subcategory_job_title": "Emergency repairs"
+      },
+      {
+        "subcategory_id": 2659,
+        "subcategory_name": "Office partitions",
+        "subcategory_job_title": "Office partitions"
+      },
+      {
+        "subcategory_id": 2660,
+        "subcategory_name": "Glass splashbacks",
+        "subcategory_job_title": "Glass splashbacks"
+      },
+      {
+        "subcategory_id": 2661,
+        "subcategory_name": "Tinting and films",
+        "subcategory_job_title": "Tinting and films"
+      },
+      {
+        "subcategory_id": 2662,
+        "subcategory_name": "Frosted glass",
+        "subcategory_job_title": "Frosted glass"
+      },
+      {
+        "subcategory_id": 2663,
+        "subcategory_name": "Care and Maintenance",
+        "subcategory_job_title": "Care and Maintenance"
+      },
+      {
+        "subcategory_id": 2664,
+        "subcategory_name": "Glass repair and replacement",
+        "subcategory_job_title": "Glass repair and replacement"
+      },
+      {
+        "subcategory_id": 2665,
+        "subcategory_name": "Glass installation",
+        "subcategory_job_title": "Glass installation"
+      },
+      {
+        "subcategory_id": 2666,
+        "subcategory_name": "Window frame installation and repair",
+        "subcategory_job_title": "Window frame installation and repair"
+      },
+      {
+        "subcategory_id": 2725,
+        "subcategory_name": "Security Films",
+        "subcategory_job_title": "Security Films"
+      },
+      {
+        "subcategory_id": 2726,
+        "subcategory_name": "Decorative Vinyl Films",
+        "subcategory_job_title": "Decorative Vinyl Films"
+      },
+      {
+        "subcategory_id": 2727,
+        "subcategory_name": "Frameless Glass Stair Cases",
+        "subcategory_job_title": "Frameless Glass Stair Cases"
+      },
+      {
+        "subcategory_id": 2728,
+        "subcategory_name": "Frameless Glass Balconies",
+        "subcategory_job_title": "Frameless Glass Balconies"
+      },
+      {
+        "subcategory_id": 2729,
+        "subcategory_name": "Frameless Glass Balustrading",
+        "subcategory_job_title": "Frameless Glass Balustrading"
+      },
+      {
+        "subcategory_id": 2730,
+        "subcategory_name": "Frameless Glass Fencing",
+        "subcategory_job_title": "Frameless Glass Fencing"
+      }
+    ]
+  }
+}

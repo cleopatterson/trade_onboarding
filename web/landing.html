@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>List Your Business | ServiceSeeking.com.au</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .container { max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+
+    /* ─── HEADER ─── */
+    .ss-header {
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      height: 70px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .ss-header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .ss-logo {
+      color: #13C659;
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ss-logo:hover { text-decoration: none; color: #10B04E; }
+    .ss-logo i { font-size: 16px; }
+
+    .ss-nav { display: flex; align-items: center; gap: 30px; }
+    .ss-nav a { color: #333; text-decoration: none; font-size: 14px; font-weight: 500; }
+    .ss-nav a:hover { color: #13C659; }
+
+    .btn-login {
+      border: 2px solid #13C659; color: #13C659; background: white;
+      padding: 10px 24px; border-radius: 25px; font-weight: 600; font-size: 14px;
+      cursor: pointer; height: 40px; display: inline-flex; align-items: center;
+    }
+
+    .btn-join {
+      background: #13C659; color: white;
+      padding: 10px 24px; border-radius: 25px; font-weight: 600; font-size: 14px;
+      border: none; cursor: pointer; height: 40px; display: inline-flex; align-items: center;
+      transition: background 0.2s;
+    }
+    .btn-join:hover { background: #10B04E; }
+
+    /* ─── HERO ─── */
+    .hero {
+      background: linear-gradient(135deg, #f8faf9 0%, #e8f5e9 50%, #f0faf3 100%);
+      padding: 80px 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(19, 198, 89, 0.08) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero .container {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+    }
+
+    .hero-content { flex: 1; max-width: 560px; position: relative; z-index: 1; }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(19, 198, 89, 0.1);
+      color: #13C659;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+    }
+
+    .hero h1 span { color: #13C659; }
+
+    .hero p {
+      font-size: 18px;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 35px;
+    }
+
+    .hero-cta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-hero-join {
+      background: #13C659;
+      color: white;
+      padding: 16px 36px;
+      border-radius: 8px;
+      font-size: 17px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-hero-join:hover {
+      background: #10B04E;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(19, 198, 89, 0.3);
+    }
+
+    .hero-subtext {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .hero-stats {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      font-size: 20px;
+    }
+    .stat-icon.green { background: rgba(19, 198, 89, 0.1); color: #13C659; }
+    .stat-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    .stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+
+    .stat-number { font-size: 28px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+    .stat-label { font-size: 13px; color: #666; line-height: 1.4; }
+
+    /* ─── HOW IT WORKS ─── */
+    .how-it-works {
+      padding: 80px 0;
+      background: white;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .section-subtitle {
+      text-align: center;
+      font-size: 17px;
+      color: #666;
+      margin-bottom: 60px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+    }
+
+    .step {
+      text-align: center;
+      padding: 40px 30px;
+      border-radius: 16px;
+      background: #fafafa;
+      transition: all 0.3s;
+    }
+    .step:hover {
+      background: #f0faf3;
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(19, 198, 89, 0.1);
+    }
+
+    .step-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #13C659;
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .step h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    /* ─── BENEFITS ─── */
+    .benefits {
+      padding: 80px 0;
+      background: linear-gradient(180deg, #f8faf9 0%, #fff 100%);
+    }
+
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .benefit {
+      display: flex;
+      gap: 16px;
+      padding: 24px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+
+    .benefit-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(19, 198, 89, 0.1);
+      color: #13C659;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .benefit h4 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .benefit p { font-size: 14px; color: #666; line-height: 1.5; }
+
+    /* ─── CTA SECTION ─── */
+    .cta-section {
+      padding: 80px 0;
+      background: #1a1a1a;
+      text-align: center;
+    }
+
+    .cta-section h2 {
+      font-size: 36px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      font-size: 17px;
+      color: #999;
+      margin-bottom: 35px;
+    }
+
+    .btn-cta-join {
+      background: #13C659;
+      color: white;
+      padding: 18px 48px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-cta-join:hover {
+      background: #10B04E;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(19, 198, 89, 0.4);
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      padding: 40px 0;
+      background: #111;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer a { color: #aaa; text-decoration: none; margin-left: 20px; }
+    .footer a:hover { color: #13C659; }
+
+    /* ─── WIZARD MODAL ─── */
+    #wizard-modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #wizard-modal-backdrop.show { opacity: 1; }
+
+    #wizard-modal {
+      background: white;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 700px;
+      height: 620px;
+      max-height: 85vh;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      overflow: hidden;
+    }
+    #wizard-modal-backdrop.show #wizard-modal { transform: scale(1); }
+
+    /* Progress Bar - flush at top of modal */
+    .wizard-progress-bar {
+      height: 6px;
+      background: #e0e0e0;
+      overflow: hidden;
+      flex-shrink: 0;
+      border-radius: 20px 20px 0 0;
+    }
+    .wizard-progress-fill {
+      height: 100%;
+      background: #1FC759;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* Modal Header */
+    .wizard-modal-header {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px 16px 0;
+      flex-shrink: 0;
+    }
+
+    #wizard-modal-close {
+      background: transparent; border: none;
+      font-size: 28px; color: #CACACA; cursor: pointer;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; transition: all 0.2s ease;
+      line-height: 1; padding-top: 2px;
+    }
+    #wizard-modal-close:hover { background: #f5f5f5; color: #333; }
+
+    /* Content Area */
+    #wizard-content {
+      flex: 1;
+      padding: 20px 50px 40px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    /* Question Styles */
+    .wizard-question-container { animation: fadeInUp 0.4s ease; }
+
+    .wizard-question-number {
+      color: #298AE3;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .wizard-question-text {
+      font-size: 18px;
+      font-weight: 400;
+      color: #202020;
+      margin-bottom: 30px;
+      line-height: 140%;
+      letter-spacing: -0.018em;
+      white-space: pre-line;
+    }
+
+    .wizard-question-text p { margin-bottom: 15px; line-height: 1.7; letter-spacing: normal; }
+    .wizard-question-text strong { color: #0066cc; font-weight: 700; }
+
+    /* Info Box (for ABR results etc) */
+    .wizard-info-box {
+      background: #f8faff;
+      border-left: 4px solid #0066cc;
+      padding: 16px 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .wizard-info-box strong { display: block; margin-bottom: 8px; color: #0066cc; font-size: 15px; font-weight: 700; }
+    .wizard-info-box p { margin: 8px 0; color: #333; }
+    .wizard-info-box .wizard-summary-item:first-child { padding-top: 0; }
+    .wizard-info-box .wizard-summary-item:last-child { padding-bottom: 0; }
+
+    .wizard-summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 15px;
+      line-height: 1.3;
+      gap: 16px;
+    }
+    .wizard-summary-item:last-child { border-bottom: none; }
+    .wizard-summary-label { color: #666; font-weight: 500; flex-shrink: 0; }
+    .wizard-summary-value { color: #1a1a1a; font-weight: 600; text-align: right; }
+
+    /* Buttons */
+    .wizard-buttons-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .wizard-button {
+      padding: 14px 20px;
+      background: white;
+      border: 2px solid #EDEDED;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #202020;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      line-height: 100%;
+      letter-spacing: -0.018em;
+    }
+    .wizard-button i {
+      opacity: 0; transform: translateX(-10px);
+      transition: all 0.2s ease; color: #0066cc;
+    }
+    .wizard-button:hover {
+      border-color: #167DD5;
+      background: #f8faff;
+      transform: translateX(5px);
+    }
+    .wizard-button:hover i { opacity: 1; transform: translateX(0); }
+
+    .wizard-button.wizard-button-confirm {
+      border-color: #00BB4D;
+      background: #f0fff4;
+    }
+    .wizard-button.wizard-button-confirm:hover {
+      border-color: #009B40;
+      background: #d5f5e3;
+    }
+    .wizard-button.wizard-button-confirm i { color: #00BB4D; }
+    .wizard-button.wizard-button-confirm:hover i { color: #009B40; }
+
+    .wizard-buttons-wrap {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .wizard-button-remove {
+      padding: 8px 14px;
+      font-size: 14px;
+      border-color: #e0e0e0;
+      background: #fafafa;
+      flex: 0 0 auto;
+    }
+    .wizard-button-remove:hover {
+      border-color: #e53e3e;
+      background: #fff5f5;
+      color: #e53e3e;
+      transform: none;
+    }
+    .wizard-button-remove.toggled-off {
+      border-color: #e0e0e0;
+      background: #f0f0f0;
+      color: #999;
+      text-decoration: line-through;
+    }
+    .wizard-button-remove.toggled-off:hover {
+      border-color: #0066cc;
+      background: #f8faff;
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .wizard-button-done {
+      width: 100%;
+      border-color: #0066cc;
+      background: #f8faff;
+      justify-content: center;
+    }
+    .wizard-button-done:hover {
+      border-color: #167DD5;
+      background: #e8f0fe;
+    }
+
+    /* Editable confirmation chips */
+    .edit-section {
+      margin: 16px 0;
+    }
+    .edit-section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .edit-chips-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .edit-chip {
+      padding: 7px 14px;
+      background: white;
+      border: 1.5px solid #d8dce5;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .edit-chip:hover {
+      border-color: #cc3333;
+      color: #cc3333;
+      background: #fff8f8;
+    }
+    .edit-chip.toggled-off {
+      background: #f5f5f5;
+      color: #aaa;
+      text-decoration: line-through;
+      border-color: transparent;
+    }
+    .edit-chip.toggled-off:hover {
+      border-color: #0066cc;
+      color: #0066cc;
+      text-decoration: none;
+      background: #f8faff;
+    }
+
+    /* Divider */
+    .wizard-divider {
+      text-align: center;
+      margin: 25px 0 15px;
+      position: relative;
+    }
+    .wizard-divider::before {
+      content: ''; position: absolute; top: 50%; left: 0; right: 0;
+      height: 2px; background: #E3E3E3;
+    }
+    .wizard-divider span {
+      background: white; padding: 0 15px;
+      color: #444; font-size: 14px; font-weight: 800;
+      line-height: 100%; letter-spacing: -0.018em;
+      position: relative; z-index: 1;
+    }
+
+    /* Input */
+    .wizard-input-row {
+      display: flex; gap: 0.5rem; align-items: center;
+    }
+    .wizard-text-input {
+      flex: 1; height: 54px; padding: 0 1rem;
+      border: 2px solid #EDEDED; border-radius: 8px;
+      font-size: 0.95rem; font-family: inherit;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff; box-sizing: border-box;
+    }
+    .wizard-text-input:focus {
+      border-color: #167DD5;
+      box-shadow: none;
+    }
+
+    .wizard-submit-btn {
+      width: 54px; height: 54px;
+      background: #A6C7EB; color: white;
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-sizing: border-box;
+    }
+    .wizard-submit-btn i { font-size: 22px; }
+    .wizard-submit-btn.active { background: #298AE3; }
+    .wizard-submit-btn.active:hover { background: #167DD5; }
+
+    /* Loading */
+    .wizard-loading {
+      text-align: center; color: #1a1a1a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px; min-height: 400px;
+    }
+
+    .magic-stars {
+      position: relative; width: 70px; height: 70px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .magic-star {
+      position: absolute;
+      clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+      animation: starFlash 1.5s ease-in-out infinite;
+    }
+    .magic-star:nth-child(1) {
+      width: 36px; height: 36px;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: #0066cc;
+      box-shadow: 0 0 10px #0066cc, 0 0 20px #0052a3;
+      animation: starFlashCenter 1.5s ease-in-out infinite;
+    }
+    .magic-star:nth-child(2) {
+      width: 22px; height: 22px;
+      top: 0; right: 0; background: #288AE2;
+      box-shadow: 0 0 8px #288AE2, 0 0 14px #1a6fbd;
+      animation-delay: 0.3s;
+    }
+    .magic-star:nth-child(3) {
+      width: 16px; height: 16px;
+      bottom: 4px; left: 4px; background: #4DA3E8;
+      box-shadow: 0 0 6px #4DA3E8, 0 0 12px #288AE2;
+      animation-delay: 0.6s;
+    }
+    .magic-star:nth-child(4) {
+      width: 14px; height: 14px;
+      top: 10px; left: 8px; background: #7ABFEF;
+      box-shadow: 0 0 5px #7ABFEF, 0 0 10px #4DA3E8;
+      animation-delay: 0.9s;
+    }
+
+    @keyframes starFlash {
+      0%, 100% { opacity: 0.3; transform: scale(0.7); filter: brightness(0.7); }
+      50% { opacity: 1; transform: scale(1.15); filter: brightness(1.2); }
+    }
+    @keyframes starFlashCenter {
+      0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.8) rotate(0deg); filter: brightness(0.8); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(12deg); filter: brightness(1.3); }
+    }
+
+    .wizard-loading-title {
+      font-size: 24px; font-weight: 800; color: #202020;
+      line-height: 100%; letter-spacing: -0.018em;
+    }
+    .wizard-loading-subtitle {
+      margin-top: 4px; font-size: 16px; font-weight: 500; color: #575757;
+      line-height: 100%; letter-spacing: -0.018em;
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    /* Skeleton */
+    .skeleton-text {
+      height: 18px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+      border-radius: 4px; margin-bottom: 10px;
+    }
+    .skeleton-text-short { width: 60%; }
+    .skeleton-button {
+      height: 52px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+      border-radius: 10px; margin-bottom: 10px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* Progress steps loading */
+    .wizard-progress-loading {
+      text-align: center;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px; min-height: 350px;
+    }
+    .progress-steps {
+      display: flex; flex-direction: column;
+      gap: 0; align-items: flex-start;
+      margin-top: 20px;
+    }
+    .progress-step {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; font-weight: 500; color: #999;
+      letter-spacing: -0.018em;
+      padding: 7px 0;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.35s ease, transform 0.35s ease, color 0.3s ease;
+    }
+    .progress-step.visible { opacity: 1; transform: translateY(0); }
+    .progress-step.done { color: #22c55e; }
+    .progress-step.active { color: #202020; }
+    .progress-step-icon {
+      width: 18px; height: 18px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid #e0e0e0;
+      border-top-color: #0066cc;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .step-check { color: #22c55e; font-size: 15px; }
+
+    /* Error */
+    .wizard-error {
+      text-align: center; color: #e74c3c; padding: 40px;
+    }
+    .wizard-error i { font-size: 48px; margin-bottom: 15px; display: block; }
+
+    /* Completion */
+    .wizard-completion {
+      text-align: center;
+      animation: fadeInUp 0.5s ease;
+      padding: 30px 0;
+    }
+    .wizard-success-icon i { font-size: 64px; color: #1FC759; }
+    .wizard-completion h2 { font-size: 32px; color: #1a1a1a; margin: 16px 0 15px; }
+    .wizard-completion p { font-size: 16px; color: #666; line-height: 1.6; margin-bottom: 10px; }
+
+    .wizard-result-json {
+      text-align: left;
+      background: #f5f5f5;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .wizard-close-btn {
+      padding: 14px 32px;
+      background: #0066cc; color: white;
+      border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .wizard-close-btn:hover {
+      background: #0052a3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 102, 204, 0.2);
+    }
+
+    /* Service chips */
+    .service-chip {
+      display: inline-block;
+      background: #f0f8ff;
+      border: 1px solid #b8d4e8;
+      color: #0066cc;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      margin: 3px;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      .hero .container { flex-direction: column; gap: 40px; }
+      .hero h1 { font-size: 34px; }
+      .hero-stats { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .benefits-grid { grid-template-columns: 1fr; }
+      .ss-nav { display: none; }
+
+      #wizard-modal {
+        width: 100%; height: 100%;
+        max-width: 100%; max-height: 100%;
+        border-radius: 0;
+      }
+      #wizard-content { padding: 16px 24px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="ss-header">
+    <div class="container">
+      <a href="#" class="ss-logo">
+        <i class="fas fa-tools"></i>
+        ServiceSeeking.com.au
+      </a>
+      <nav class="ss-nav">
+        <a href="#">Categories</a>
+        <a href="#">How It Works</a>
+        <a href="#">News & Blog</a>
+        <button class="btn-login">Log In</button>
+        <button class="btn-join" onclick="openOnboardingWizard()">Join Service Seeking</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge"><i class="fas fa-bolt"></i> AI-Powered Registration</div>
+        <h1>Grow Your Trade Business with <span>Service Seeking</span></h1>
+        <p>Join Australia's largest trade marketplace. Get matched with customers in your area who need your services. Register in under 2 minutes with our smart onboarding assistant.</p>
+        <div class="hero-cta">
+          <button class="btn-hero-join" onclick="openOnboardingWizard()">
+            Join Service Seeking <i class="fas fa-arrow-right"></i>
+          </button>
+          <span class="hero-subtext">Free to register</span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-briefcase"></i></div>
+          <div class="stat-number">253,241</div>
+          <div class="stat-label">Jobs Posted Last Year</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+          <div class="stat-number">238,555</div>
+          <div class="stat-label">Registered Businesses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fas fa-star"></i></div>
+          <div class="stat-number">4.6 / 5</div>
+          <div class="stat-label">Average Customer Rating</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple"><i class="fas fa-map-marker-alt"></i></div>
+          <div class="stat-number">All States</div>
+          <div class="stat-label">Coverage Across Australia</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-subtitle">Get set up in 3 simple steps with our AI-powered registration wizard</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Verify Your Business</h3>
+          <p>Tell us your business name and we'll look you up on the Australian Business Register. Your ABN, entity type, and GST status are auto-filled.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Describe Your Services</h3>
+          <p>Tell us what you do in your own words — "we do painting and deck building" — and we'll map it to our service categories automatically.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Set Your Service Area</h3>
+          <p>Tell us where you work — "Northern Beaches" or "within 30km of Manly" — and we'll map it to suburbs and postcodes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENEFITS -->
+  <section class="benefits">
+    <div class="container">
+      <h2 class="section-title">Why Join Service Seeking?</h2>
+      <p class="section-subtitle">The tools and leads you need to grow your business</p>
+      <div class="benefits-grid">
+        <div class="benefit">
+          <div class="benefit-icon"><i class="fas fa-bullseye"></i></div>
+          <div>
+            <h4>Targeted Leads</h4>
+            <p>Get matched with customers in your service area who need exactly what you offer. No more wasted time on irrelevant jobs.</p>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon"><i class="fas fa-shield-alt"></i></div>
+          <div>
+            <h4>Verified Reviews</h4>
+            <p>Build your reputation with verified customer reviews. Stand out from the competition with a trusted profile.</p>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon"><i class="fas fa-chart-line"></i></div>
+          <div>
+            <h4>Business Growth</h4>
+            <p>Tradies report an average 30% increase in leads within the first 3 months of joining the platform.</p>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon"><i class="fas fa-mobile-alt"></i></div>
+          <div>
+            <h4>Mobile Friendly</h4>
+            <p>Manage your leads, send quotes, and chat with customers — all from your phone between jobs.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>Ready to grow your business?</h2>
+      <p>Join thousands of Australian tradies already winning work on Service Seeking</p>
+      <button class="btn-cta-join" onclick="openOnboardingWizard()">
+        Join Service Seeking <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <span>&copy; 2026 ServiceSeeking.com.au Pty Ltd</span>
+      <div>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Use</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- WIZARD JAVASCRIPT -->
+  <!-- ═══════════════════════════════════════════ -->
+  <script>
+    // ────────── CONFIG ──────────
+    const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '')
+      ? `http://localhost:${window.location.port || '8000'}`
+      : window.location.origin;
+
+    let sessionId = null;
+    let questionCount = 0;
+    let currentState = {};
+
+    // Step tracking
+    const STEPS = ['business', 'services', 'areas', 'done'];
+    const NODE_TO_STEP = {
+      'welcome': 'business',
+      'business_verification': 'business',
+      'service_discovery': 'services',
+      'service_area': 'areas',
+      'confirmation': 'done',
+      'complete': 'done',
+    };
+
+    // Loading subtitles
+    let subtitleInterval = null;
+    const loadingSubtitles = [
+      "Getting things ready...",
+      "Connecting to the business register...",
+      "Preparing your registration...",
+      "Almost there...",
+    ];
+
+    function startSubtitleCycling() {
+      let index = 0;
+      const subtitle = document.getElementById('loading-subtitle');
+      if (!subtitle) return;
+      subtitleInterval = setInterval(() => {
+        index = (index + 1) % loadingSubtitles.length;
+        subtitle.style.opacity = '0';
+        setTimeout(() => {
+          subtitle.textContent = loadingSubtitles[index];
+          subtitle.style.opacity = '1';
+        }, 200);
+      }, 2500);
+    }
+
+    function stopSubtitleCycling() {
+      if (subtitleInterval) { clearInterval(subtitleInterval); subtitleInterval = null; }
+    }
+
+    // ────────── CREATE WIZARD MODAL ──────────
+    function createWizardModal() {
+      const html = `
+        <div id="wizard-modal-backdrop">
+          <div id="wizard-modal">
+            <div class="wizard-progress-bar">
+              <div class="wizard-progress-fill" id="wizardProgressBar"></div>
+            </div>
+
+            <div class="wizard-modal-header">
+              <button id="wizard-modal-close">&times;</button>
+            </div>
+
+            <div id="wizard-content">
+              <div class="wizard-loading">
+                <div class="magic-stars">
+                  <div class="magic-star"></div>
+                  <div class="magic-star"></div>
+                  <div class="magic-star"></div>
+                  <div class="magic-star"></div>
+                </div>
+                <div class="wizard-loading-title">Getting things ready...</div>
+                <div class="wizard-loading-subtitle" id="loading-subtitle">Connecting to Service Seeking</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('wizard-modal-close').addEventListener('click', closeWizard);
+    }
+
+    // ────────── OPEN WIZARD ──────────
+    async function openOnboardingWizard() {
+      if (!document.getElementById('wizard-modal')) {
+        createWizardModal();
+      }
+
+      const backdrop = document.getElementById('wizard-modal-backdrop');
+      backdrop.style.display = 'flex';
+      setTimeout(() => backdrop.classList.add('show'), 10);
+
+      questionCount = 0;
+      updateProgress('business');
+      startSubtitleCycling();
+
+      try {
+        const response = await fetch(`${API_URL}/api/session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        const data = await response.json();
+        sessionId = data.session_id;
+        stopSubtitleCycling();
+        displayResponse(data.response, data.state);
+      } catch (error) {
+        console.error('Error:', error);
+        stopSubtitleCycling();
+        document.getElementById('wizard-content').innerHTML = `
+          <div class="wizard-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <h3>Connection Error</h3>
+            <p>Please make sure the server is running on port 8000</p>
+          </div>
+        `;
+      }
+    }
+
+    // ────────── CLOSE WIZARD ──────────
+    function closeWizard() {
+      const backdrop = document.getElementById('wizard-modal-backdrop');
+      backdrop.classList.remove('show');
+      sessionId = null;
+      setTimeout(() => backdrop.remove(), 300);
+    }
+
+    // ────────── DISPLAY RESPONSE ──────────
+    function displayResponse(response, state) {
+      stopSubtitleCycling();
+      questionCount++;
+      currentState = state || {};
+
+      const node = response?.node || state?.current_node || '';
+      const step = NODE_TO_STEP[node] || 'business';
+      updateProgress(step);
+
+      const content = document.getElementById('wizard-content');
+      content.scrollTop = 0;
+
+      // Check for confirmation review (editable summary)
+      if (node === 'confirmation' && !state?.confirmed) {
+        showConfirmation(content, state);
+        return;
+      }
+
+      // Check for completion
+      if (node === 'complete' || state?.confirmed) {
+        showCompletion(content, state);
+        return;
+      }
+
+      const text = response?.text || '';
+      const buttons = response?.buttons || [];
+
+      // Format text - handle bullet lists
+      const formattedText = formatText(text);
+
+      let html = `
+        <div class="wizard-question-container">
+          <div class="wizard-question-number">Question ${questionCount}</div>
+          <div class="wizard-question-text">${formattedText}</div>
+      `;
+
+      // Add buttons
+      if (buttons.length > 0) {
+        const isEditMode = buttons.some(b => b.label.startsWith('\u2715'));
+        html += `<div class="wizard-buttons-container${isEditMode ? ' wizard-buttons-wrap' : ''}">`;
+        buttons.forEach((btn, i) => {
+          const isConfirm = btn.label.toLowerCase().includes('confirm');
+          const isDone = btn.label.toLowerCase().includes('done');
+          const isRemove = btn.label.startsWith('\u2715');
+          const cls = isConfirm ? 'wizard-button wizard-button-confirm'
+            : isRemove ? 'wizard-button wizard-button-remove'
+            : isDone ? 'wizard-button wizard-button-done'
+            : 'wizard-button';
+          html += `
+            <button class="${cls}" id="wizardBtn${i}" data-value="${escapeHtml(btn.value)}">
+              <span>${escapeHtml(btn.label)}</span>
+              ${isRemove ? '' : '<i class="fas fa-arrow-right"></i>'}
+            </button>
+          `;
+        });
+        html += '</div>';
+        html += '<div class="wizard-divider"><span>or type below</span></div>';
+      }
+
+      // Input row
+      html += `
+        <div class="wizard-input-row">
+          <input type="text" class="wizard-text-input" id="wizardInput"
+                 placeholder="Type your answer..."
+                 onkeypress="if(event.key==='Enter')submitInput()">
+          <button class="wizard-submit-btn" onclick="submitInput()">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      `;
+
+      html += '</div>';
+      content.innerHTML = html;
+
+      // Attach button handlers
+      const isEditMode = buttons.some(b => b.label.startsWith('\u2715'));
+      buttons.forEach((btn, i) => {
+        const el = document.getElementById(`wizardBtn${i}`);
+        if (!el) return;
+        if (isEditMode && btn.label.startsWith('\u2715')) {
+          // Toggle mode: tap to cross off / restore
+          el.addEventListener('click', () => {
+            el.classList.toggle('toggled-off');
+          });
+        } else if (isEditMode && btn.label.toLowerCase().includes('done')) {
+          // Done button: collect toggled-off items and send as one message
+          el.addEventListener('click', () => {
+            const removed = [];
+            buttons.forEach((b, j) => {
+              const bel = document.getElementById(`wizardBtn${j}`);
+              if (bel && bel.classList.contains('toggled-off')) {
+                removed.push(b.label.replace('\u2715 ', ''));
+              }
+            });
+            if (removed.length === 0) {
+              sendMessage(btn.value); // nothing removed, just confirm
+            } else {
+              sendMessage('Remove ' + removed.join(', '));
+            }
+          });
+        } else {
+          el.addEventListener('click', () => sendMessage(btn.value));
+        }
+      });
+
+      // Focus input and set up active state for submit button
+      setTimeout(() => {
+        const input = document.getElementById('wizardInput');
+        const submitBtn = document.querySelector('.wizard-submit-btn');
+        if (input) {
+          input.focus({ preventScroll: true });
+          input.addEventListener('input', () => {
+            if (submitBtn) submitBtn.classList.toggle('active', input.value.trim().length > 0);
+          });
+        }
+      }, 100);
+    }
+
+    // ────────── FORMAT TEXT ──────────
+    function formatText(text) {
+      let escaped = escapeHtml(text);
+
+      // Convert markdown bold **text** to <strong>
+      escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+      // Handle bullet list lines (- item: value)
+      const lines = escaped.split('\n').filter(l => l.trim());
+      const bulletLines = lines.filter(l => l.match(/^-\s+.+:\s+.+$/));
+
+      if (bulletLines.length >= 2) {
+        let html = '';
+        let inBox = false;
+
+        lines.forEach(line => {
+          const bullet = line.match(/^-\s+(.+?):\s+(.+)$/);
+          if (bullet) {
+            if (!inBox) { html += '<div class="wizard-info-box">'; inBox = true; }
+            html += `
+              <div class="wizard-summary-item">
+                <span class="wizard-summary-label">${bullet[1].trim()}</span>
+                <span class="wizard-summary-value">${bullet[2].trim()}</span>
+              </div>
+            `;
+          } else {
+            if (inBox) { html += '</div>'; inBox = false; }
+            if (line.trim()) html += `<p>${line}</p>`;
+          }
+        });
+        if (inBox) html += '</div>';
+        return html;
+      }
+
+      // Default: paragraphs
+      if (lines.length > 1) {
+        return lines.map(l => `<p>${l}</p>`).join('');
+      }
+      return escaped;
+    }
+
+    // ────────── SEND MESSAGE ──────────
+    function showProgressLoading(content, title, steps) {
+      const stepsHtml = steps.map((s, i) =>
+        `<div class="progress-step" id="pStep${i}"><div class="progress-step-icon" id="pIcon${i}"><div class="step-spinner"></div></div><span>${s}</span></div>`
+      ).join('');
+
+      const el = document.createElement('div');
+      el.className = 'wizard-progress-loading';
+      el.innerHTML = [
+        '<div class="magic-stars"><div class="magic-star"></div><div class="magic-star"></div><div class="magic-star"></div><div class="magic-star"></div></div>',
+        '<div class="wizard-loading-title">' + title + '</div>',
+        '<div class="progress-steps">' + stepsHtml + '</div>',
+      ].join('');
+      content.textContent = '';
+      content.appendChild(el);
+
+      // Stagger step appearance, advance each after a delay
+      steps.forEach((_, i) => {
+        setTimeout(() => {
+          const step = document.getElementById(`pStep${i}`);
+          if (step) { step.classList.add('visible', 'active'); }
+          // Mark previous step as done
+          if (i > 0) {
+            const prev = document.getElementById(`pStep${i - 1}`);
+            const prevIcon = document.getElementById(`pIcon${i - 1}`);
+            if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+            if (prevIcon) { prevIcon.innerHTML = '<i class="fas fa-check step-check"></i>'; }
+          }
+        }, i * 1200);
+      });
+    }
+
+    async function sendMessage(message) {
+      const content = document.getElementById('wizard-content');
+
+      // Detect key auto-chain transitions for enriched loading
+      const isBusinessConfirm = currentState.current_node === 'business_verification'
+        && !currentState.business_verified
+        && (message.toLowerCase().startsWith('yes') || message.includes('ABN:'));
+      const isServiceConfirm = currentState.current_node === 'service_discovery'
+        && currentState.services_confirmed === false
+        && currentState.services?.length > 0;
+
+      if (isBusinessConfirm) {
+        showProgressLoading(content, 'Setting up your services...', [
+          'Checking NSW trade licences',
+          'Searching web for business details',
+          'Mapping your services',
+        ]);
+      } else if (isServiceConfirm) {
+        showProgressLoading(content, 'Working out your area...', [
+          'Updating your service list',
+          'Loading suburb and region data',
+          'Mapping your coverage area',
+        ]);
+      } else {
+        // Default skeleton for other transitions
+        content.innerHTML = `
+          <div class="wizard-question-container">
+            <div class="wizard-question-number">&nbsp;</div>
+            <div class="wizard-question-text">
+              <div class="skeleton-text"></div>
+              <div class="skeleton-text skeleton-text-short"></div>
+            </div>
+            <div class="skeleton-button"></div>
+            <div class="skeleton-button"></div>
+          </div>
+        `;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, message })
+        });
+
+        const data = await response.json();
+        logApiTrace(data);
+        displayResponse(data.response, data.state);
+      } catch (error) {
+        console.error('Error:', error);
+        content.innerHTML = '<div class="wizard-error"><i class="fas fa-exclamation-circle"></i><p>Error sending message. Please try again.</p></div>';
+      }
+    }
+
+    // ────────── SUBMIT INPUT ──────────
+    function submitInput() {
+      const input = document.getElementById('wizardInput');
+      const msg = input?.value?.trim();
+      if (msg) sendMessage(msg);
+    }
+
+    // ────────── SHOW CONFIRMATION (EDITABLE) ──────────
+    // Note: All user-facing values are escaped via escapeHtml() before insertion
+    function showConfirmation(content, state) {
+      const services = state?.services || [];
+      const regions = state?.service_areas?.regions_included || [];
+      const businessName = escapeHtml(state?.business_name || '');
+      const abn = escapeHtml(state?.abn || '');
+      const contactName = escapeHtml(state?.contact_name || '');
+      const contactPhone = escapeHtml(state?.contact_phone || '');
+      const trades = [...new Set(services.map(s => s.category_name).filter(Boolean))];
+      const tradesText = escapeHtml(trades.join(', ') || 'Not set');
+
+      const serviceChips = services.map((s, i) => {
+        const name = escapeHtml(s.subcategory_name || s.input || '');
+        return `<button class="edit-chip" id="svcChip${i}" data-name="${name}">${name}</button>`;
+      }).join('');
+
+      const areaChips = regions.map((r, i) => {
+        const name = escapeHtml(r);
+        return `<button class="edit-chip" id="areaChip${i}" data-name="${name}">${name}</button>`;
+      }).join('');
+
+      let summaryRows = `
+        <div class="wizard-summary-item"><span class="wizard-summary-label">Business</span><span class="wizard-summary-value">${businessName}</span></div>
+        <div class="wizard-summary-item"><span class="wizard-summary-label">ABN</span><span class="wizard-summary-value">${abn}</span></div>
+        <div class="wizard-summary-item"><span class="wizard-summary-label">Trade</span><span class="wizard-summary-value">${tradesText}</span></div>
+      `;
+      if (contactName) summaryRows += `<div class="wizard-summary-item"><span class="wizard-summary-label">Contact</span><span class="wizard-summary-value">${contactName}</span></div>`;
+      if (contactPhone) summaryRows += `<div class="wizard-summary-item"><span class="wizard-summary-label">Phone</span><span class="wizard-summary-value">${contactPhone}</span></div>`;
+
+      const confirmEl = document.createElement('div');
+      confirmEl.className = 'wizard-question-container';
+      confirmEl.innerHTML = [
+        '<div class="wizard-question-number">Review</div>',
+        '<div class="wizard-question-text"><p>Here\'s your setup \u2014 tap to remove anything that doesn\'t belong.</p></div>',
+        '<div class="wizard-info-box" style="margin-bottom: 20px;">' + summaryRows + '</div>',
+        '<div class="edit-section"><div class="edit-section-label">Services</div><div class="edit-chips-container">' + (serviceChips || '<span style="color:#999">None mapped</span>') + '</div></div>',
+        '<div class="edit-section"><div class="edit-section-label">Service Areas</div><div class="edit-chips-container">' + (areaChips || '<span style="color:#999">None set</span>') + '</div></div>',
+        '<button class="wizard-button wizard-button-confirm" id="confirmBtn" style="width:100%;justify-content:center;margin-top:20px;"><span>Looks good, let\'s go</span><i class="fas fa-check"></i></button>',
+        '<div class="wizard-divider"><span>or type below</span></div>',
+        '<div class="wizard-input-row"><input type="text" class="wizard-text-input" id="wizardInput" placeholder="Type to add services or areas..." onkeypress="if(event.key===\'Enter\')submitInput()"><button class="wizard-submit-btn" onclick="submitInput()"><i class="fas fa-paper-plane"></i></button></div>',
+      ].join('');
+      content.textContent = '';
+      content.appendChild(confirmEl);
+
+      // Toggle chips on click
+      confirmEl.querySelectorAll('.edit-chip').forEach(chip => {
+        chip.addEventListener('click', () => chip.classList.toggle('toggled-off'));
+      });
+
+      // Confirm button: collect removals and send as one message
+      document.getElementById('confirmBtn').addEventListener('click', () => {
+        const removedServices = [];
+        const removedAreas = [];
+
+        services.forEach((s, i) => {
+          const el = document.getElementById(`svcChip${i}`);
+          if (el && el.classList.contains('toggled-off')) {
+            removedServices.push(s.subcategory_name || s.input || '');
+          }
+        });
+        regions.forEach((r, i) => {
+          const el = document.getElementById(`areaChip${i}`);
+          if (el && el.classList.contains('toggled-off')) {
+            removedAreas.push(r);
+          }
+        });
+
+        if (removedServices.length === 0 && removedAreas.length === 0) {
+          sendMessage('Yes, confirm and complete');
+        } else {
+          let msg = '';
+          if (removedServices.length > 0) msg += 'Remove services: ' + removedServices.join(', ') + '. ';
+          if (removedAreas.length > 0) msg += 'Remove areas: ' + removedAreas.join(', ') + '. ';
+          msg += 'Then confirm and complete.';
+          sendMessage(msg);
+        }
+      });
+
+      setTimeout(() => {
+        const input = document.getElementById('wizardInput');
+        if (input) input.focus({ preventScroll: true });
+      }, 100);
+    }
+
+    // ────────── SHOW COMPLETION ──────────
+    function showCompletion(content, state) {
+      updateProgress('done');
+      const output = state?.output_json || {};
+      const jsonStr = JSON.stringify(output, null, 2);
+
+      // Format services as chips
+      const services = output.services || [];
+      let serviceChips = '';
+      services.forEach(cat => {
+        (cat.subcategories || []).forEach(sc => {
+          serviceChips += `<span class="service-chip">${escapeHtml(sc.name)}</span> `;
+        });
+      });
+
+      const regions = (output.service_areas?.regions_included || []);
+      const regionList = regions.join(', ');
+
+      content.innerHTML = `
+        <div class="wizard-completion">
+          <div class="wizard-success-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h2>Registration Complete!</h2>
+          <p>Welcome to Service Seeking, <strong>${escapeHtml(output.business_name || '')}</strong>!</p>
+          <p>You'll start receiving relevant job leads in your service areas soon.</p>
+
+          <div style="margin: 24px 0; text-align: left;">
+            <div class="wizard-info-box">
+              <div class="wizard-summary-item">
+                <span class="wizard-summary-label">ABN</span>
+                <span class="wizard-summary-value">${escapeHtml(output.abn || '')}</span>
+              </div>
+              <div class="wizard-summary-item">
+                <span class="wizard-summary-label">Services</span>
+                <span class="wizard-summary-value">${serviceChips || 'None'}</span>
+              </div>
+              <div class="wizard-summary-item">
+                <span class="wizard-summary-label">Service Areas</span>
+                <span class="wizard-summary-value">${regionList ? escapeHtml(regionList) : 'Not set'}</span>
+              </div>
+            </div>
+          </div>
+
+          <details style="text-align: left; margin: 16px 0;">
+            <summary style="cursor: pointer; color: #888; font-size: 13px; margin-bottom: 8px;">
+              View raw JSON output
+            </summary>
+            <div class="wizard-result-json">${escapeHtml(jsonStr)}</div>
+          </details>
+
+          <button class="wizard-close-btn" onclick="closeWizard()">
+            Done <i class="fas fa-check" style="margin-left: 8px;"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    // ────────── UPDATE PROGRESS ──────────
+    function updateProgress(currentStep) {
+      const stepIndex = STEPS.indexOf(currentStep);
+      if (stepIndex < 0) return;
+
+      const pct = ((stepIndex + 1) / STEPS.length) * 100;
+      const bar = document.getElementById('wizardProgressBar');
+      if (bar) bar.style.width = pct + '%';
+    }
+
+    // ────────── API TRACE (dev tools) ──────────
+    function logApiTrace(data) {
+      const trace = data.api_trace || [];
+      const turnTime = data.response?.turn_time;
+      const node = data.response?.node;
+      if (!trace.length && !turnTime) return;
+
+      console.group(
+        `%c[Turn ${data.response?.node}] ${turnTime}s`,
+        'color: #13C659; font-weight: bold; font-size: 13px'
+      );
+
+      trace.forEach(call => {
+        const isLLM = call.api.startsWith('LLM');
+        const color = isLLM ? '#8b5cf6' : '#3b82f6';
+        console.groupCollapsed(
+          `%c${call.api}%c ${call.time}s — ${call.summary}`,
+          `color: ${color}; font-weight: bold`,
+          'color: #666'
+        );
+        if (call.data && Object.keys(call.data).length) {
+          console.table ? console.table(call.data.results || call.data) : console.log(call.data);
+        }
+        console.groupEnd();
+      });
+
+      if (data.state) {
+        console.groupCollapsed('%cState snapshot', 'color: #999; font-style: italic');
+        console.log(data.state);
+        console.groupEnd();
+      }
+
+      console.groupEnd();
+    }
+
+    // ────────── ESCAPE HTML ──────────
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>
