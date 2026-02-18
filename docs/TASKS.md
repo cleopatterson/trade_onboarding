@@ -131,7 +131,12 @@
 - [x] CSS matched to Concierge wizard (blue interactive, green success, typography, spacing)
 - [x] Fixed junk excluded regions (state filter + min 3 suburbs threshold)
 - [x] LLM JSON fallback when plain text returned
-- [ ] Reduce confirmation turn time (~12s — mainly LLM latency)
+- [x] Performance optimisation: Haiku for all nodes, parallel auto-chain (21s → 6s, 11s → 5s)
+- [x] Prompt de-scripting: removed turn-by-turn scripts, replaced with guidance
+- [x] Editable confirmation screen: services + areas as toggleable chips
+- [x] Progressive loading: magic stars + API activity steps for key transitions
+- [x] Completion screen fix: service areas showing regions instead of "0 suburbs"
+- [x] CSS refinements: info-box spacing, question text line-height/weight/smoothing
 - [ ] Streaming SSE implementation (currently JSON responses)
 - [ ] Mobile responsiveness testing
 - [ ] Edge cases: very long service lists, unusual business types, non-trade businesses
@@ -147,9 +152,10 @@
 - [ ] SS API integration — create business profile on completion
 - [ ] Duplicate checker (SS API) — check if ABN already registered
 - [ ] Embeddable iframe variant
-- [ ] Railway deployment configuration
+- [x] Railway deployment (Procfile + .python-version, live at trade-onboarding.up.railway.app)
+- [x] Git repo: github.com/cleopatterson/trade_onboarding
+- [x] Environment variable documentation (.env.example)
 - [ ] Dockerfile + production config
-- [ ] Environment variable documentation
 - [ ] API security (rate limiting, input validation)
 - [ ] Session persistence (currently in-memory dict)
 - [ ] Monitoring + alerting setup
@@ -226,3 +232,29 @@
 - State filter + min 3 suburbs threshold for region grouping
 - LLM JSON fallback: wraps plain text in default structure when JSON parsing fails
 - Service counts in brackets only shown when category has >1 service
+
+### Feb 18, 2026 — Performance, Prompt Review, Edit UX, Deployment
+- **Performance**: Switched all nodes to Haiku (removed Sonnet dependency entirely)
+  - Business confirm → services: 21s → ~6s (Haiku + web results provide enough signal)
+  - Service confirm → areas: 11s → ~5s (parallel auto-chain via asyncio.gather)
+  - Persistent httpx client for API connection reuse
+  - Reduced max_tokens from 4096 to 2048
+- **Prompt de-scripting**: Removed turn-by-turn scripts from service_discovery + service_area prompts
+  - Replaced with guidance: "keep it short — tradies are busy", "under 2-3 sentences"
+  - Service area prompt tells LLM not to explain geography the tradie already knows
+  - Auto-chain context: "this flows from service confirmation, don't re-introduce yourself"
+- **Editable confirmation screen**: Complete redesign of confirmation step
+  - Services + areas rendered as toggleable chips (tap to cross off, tap to restore)
+  - Business info shown as static summary box
+  - Single "Looks good" button collects all removals into one message
+  - Backend handles structured removal message directly (no LLM round trip)
+- **Progressive loading**: Replaced skeleton with magic stars + API activity steps
+  - Business confirm: "Checking NSW trade licences" → "Searching web" → "Mapping services"
+  - Service confirm: "Updating service list" → "Loading regions" → "Mapping coverage area"
+  - Steps appear with stagger animation, spinner → checkmark progression
+  - Skeleton preserved for all other transitions
+- **Completion screen fix**: Service areas showed "0 suburbs" — was looking for `suburbs` array instead of `regions_included`
+- **CSS**: Info-box padding/line-height tightened, question text weight 400, letter-spacing fixes
+- **Deployment**: Git init, pushed to github.com/cleopatterson/trade_onboarding, deployed on Railway
+  - Procfile: `uvicorn server.app:app --host 0.0.0.0 --port $PORT`
+  - Live at: https://trade-onboarding.up.railway.app

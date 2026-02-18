@@ -20,7 +20,7 @@ open http://localhost:8001
 - **Agent:** LangGraph-inspired state machine (`agent/graph.py`) — 6 nodes, prompts inline, no-scripting principle
 - **Tools:** ABR, NSW Fair Trading, Brave Search, geo helpers (`agent/tools.py`)
 - **Frontend:** Single-file HTML/JS/CSS (`web/landing.html`) — landing page + wizard modal
-- **Models:** Claude Sonnet 4.5 (service/area mapping), Claude Haiku 4.5 (welcome, classifiers)
+- **Models:** Claude Haiku 4.5 (all nodes + classifiers) — Sonnet removed for speed
 
 ## Key Files
 | File | Purpose |
@@ -41,7 +41,7 @@ open http://localhost:8001
 1. **No scripting** — prompts provide context/goals/guides, LLM figures out the conversation
 2. **Australian English** — "tradies", "ABN", "suburbs", mate-like tone
 3. **Two turns max** per step — be decisive, don't over-ask
-4. **Auto-chain** — steps flow seamlessly (business → services → areas → confirm → complete)
+4. **Auto-chain** — steps flow seamlessly with parallel LLM calls where possible (service + area run simultaneously)
 5. **Blue interactive, green success** — wizard uses blue (#0066cc) for actions, green (#1FC759) for progress/confirm only
 
 ## Conversation Flow
@@ -64,7 +64,11 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API. See `docs/
 - LLM JSON fallback: if LLM returns plain text, wraps in default structure
 - Suburbs CSV has some bad data: state filter + min 3 suburbs threshold filters junk regions
 - Contact name extracted from NSW licence `associatedParties`, phone from Brave search descriptions
-- Edit flow from confirmation preserves existing data (doesn't wipe) — asks what to add/remove
+- Edit flow uses toggleable chips — tap to deselect services/areas, single round trip
+- Confirmation screen renders services + areas as interactive sections (not text)
+- Progressive loading with magic stars + API activity steps for key transitions
+- Parallel auto-chain: service_discovery turn 2 + service_area turn 1 via asyncio.gather
+- Deployed on Railway: https://trade-onboarding.up.railway.app
 
 ## Docs
 - `docs/MASTERPLAN.md` — vision, design principles, success metrics, project relationships
