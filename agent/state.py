@@ -57,6 +57,14 @@ class OnboardingState(TypedDict):
     profile_logo: str
     profile_photos: list[str]
     profile_saved: bool
+    profile_intro: str
+
+    # Social / Reviews / Web
+    google_rating: float              # e.g. 4.8
+    google_review_count: int          # e.g. 47
+    google_reviews: list[dict]        # [{text: "...", rating: 5}, ...]
+    facebook_url: str                 # e.g. "https://facebook.com/SmithPlumbing"
+    business_website: str             # from Google Places websiteUri
 
     # Pricing / Subscription
     pricing_shown: bool

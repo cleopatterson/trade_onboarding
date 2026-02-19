@@ -154,8 +154,9 @@
 - [x] Progressive loading: magic stars + API activity steps for key transitions
 - [x] Completion screen fix: service areas showing regions instead of "0 suburbs"
 - [x] CSS refinements: info-box spacing, question text line-height/weight/smoothing
+- [x] Mobile responsiveness fixes (body scroll lock, width overflow, progress bar, profile wrap margins)
+- [x] Missing `python-multipart` dependency for Railway deployment
 - [ ] Streaming SSE implementation (currently JSON responses)
-- [ ] Mobile responsiveness testing
 - [ ] Edge cases: very long service lists, unusual business types, non-trade businesses
 - [ ] Handle non-NSW businesses gracefully (no licence data, inform user)
 - [ ] LangSmith tracing integration
@@ -326,3 +327,13 @@
 - **State**: 4 new fields: `pricing_shown`, `subscription_plan`, `subscription_billing`, `subscription_price`
 - **Output JSON**: `subscription` object included when plan selected (omitted on skip)
 - **Frontend**: Progress bar updated to 6 steps, pricing uses standard chat Q&A layout
+- **Deployment fixes**:
+  - Added `python-multipart` to requirements.txt (needed for upload endpoint `Form()`/`File()`)
+  - Pushed `agent/tools.py` with website scraping functions (was uncommitted locally)
+- **Mobile responsiveness**:
+  - Body scroll lock on wizard open/close (fixes mobile Safari fixed-position offset)
+  - Progress bar border-radius reset on mobile (no modal rounding)
+  - Content padding tightened to 20px, `overflow-x: hidden` on content area
+  - Button hover `translateX` disabled on mobile (was pushing content right)
+  - Smaller buttons/inputs on mobile (48px height, tighter padding)
+  - Profile wrap negative margins matched to mobile content padding (-20px not -32px)

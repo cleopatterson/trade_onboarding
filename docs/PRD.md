@@ -24,7 +24,7 @@ User (Browser)
     ▼                            ▼
 ┌──────────────┐    ┌───────────────────────┐
 │ State Machine│    │  External APIs         │
-│ (6 nodes)    │    │  ├── ABR JSON API      │
+│ (7 nodes)    │    │  ├── ABR JSON API      │
 │              │    │  ├── NSW Fair Trading   │
 │ Auto-chains  │    │  │   (OAuth2 + REST)    │
 │ between steps│    │  ├── Brave Search API   │
@@ -43,7 +43,7 @@ Trade_onboarding/
 │   └── TASKS.md                # Implementation log and roadmap
 │
 ├── agent/
-│   ├── graph.py                # State machine — 6 nodes, no-scripting principle
+│   ├── graph.py                # State machine — 7 nodes, no-scripting principle
 │   ├── state.py                # OnboardingState TypedDict
 │   ├── tools.py                # ABR, NSW Fair Trading, Brave Search, geo helpers
 │   └── config.py               # Environment config, model IDs, API keys
@@ -118,11 +118,16 @@ Trade_onboarding/
                          │ User confirms areas
                          ▼
               ┌──────────────────────┐
-              │    CONFIRMATION      │
-              │  (full summary)      │──── User wants to edit section
-              └──────────┬───────────┘     → route back to that node
-                         │
-                         │ User confirms all
+              │       PROFILE        │
+              │ (preview + edit)     │
+              └──────────┬───────────┘
+                         │ User publishes profile
+                         ▼
+              ┌──────────────────────┐
+              │       PRICING        │
+              │ (plan + billing)     │──── User skips → straight to complete
+              └──────────┬───────────┘
+                         │ User selects plan + billing
                          ▼
                   ┌──────────────┐
                   │   COMPLETE   │
@@ -181,17 +186,29 @@ Trade_onboarding/
 - **Output:** `service_areas` with `{suburbs, postcodes, base_suburb, areas_covered, areas_avoided, travel_notes}`
 - **Buttons:** LLM-generated, contextual (e.g. "Yes, I cross the Spit Bridge" / "I stick to the Beaches")
 
-#### CONFIRMATION
-- **Purpose:** Show complete summary and allow final edits
-- **Model:** Haiku 4.5 (intent classifier: CONFIRMED/EDIT_SERVICES/EDIT_AREAS/EDIT_BUSINESS)
+#### PROFILE
+- **Purpose:** Generate polished profile preview with LLM description, website images, and editable fields
+- **Model:** Haiku 4.5 (generates business description + intro)
 - **Flow:**
-  1. Display formatted summary of all collected information
-  2. LLM classifies intent if user responds
-  3. Edit requests route back to relevant section (reset that step's confirmed flag)
-  4. On final confirmation, transition to COMPLETE
-- **Output:** `confirmed: true`
-- **Edit flow:** Preserves existing data, shows current list, asks what to add/remove, auto-chains back to confirmation
-- **Buttons:** Data-driven: "All good, let's go" / "Edit Services" / "Edit Service Areas"
+  1. LLM generates business description and conversational intro from collected data
+  2. `discover_business_website()` infers domain, scrapes logo + photos
+  3. `ai_filter_photos()` classifies scraped images as WORK/SKIP via Haiku vision
+  4. Profile preview rendered: SS blue hero, about section, services/areas (editable via pencil toggle), gallery, CTA
+  5. User can edit description, remove services/areas, upload photos/logo
+  6. "Publish My Profile" sends `__SAVE_PROFILE__:` payload with edits
+- **Output:** `profile_description`, `profile_intro`, `profile_logo`, `profile_photos`, `profile_saved`
+- **Buttons:** None (interactive profile card with publish CTA)
+
+#### PRICING
+- **Purpose:** Recommend subscription plan based on service area coverage
+- **Model:** None (deterministic, data-driven)
+- **Flow:**
+  1. Recommend plan based on region count (≤2 → Standard $49, ≤5 → Plus $79, >5 → Pro $119)
+  2. User selects plan or skips
+  3. If plan selected, offer billing frequency (monthly/quarterly/annual with discounts)
+  4. Skip sets `subscription_plan: "skip"` and auto-chains to complete
+- **Output:** `subscription_plan`, `subscription_billing`, `subscription_price`
+- **Buttons:** Plan buttons (`__PLAN__:standard`, etc.) then billing buttons (`__BILLING__:quarterly`, etc.)
 
 #### COMPLETE
 - **Purpose:** Generate final output and confirm onboarding
@@ -243,6 +260,22 @@ class OnboardingState(TypedDict):
     # Contact (extracted from licence + web data)
     contact_name: str                 # From NSW licence associatedParties
     contact_phone: str                # From Brave search descriptions (regex)
+
+    # Profile Builder
+    abn_registration_date: str        # From ABR — used to calculate years in business
+    years_in_business: int
+    profile_description: str          # LLM-generated business description
+    profile_description_draft: str    # Draft before user edits
+    profile_intro: str                # LLM-generated conversational intro
+    profile_logo: str                 # Base64 or URL
+    profile_photos: list[str]         # Base64 or URLs
+    profile_saved: bool
+
+    # Pricing / Subscription
+    pricing_shown: bool
+    subscription_plan: str            # "standard" | "plus" | "pro" | "skip" | ""
+    subscription_billing: str         # "monthly" | "quarterly" | "annual" | ""
+    subscription_price: str           # e.g. "$79/mo"
 
     # Completion
     confirmed: bool
@@ -391,9 +424,10 @@ Prompts are co-located with the node functions — no separate prompts file.
 |------|-------|-----------|
 | welcome | Haiku 4.5 | Simple greeting, fast (~0.5s) |
 | business_verification | Haiku 4.5 | Intent classification (CONFIRMED/REJECTED/NEWSEARCH) |
-| service_discovery | Sonnet 4.5 | Strong NLU needed for taxonomy mapping + gap questions |
-| service_area | Sonnet 4.5 | Complex geo interpretation with regional context |
-| confirmation | Haiku 4.5 | Intent classification (CONFIRMED/EDIT_SERVICES/EDIT_AREAS) |
+| service_discovery | Haiku 4.5 | Taxonomy mapping + gap questions (licence classes provide strong signal) |
+| service_area | Haiku 4.5 | Geo interpretation with regional context (regional guides provide structure) |
+| profile | Haiku 4.5 | Business description + intro generation |
+| pricing | None | Deterministic — data-driven plan recommendation |
 | complete | None | Deterministic — no LLM call |
 
 **Prompt Caching:** Enable for category taxonomy and suburb data — these are large, static contexts that benefit from ~90% cost reduction on cache hits.

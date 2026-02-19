@@ -25,6 +25,8 @@ from agent.tools import (
     nsw_licence_browse, nsw_licence_details,
     brave_web_search, scrape_website_images,
     discover_business_website, scrape_social_images, ai_filter_photos,
+    extract_google_rating, extract_facebook_url,
+    google_places_search, compute_service_gaps,
 )
 
 
@@ -106,7 +108,7 @@ async def business_verification_node(state: OnboardingState) -> dict:
     # If no ABR results yet, do the lookup
     if not state.get("abr_results") and not state.get("business_verified"):
         clean = last_msg.strip().replace(" ", "")
-        is_abn = clean.isdigit() and len(clean) >= 9
+        is_abn = clean.isdigit() and len(clean) == 11
         search_type = "abn" if is_abn else "name"
 
         # Detect trailing postcode (e.g. "dans plumbing 2155")
@@ -154,6 +156,7 @@ async def business_verification_node(state: OnboardingState) -> dict:
 
     # Quick-match: if the message contains "Yes, it's" + an ABN from results, it's a button click confirmation
     selected_abr = None
+    intent = ""
     for r in abr_results:
         abn = r.get("abn", "")
         if abn and abn in last_msg and ("yes" in last_msg.lower() or "it's" in last_msg.lower()):
@@ -201,7 +204,7 @@ Respond with ONLY one word: CONFIRMED, REJECTED, or NEWSEARCH"""),
 
     # New search
     clean = last_msg.strip().replace(" ", "")
-    is_abn = clean.isdigit() and len(clean) >= 9
+    is_abn = clean.isdigit() and len(clean) == 11
     results = await abr_lookup(last_msg, "abn" if is_abn else "name")
     return {
         "current_node": "business_verification",
@@ -212,15 +215,11 @@ Respond with ONLY one word: CONFIRMED, REJECTED, or NEWSEARCH"""),
 
 
 async def service_discovery_node(state: OnboardingState) -> dict:
-    """Discover and map services through natural conversation.
+    """Discover and map services with deterministic gap tracking.
 
-    NO SCRIPTING. The LLM gets goals, guides, and context.
-    It figures out the conversation.
-
-    Model selection:
-    - Turn 1 with licence data → Haiku (high-signal mapping, ~2s vs ~12s)
-    - Turn 1 without licence data → Sonnet (needs inference from name)
-    - Turn 2+ → Haiku with trimmed prompt (just update the list)
+    Single prompt path every turn. The LLM sees mapped services, remaining gaps,
+    Google reviews, and licence data. It maps aggressively, asks batch gap questions
+    (3-5 subcategories per question), and completes when gaps < 3.
     """
     messages = state.get("messages", [])
     services = state.get("services", [])
@@ -237,11 +236,11 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     web_results = state.get("web_results", [])
     licence_info = state.get("licence_info", {})
 
-    is_follow_up = bool(services)  # Services already mapped = turn 2+
+    is_follow_up = bool(services)
     svc_turn = state.get("_svc_turn", 1 if not is_follow_up else 2)
 
-    # Safety cap: force completion after 3 turns (2 gap questions max)
-    if svc_turn > 3 and is_follow_up:
+    # Safety cap: force completion after 5 turns (up to 4 gap questions)
+    if svc_turn > 5 and is_follow_up:
         print(f"[SVC] Safety cap: forcing completion after {svc_turn} turns")
         return {
             "current_node": "service_discovery",
@@ -251,75 +250,50 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "messages": [AIMessage(content="All sorted — let's move on to your service area!")],
         }
 
-    # ── TURN 2+: Haiku with trimmed prompt ──
-    if is_follow_up:
-        model = llm_fast_json
-        model_name = MODEL_FAST
-        taxonomy = get_category_taxonomy_text()
-        guide = find_subcategory_guide(business_name)
-        current_cats = list(set(s.get("category_name", "") for s in services))
-        relevant_taxonomy = _get_relevant_taxonomy(taxonomy, current_cats)
+    # ── Compute remaining gaps deterministically ──
+    gaps = compute_service_gaps(services, business_name)
+    gaps_text = ""
+    if gaps:
+        gap_entries = [f"{g['subcategory_name']} (id: {g['subcategory_id']})" for g in gaps]
+        gaps_text = f"\nREMAINING UNCOVERED SUBCATEGORIES ({len(gaps)} remaining):\n{', '.join(gap_entries)}"
+    elif services:
+        gaps_text = "\nREMAINING UNCOVERED SUBCATEGORIES: None — full coverage achieved!"
 
-        prompt = f"""You are updating a tradie's services on Service Seeking.
+    # ── Build enrichment context ──
+    licence_context = ""
+    if licence_classes:
+        licence_context = f"\nNSW FAIR TRADING LICENCE CLASSES: {', '.join(licence_classes)}"
+        if licence_info.get("licence_number"):
+            licence_context += f"\nLicence #{licence_info['licence_number']} — Status: {licence_info.get('status', 'Unknown')}, Expiry: {licence_info.get('expiry_date', 'Unknown')}"
+        if licence_info.get("compliance_clean") is False:
+            licence_context += "\n⚠️ Compliance issues on record"
 
-BUSINESS: {business_name}
-CURRENT SERVICES: {json.dumps(services)}
-{f'NSW LICENCE CLASSES: {", ".join(licence_classes)}' if licence_classes else ''}
-GAP QUESTION TURN: {svc_turn - 1} of 2 max
+    web_context = ""
+    if web_results:
+        web_lines = [f"- {r.get('title', '')}: {r.get('url', '')}" for r in web_results[:3]]
+        web_context = f"\nWEB PRESENCE:\n" + "\n".join(web_lines)
 
-SUBCATEGORY GUIDE:
-{guide[:3000] if guide else "No specific guide available."}
+    # Google reviews — rich signal for service mapping
+    google_reviews = state.get("google_reviews", [])
+    reviews_context = ""
+    if google_reviews:
+        review_lines = [f"- [{r.get('rating', '?')}★] \"{r['text'][:200]}\"" for r in google_reviews[:5] if r.get("text")]
+        if review_lines:
+            reviews_context = f"\nGOOGLE REVIEWS ({state.get('google_rating', 0)}★, {state.get('google_review_count', 0)} reviews):\n" + "\n".join(review_lines)
 
-RELEVANT TAXONOMY (for looking up IDs if adding new services):
-{relevant_taxonomy}
+    fb_url = state.get("facebook_url", "")
+    if fb_url:
+        reviews_context += f"\nFACEBOOK PAGE: {fb_url}"
 
-The user responded to your gap question. Update the services list:
-- If they said yes/confirmed: add the service(s) with correct category_id/subcategory_id from the taxonomy
-- If they said no/declined: don't add anything
-- If they want to remove something, remove it
-- Keep all existing services unless they explicitly asked to remove them
-- You MUST set step_complete=true if this is gap question turn 2 or higher. The tradie has answered enough — time to move on.
-- Only set step_complete=false if this is turn 1 AND there's one clearly significant service gap remaining.
-- Keep your response to 1-2 sentences.
+    contact = state.get("contact_name", "")
+    conv_history = _format_conversation(messages, max_turns=6)
+    guide = find_subcategory_guide(business_name)
+    taxonomy = get_category_taxonomy_text()
 
-Return a JSON object:
-{{"response": "your message", "services": [full updated array], "buttons": ["2-4 quick-tap options if asking another gap question, or empty if done"], "step_complete": true/false}}
+    # ── Static context (cacheable — taxonomy + guide + role + guidelines) ──
+    static_context = f"""You are the Service Seeking onboarding assistant helping a tradie set up their services.
 
-Return ONLY the JSON object."""
-
-        t_llm = time.time()
-        response = await model.ainvoke([
-            SystemMessage(content=prompt),
-            HumanMessage(content=last_msg or "Looks good"),
-        ])
-        llm_time = time.time() - t_llm
-
-    # ── TURN 1: Full prompt with taxonomy + guide ──
-    else:
-        model = llm_fast_json  # Haiku — web results + subcategory guide + business name provide enough signal
-        model_name = MODEL_FAST
-
-        guide = find_subcategory_guide(business_name)
-        taxonomy = get_category_taxonomy_text()
-
-        licence_context = ""
-        if licence_classes:
-            licence_context = f"\nNSW FAIR TRADING LICENCE CLASSES: {', '.join(licence_classes)}"
-            if licence_info.get("licence_number"):
-                licence_context += f"\nLicence #{licence_info['licence_number']} — Status: {licence_info.get('status', 'Unknown')}, Expiry: {licence_info.get('expiry_date', 'Unknown')}"
-            if licence_info.get("compliance_clean") is False:
-                licence_context += "\n⚠️ Compliance issues on record"
-
-        web_context = ""
-        if web_results:
-            web_lines = [f"- {r.get('title', '')}: {r.get('url', '')}" for r in web_results[:3]]
-            web_context = f"\nWEB PRESENCE:\n" + "\n".join(web_lines)
-
-        conv_history = _format_conversation(messages, max_turns=4)
-
-        static_context = f"""You are the Service Seeking onboarding assistant helping a tradie set up their services.
-
-GOAL: Figure out what services this tradie offers and map them to the Service Seeking category taxonomy. Use the subcategory guide to ask smart questions about gaps — don't ask scripted questions, ask relevant ones based on what you know about this trade.
+GOAL: Map this tradie's services as completely as possible. Every missed subcategory is leads they'll never see. It's better to include a service they occasionally do than to miss one they do regularly.
 
 SUBCATEGORY GUIDE:
 {guide[:4000] if guide else "No specific guide available for this trade."}
@@ -330,41 +304,48 @@ CATEGORY TAXONOMY:
 GUIDELINES:
 - This flows directly from business confirmation — the conversation is already going. Don't re-introduce yourself.
 - Be conversational and Australian. Keep it short — tradies are busy.
-- Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for. Web results and business name add context.
-- Map as many services as you can in one go. The full detail is in the JSON services array — your response text is just a conversational summary. Keep it to a sentence or two: mention the total count and group names, not every individual service. No headers, no bullet points, no line breaks in the summary.
-- Then ask ONE short gap question about a high-value service they likely offer but haven't mentioned yet. Focus on actual trade work, not preferences (emergency call-outs, after-hours aren't service types). Pick the question that would help them win the most work if they said yes.
-- After each gap answer, update the list and ask another gap question if there are still significant services unaccounted for. Don't rush — missing services means missing work for the tradie.
-- Wrap up (step_complete=true) after 2-3 gap questions, or earlier if the tradie signals they're done.
-- Don't announce what you're doing, just do it. Keep your total response under 3 sentences.
+- Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for. A licensed Electrician can do ALL electrical subcategories. A licensed Plumber can do ALL plumbing subcategories. Map aggressively.
+- TURN 1 RULE: If the tradie has a licence class, map EVERY subcategory in that category by default. Most tradies do most things in their trade — it's better to include everything and let them remove what they don't do. Add ALL subcategories from the REMAINING GAPS list using their exact IDs. Then ask a short confirmation: "I've added all 20 electrical services based on your licence — anything you DON'T do that I should remove?"
+- Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate your aggressive mapping.
+- On follow-up turns: process the tradie's answer (remove services they said they don't do, or confirm). Then check REMAINING GAPS — if there are still uncovered subcategories from OTHER categories the tradie might do, ask about those as a batch.
+- Use batch gap questions — group 3-5 related REMAINING subcategories together. Ask about them naturally. Don't ask about services already mapped.
+- Provide buttons: "Looks good", "Remove a few", "I don't do [specific ones]". Keep button text short.
+- COMPLETION RULE: Set step_complete=true when the REMAINING GAPS list has fewer than 3 entries, OR the tradie confirms the list looks good, OR the tradie explicitly says they're done.
+- The response text is a conversational summary. Keep it to 1-2 sentences: mention the total count and groups, not every service. No headers, no bullet points, no line breaks.
+- Don't announce what you're doing, just do it.
+
+CRITICAL — IDs MUST be exact:
+- subcategory_id and category_id MUST come from the CATEGORY TAXONOMY or REMAINING GAPS list above. Copy the exact integer IDs shown in parentheses (e.g. "Switchboards (id: 854)" → subcategory_id: 854).
+- NEVER invent or guess IDs. If you can't find an exact match in the taxonomy, omit the service.
+- ALWAYS include ALL previously mapped services in the output array. Never drop services the tradie already confirmed.
 
 Return a JSON object:
-{{"response": "your conversational message", "services": [array of mapped services with input, category_name, category_id, subcategory_name, subcategory_id, confidence], "buttons": ["2-4 button options that let the tradie answer your gap question with a tap"], "step_complete": true/false}}
-
-step_complete = true when: you've asked 2-3 gap questions, or the tradie has signalled they're done, or there are no more significant service gaps to cover.
+{{"response": "your conversational message", "services": [array of mapped services with input, category_name, category_id, subcategory_name, subcategory_id, confidence], "buttons": ["2-4 button options"], "step_complete": true/false}}
 
 Return ONLY the JSON object."""
 
-        contact = state.get("contact_name", "")
-        dynamic_context = f"""BUSINESS: {business_name}
+    # ── Dynamic context (changes each turn) ──
+    dynamic_context = f"""BUSINESS: {business_name}
 {f'CONTACT: {contact}' if contact else ''}
 SERVICES MAPPED SO FAR: {json.dumps(services) if services else "None yet"}
 {licence_context}
-{web_context}
+{web_context}{reviews_context}{gaps_text}
 
 CONVERSATION SO FAR:
 {conv_history}"""
 
-        t_llm = time.time()
-        response = await model.ainvoke([
-            SystemMessage(content=[
-                {"type": "text", "text": static_context, "cache_control": {"type": "ephemeral"}},
-                {"type": "text", "text": dynamic_context},
-            ]),
-            HumanMessage(content=last_msg or "Let's set up my services"),
-        ])
-        llm_time = time.time() - t_llm
+    # ── Single LLM call ──
+    t_llm = time.time()
+    response = await llm_fast_json.ainvoke([
+        SystemMessage(content=[
+            {"type": "text", "text": static_context, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": dynamic_context},
+        ]),
+        HumanMessage(content=last_msg or "Let's set up my services"),
+    ])
+    llm_time = time.time() - t_llm
 
-    # ── Parse response (shared by both paths) ──
+    # ── Parse response ──
     try:
         raw_json = _extract_json(response.content)
         if not raw_json or raw_json[0] != "{":
@@ -382,11 +363,14 @@ CONVERSATION SO FAR:
         buttons = data.get("buttons", [])
         step_complete = data.get("step_complete", False)
 
-        print(f"[SVC] user='{last_msg}' | model={model_name} | mapped={len(new_services)} | complete={step_complete}")
+        # Compute post-turn gaps for logging
+        new_gaps = compute_service_gaps(new_services, business_name)
+
+        print(f"[SVC] user='{last_msg}' | mapped={len(new_services)} | gaps={len(new_gaps)} | complete={step_complete}")
         _trace(state, "LLM: Service Discovery", llm_time,
-               f"Mapped {len(new_services)} services, complete={step_complete}",
-               {"model": model_name, "services_count": len(new_services),
-                "step_complete": step_complete, "follow_up": is_follow_up})
+               f"Mapped {len(new_services)} services, {len(new_gaps)} gaps remaining, complete={step_complete}",
+               {"services_count": len(new_services), "gaps_remaining": len(new_gaps),
+                "step_complete": step_complete, "turn": svc_turn})
 
         return {
             "current_node": "service_discovery",
@@ -795,6 +779,12 @@ async def profile_node(state: OnboardingState) -> dict:
         web_lines = [f"- {r.get('title', '')}: {r.get('description', '')}" for r in web_results[:3]]
         web_context = "\nWEB RESULTS:\n" + "\n".join(web_lines)
 
+    google_rating = state.get("google_rating", 0.0)
+    google_review_count = state.get("google_review_count", 0)
+    rating_context = ""
+    if google_rating:
+        rating_context = f"\nGOOGLE RATING: {google_rating}/5 ({google_review_count} reviews)"
+
     # ── Run LLM description + intro in parallel with scrape ──
     llm_task = llm_fast_json.ainvoke([
         SystemMessage(content=f"""You're helping a tradie set up their Service Seeking profile. Do two things:
@@ -808,11 +798,12 @@ BUSINESS: {business_name}
 SERVICES: {services_text}
 AREAS: {regions_text}
 {f'YEARS IN BUSINESS: {years}' if years else ''}
-{web_context}
+{web_context}{rating_context}
 
 DESCRIPTION GUIDELINES:
 - Third person, professional but warm Australian tone
 - Mention key services, areas covered, and years of experience if available
+- If Google rating is available and strong (4+), mention it briefly (e.g. "highly rated")
 - Keep under 500 characters — punchy and specific, not generic
 - Don't mention ABN, licence numbers, or compliance details
 - Focus on what makes this business worth hiring
@@ -828,7 +819,9 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         "yelp.com", "yellowpages", "truelocal", "hipages.com", "oneflare.com",
         "airtasker.com", "serviceseeking.com", "productreview.com", "localsearch.com",
         "hotfrog.com", "startlocal.com", "word-of-mouth.com", "mylocaltrades",
-        ".gov.au", "wikipedia.org", "linkedin.com", "gumtree.com",
+        ".gov.au", "wikipedia.org", "linkedin.com", "gumtree.com", "sgpgrid.com",
+        "housetohomepros.com", "finditnowdirectory.com", "businessified.com",
+        "companydirectory.com",
     ]
     for wr in web_results:
         url = wr.get("url", "")
@@ -837,17 +830,33 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         elif not scrape_url and not any(d in url for d in _directory_domains):
             scrape_url = url
 
-    # ── Run everything in parallel: LLM + domain discovery + brave scrape + social ──
-    # Always run domain discovery — Brave often returns only directory sites for tradies
+    # Add facebook_url from targeted search if not already in social_urls
+    fb_url = state.get("facebook_url", "")
+    if fb_url and fb_url not in social_urls:
+        social_urls.insert(0, fb_url)
+
+    # Google Places website is the most reliable source — use it as primary scrape URL
+    google_website = state.get("business_website", "")
+    if google_website:
+        scrape_url = google_website
+        print(f"[PROFILE] Using Google Places website: {google_website}")
+
+    # ── Run everything in parallel: LLM + domain discovery (fallback) + scrape + social ──
     t0 = time.time()
-    parallel_tasks = [llm_task, discover_business_website(business_name)]
+    parallel_tasks = [llm_task]
+    # Only run domain discovery if we don't already have a website from Google Places
+    async def _noop(): return ""
+    if not google_website:
+        parallel_tasks.append(discover_business_website(business_name))
+    else:
+        parallel_tasks.append(_noop())
     if scrape_url:
         parallel_tasks.append(scrape_website_images(scrape_url))
     parallel_tasks.append(scrape_social_images(social_urls))
 
     results = await asyncio.gather(*parallel_tasks)
     response = results[0]
-    discovered_url = results[1]  # str: discovered domain URL or ""
+    discovered_url = results[1] if not google_website else ""
     if scrape_url:
         brave_scraped = results[2]
         social_result = results[3]
@@ -855,11 +864,13 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         brave_scraped = {"logo": "", "photos": []}
         social_result = results[2]
 
-    # Discovered domain takes priority — scrape it if found
-    if discovered_url:
+    # If we have a Google website, we already scraped it directly above
+    # If not, discovered domain takes priority over Brave result scrape
+    if google_website:
+        scraped = brave_scraped  # Actually the Google website scrape (scrape_url was set to google_website)
+    elif discovered_url:
         scraped = await scrape_website_images(discovered_url)
         scrape_url = discovered_url
-        # Fall back to Brave scrape if discovery site had nothing
         if not scraped.get("logo") and not scraped.get("photos"):
             scraped = brave_scraped
     else:
@@ -1194,13 +1205,23 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     postcode = abr.get("postcode", "")
     business_state = abr.get("state", "")
 
-    # Run licence lookup and web search in parallel for enrichment
+    # Run licence + Brave (generic + Facebook) + Google Places in parallel
+    # Stagger the 2 Brave calls slightly to avoid 429 rate limits
+    async def _delayed_brave(query, count=5, delay=0.0):
+        if delay:
+            await asyncio.sleep(delay)
+        return await brave_web_search(query, count=count)
+
     t0 = time.time()
     licence_task = nsw_licence_browse(business_name)
-    web_task = brave_web_search(f"{business_name} {business_state} tradesperson")
-    licence_results, web_results = await asyncio.gather(licence_task, web_task)
+    web_task = _delayed_brave(f"{business_name} {business_state} tradesperson")
+    fb_task = _delayed_brave(f'"{business_name}" {business_state} site:facebook.com', count=3, delay=0.15)
+    google_task = google_places_search(business_name, business_state)
+    licence_results, web_results, fb_results, google_place = await asyncio.gather(
+        licence_task, web_task, fb_task, google_task,
+    )
     t1 = time.time()
-    print(f"[BIZ] Licence browse + web search: {t1 - t0:.1f}s (parallel)")
+    print(f"[BIZ] Licence + 2 Brave + Google Places: {t1 - t0:.1f}s (parallel)")
 
     # If no results and name has apostrophe, retry without it
     search_name = business_name
@@ -1222,6 +1243,29 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                {"title": r.get("title"), "url": r.get("url")}
                for r in (web_results or [])[:3]
            ]})
+
+    # Extract Facebook URL from targeted Brave search
+    facebook_url = extract_facebook_url(fb_results or [])
+
+    # Extract Google rating + reviews from Places API
+    google_rating = google_place.get("rating", 0.0)
+    google_review_count = google_place.get("review_count", 0)
+    google_reviews = google_place.get("reviews", [])
+
+    _trace(state, "Brave Facebook Search", t1 - t0,
+           f"{len(fb_results or [])} results, url={'found' if facebook_url else 'none'}",
+           {"results": [{"title": r.get("title"), "url": r.get("url")} for r in (fb_results or [])[:3]],
+            "facebook_url": facebook_url})
+    _trace(state, "Google Places", t1 - t0,
+           f"{google_rating}★ ({google_review_count} reviews)" if google_rating else "not found",
+           {"name": google_place.get("name", ""), "rating": google_rating,
+            "review_count": google_review_count, "website": google_place.get("website", ""),
+            "reviews": len(google_reviews)})
+
+    if facebook_url:
+        print(f"[BIZ] Facebook page: {facebook_url}")
+    if google_rating:
+        print(f"[BIZ] Google: {google_rating}★ ({google_review_count} reviews), {len(google_reviews)} review snippets")
 
     # Find the best licence match (current, matching name closely)
     licence_info = {}
@@ -1304,6 +1348,11 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "web_results": web_results[:3] if web_results else [],
         "contact_name": contact_name,
         "contact_phone": contact_phone,
+        "google_rating": google_rating,
+        "google_review_count": google_review_count,
+        "google_reviews": google_reviews,
+        "facebook_url": facebook_url,
+        "business_website": google_place.get("website", ""),
         "abn_registration_date": abr.get("entity_start_date", ""),
         "messages": [AIMessage(content=f"Great, {business_name} is confirmed!")],
     }

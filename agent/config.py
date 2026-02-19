@@ -16,6 +16,9 @@ NSW_TRADES_AUTH_HEADER = os.getenv("NSW_TRADES_AUTH_HEADER", "")
 # Brave Search API
 BRAVE_SEARCH_API_KEY = os.getenv("BRAVE_SEARCH_API_KEY", "")
 
+# Google Places API (for Google Business Profile ratings/reviews)
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+
 # Model IDs
 MODEL_SMART = "claude-sonnet-4-5-20250929"
 MODEL_FAST = "claude-haiku-4-5-20251001"

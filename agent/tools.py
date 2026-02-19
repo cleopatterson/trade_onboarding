@@ -12,6 +12,7 @@ import httpx
 
 from agent.config import (
     ABR_GUID, NSW_TRADES_API_KEY, NSW_TRADES_AUTH_HEADER, BRAVE_SEARCH_API_KEY,
+    GOOGLE_PLACES_API_KEY,
 )
 
 RESOURCES_DIR = Path(__file__).parent.parent / "resources"
@@ -196,6 +197,95 @@ def get_category_taxonomy_text() -> str:
         else:
             lines.append(f"{cat_name} (id: {cat_id})")
     return "\n".join(lines)
+
+
+# ────────── SERVICE GAP COMPUTATION ──────────
+
+# Map trade keywords (from business name) to category keys in subcategories.json
+_TRADE_CATEGORY_MAP = {
+    "electri": "Electrician",
+    "plumb": "Plumber",
+    "paint": "Painter",
+    "clean": "Cleaner",
+    "garden": "Gardener",
+    "landscap": "Landscaper",
+    "carpent": "Carpenter",
+    "build": "Builder",
+    "roof": "Roofer",
+    "tile": "Tiler",
+    "concret": "Concreter",
+    "fenc": "Fencing & Gate Company",
+    "glass": "Glass Repair Company",
+    "locksmith": "Locksmith",
+    "handyman": "Handyman",
+    "plaster": "Plasterer",
+    "brick": "Bricklayer",
+    "render": "Rendering Company",
+    "pool": "Pool & Spa Company",
+    "solar": "Solar Company",
+    "air con": "Air Conditioning & Heating Technician",
+    "hvac": "Air Conditioning & Heating Technician",
+    "pest": "Exterminator",
+    "waterproof": "Waterproofing Company",
+    "insul": "Insulation Company",
+    "floor": "Flooring Company",
+    "kitchen": "Kitchen Renovation Company",
+    "bathroom": "Bathroom Renovation Company",
+    "secur": "Security Company",
+    "gas fit": "Gas Fitter",
+}
+
+
+def compute_service_gaps(services: list[dict], business_name: str) -> list[dict]:
+    """Compute which subcategories are NOT yet mapped for this trade.
+
+    Loads the full subcategory list for the matched category, diffs against
+    subcategory_ids already in the services list.
+    Returns list of {"subcategory_id": ..., "subcategory_name": ...} dicts.
+    """
+    categories = _load_categories()
+    if not categories:
+        return []
+
+    # Match business name to category
+    name_lower = business_name.lower()
+    matched_cat_key = None
+    for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+        if keyword in name_lower:
+            matched_cat_key = cat_key
+            break
+
+    if not matched_cat_key or matched_cat_key not in categories:
+        return []
+
+    cat_data = categories[matched_cat_key]
+    all_subcats = cat_data.get("subcategories", [])
+
+    # Get IDs already mapped (coerce to int for safe comparison)
+    mapped_ids = set()
+    for s in services:
+        sid = s.get("subcategory_id")
+        if sid is not None:
+            try:
+                mapped_ids.add(int(sid))
+            except (ValueError, TypeError):
+                pass
+
+    cat_id = cat_data.get("category_id", 0)
+
+    # Return unmatched
+    gaps = []
+    for sc in all_subcats:
+        sc_id = sc.get("subcategory_id")
+        if sc_id and int(sc_id) not in mapped_ids:
+            gaps.append({
+                "subcategory_id": sc_id,
+                "subcategory_name": sc.get("subcategory_name", ""),
+                "category_id": cat_id,
+                "category_name": cat_data.get("category_name", matched_cat_key),
+            })
+
+    return gaps
 
 
 # ────────── LOCATION PARSER ──────────
@@ -558,49 +648,131 @@ async def brave_web_search(query: str, count: int = 5) -> list[dict]:
     """Search the web using Brave Search API.
 
     Returns top results with title, url, and description.
-    Useful for finding a business's website, Facebook page, reviews, etc.
+    Retries once on 429 (rate limit) after a short delay.
     """
+    import asyncio as _aio
+
     if not BRAVE_SEARCH_API_KEY:
         print("[BRAVE] No API key configured, skipping web search")
         return []
 
+    for attempt in range(2):
+        try:
+            resp = await _http_client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={
+                    "Accept": "application/json",
+                    "X-Subscription-Token": BRAVE_SEARCH_API_KEY,
+                },
+                params={
+                    "q": query,
+                    "count": str(count),
+                    "country": "AU",
+                },
+            )
+
+            if resp.status_code == 429 and attempt == 0:
+                print(f"[BRAVE] Rate limited, retrying in 1s...")
+                await _aio.sleep(1.0)
+                continue
+
+            if resp.status_code != 200:
+                print(f"[BRAVE] Search failed: {resp.status_code}")
+                return []
+
+            data = resp.json()
+            results = []
+            for item in data.get("web", {}).get("results", [])[:count]:
+                result = {
+                    "title": item.get("title", ""),
+                    "url": item.get("url", ""),
+                    "description": item.get("description", ""),
+                }
+                thumb = item.get("thumbnail", {})
+                if thumb and thumb.get("src"):
+                    result["thumbnail"] = thumb["src"]
+                results.append(result)
+
+            print(f"[BRAVE] Found {len(results)} results for '{query}'")
+            return results
+
+        except Exception as e:
+            print(f"[BRAVE] Search error: {e}")
+            return []
+
+    return []
+
+
+# ────────── GOOGLE PLACES API ──────────
+
+async def google_places_search(business_name: str, state_code: str = "") -> dict:
+    """Search Google Places for a business and return rating, reviews, website.
+
+    Uses the Places API (New) Text Search endpoint.
+    Returns dict with: rating, review_count, website, maps_url, address, name.
+    Returns empty dict on failure.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        print("[GOOGLE] No API key configured, skipping Places search")
+        return {}
+
     try:
-        resp = await _http_client.get(
-            "https://api.search.brave.com/res/v1/web/search",
+        query = business_name
+        if state_code:
+            query += f" {state_code} Australia"
+
+        resp = await _http_client.post(
+            "https://places.googleapis.com/v1/places:searchText",
             headers={
-                "Accept": "application/json",
-                "X-Subscription-Token": BRAVE_SEARCH_API_KEY,
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.reviews",
             },
-            params={
-                "q": query,
-                "count": str(count),
-                "country": "AU",
-            },
+            json={"textQuery": query},
         )
 
         if resp.status_code != 200:
-            print(f"[BRAVE] Search failed: {resp.status_code}")
-            return []
+            print(f"[GOOGLE] Places search failed: {resp.status_code} - {resp.text[:200]}")
+            return {}
 
         data = resp.json()
-        results = []
-        for item in data.get("web", {}).get("results", [])[:count]:
-            result = {
-                "title": item.get("title", ""),
-                "url": item.get("url", ""),
-                "description": item.get("description", ""),
-            }
-            thumb = item.get("thumbnail", {})
-            if thumb and thumb.get("src"):
-                result["thumbnail"] = thumb["src"]
-            results.append(result)
+        places = data.get("places", [])
+        if not places:
+            print(f"[GOOGLE] No places found for '{query}'")
+            return {}
 
-        print(f"[BRAVE] Found {len(results)} results for '{query}'")
-        return results
+        place = places[0]
+        rating = place.get("rating", 0.0)
+        review_count = place.get("userRatingCount", 0)
+        website = place.get("websiteUri", "")
+        maps_url = place.get("googleMapsUri", "")
+        address = place.get("formattedAddress", "")
+        name = place.get("displayName", {}).get("text", "")
+
+        # Extract review text snippets
+        reviews = []
+        for rev in place.get("reviews", []):
+            text = rev.get("text", {}).get("text", "")
+            rev_rating = rev.get("rating", 0)
+            if text:
+                reviews.append({"text": text, "rating": rev_rating})
+
+        result = {
+            "name": name,
+            "rating": rating,
+            "review_count": review_count,
+            "website": website,
+            "maps_url": maps_url,
+            "address": address,
+            "reviews": reviews[:5],
+        }
+
+        print(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}")
+        return result
 
     except Exception as e:
-        print(f"[BRAVE] Search error: {e}")
-        return []
+        print(f"[GOOGLE] Places search error: {e}")
+        return {}
 
 
 # ────────── BUSINESS WEBSITE DISCOVERY ──────────
@@ -947,6 +1119,56 @@ where N is the image number (1-indexed)."""
         print(f"[AI-FILTER] LLM error: {e}")
         # On failure, return all images unfiltered
         return [url for url, b64, mt in valid]
+
+
+# ────────── SEARCH RESULT EXTRACTORS ──────────
+
+def extract_google_rating(results: list[dict]) -> tuple[float, int]:
+    """Extract Google Business rating + review count from Brave search results.
+
+    Looks for patterns like "4.8 · 47 reviews", "Rated 4.8/5 based on 47 reviews",
+    "4.8 stars (47)", "Rating: 4.8 (47 reviews)" in result descriptions.
+    Returns (rating, review_count) or (0.0, 0) if not found.
+    """
+    patterns = [
+        # "4.8 · 47 reviews" or "4.8 · 47 Google reviews"
+        r'(\d\.\d)\s*[·•]\s*(\d+)\s*(?:Google\s+)?reviews?',
+        # "Rated 4.8/5 based on 47 reviews"
+        r'[Rr]ated\s+(\d\.\d)/5\s+(?:based on\s+)?(\d+)\s*reviews?',
+        # "4.8 stars (47 reviews)" or "4.8 stars · 47 reviews"
+        r'(\d\.\d)\s*stars?\s*[·•(]\s*(\d+)\s*reviews?\)?',
+        # "Rating: 4.8 (47 reviews)" or "Rating: 4.8 (47)"
+        r'[Rr]ating:?\s*(\d\.\d)\s*\((\d+)\s*(?:reviews?)?\)',
+        # "4.8(47)" — compact format
+        r'(\d\.\d)\((\d+)\)',
+    ]
+    for r in results:
+        desc = r.get("description", "") + " " + r.get("title", "")
+        for pat in patterns:
+            m = re.search(pat, desc)
+            if m:
+                rating = float(m.group(1))
+                count = int(m.group(2))
+                if 1.0 <= rating <= 5.0 and count > 0:
+                    return rating, count
+    return 0.0, 0
+
+
+def extract_facebook_url(results: list[dict]) -> str:
+    """Pick the best Facebook business page URL from Brave search results.
+
+    Skips marketplace, events, groups, profile.php, and other non-page URLs.
+    Returns the first clean facebook.com page URL, or empty string.
+    """
+    _skip = ("/marketplace", "/events", "/groups", "/profile.php", "/watch", "/reel", "/stories", "/login")
+    for r in results:
+        url = r.get("url", "")
+        if "facebook.com" not in url:
+            continue
+        if any(seg in url for seg in _skip):
+            continue
+        return url
+    return ""
 
 
 def _resolve_url(src: str, base_url: str) -> str:

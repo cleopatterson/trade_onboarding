@@ -56,7 +56,7 @@ If ABR is down, allow manual entry. If service mapping is uncertain, show option
 
 ## Architecture Overview
 
-Python/FastAPI server running a LangGraph-inspired state machine with 6 nodes, a chat wizard frontend, and external API integrations (ABR, NSW Fair Trading, Brave Search). See `docs/PRD.md` for detailed architecture diagrams, file structure, and API specs.
+Python/FastAPI server running a LangGraph-inspired state machine with 7 nodes, a chat wizard frontend, and external API integrations (ABR, NSW Fair Trading, Brave Search). See `docs/PRD.md` for detailed architecture diagrams, file structure, and API specs.
 
 ## Relationship to Other Projects
 
@@ -97,10 +97,11 @@ The prototype is **fully functional end-to-end** with significant UX polish:
 3. **Brave Web Search** — business website/Facebook, phone number extraction via regex
 4. **Service Discovery** — LLM-driven with licence classes, subcategory guides, taxonomy, compact summaries
 5. **Service Area Mapping** — geography-aware with regional guides, state-filtered suburb grouping
-6. **Confirmation + Output** — trade field, edit flow (add/remove without restart), structured JSON
-7. **Dev Tools** — API call tracing in browser console, per-session JSONL logging, replay endpoints
+6. **Profile Builder** — LLM-generated description, website image scraping, editable services/areas, upload support
+7. **Pricing/Subscription** — data-driven plan recommendation based on region count, 3-turn flow
+8. **Dev Tools** — API call tracing in browser console, per-session JSONL logging, replay endpoints
 
-All steps auto-chain (business confirm → services → areas → confirmation → complete).
+All steps auto-chain (business confirm → services → areas → profile → pricing → complete).
 Buttons are LLM-generated and contextual at every step.
 CSS matched to Concierge wizard (blue interactive, green success).
 
