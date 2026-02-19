@@ -1147,6 +1147,7 @@
         max-width: 100%; max-height: 100%;
         border-radius: 0;
       }
+      .wizard-progress-bar { border-radius: 0; }
       #wizard-content { padding: 16px 24px 40px; }
       .wizard-question-text { font-size: 16px; }
       .wizard-loading { min-height: auto; padding: 60px 20px; }
@@ -1403,6 +1404,7 @@
 
       const backdrop = document.getElementById('wizard-modal-backdrop');
       backdrop.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
       setTimeout(() => backdrop.classList.add('show'), 10);
 
       questionCount = 0;
@@ -1437,6 +1439,7 @@
     function closeWizard() {
       const backdrop = document.getElementById('wizard-modal-backdrop');
       backdrop.classList.remove('show');
+      document.body.style.overflow = '';
       sessionId = null;
       setTimeout(() => backdrop.remove(), 300);
     }
