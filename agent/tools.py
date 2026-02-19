@@ -87,6 +87,7 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
                     "state": state,
                     "postcode": postcode,
                     "status": "Active" if data.get("AbnStatus", "") == "Active" else data.get("AbnStatus", "Unknown"),
+                    "entity_start_date": data.get("EntityStartDate", ""),
                 }],
                 "count": 1,
             }
@@ -584,11 +585,15 @@ async def brave_web_search(query: str, count: int = 5) -> list[dict]:
         data = resp.json()
         results = []
         for item in data.get("web", {}).get("results", [])[:count]:
-            results.append({
+            result = {
                 "title": item.get("title", ""),
                 "url": item.get("url", ""),
                 "description": item.get("description", ""),
-            })
+            }
+            thumb = item.get("thumbnail", {})
+            if thumb and thumb.get("src"):
+                result["thumbnail"] = thumb["src"]
+            results.append(result)
 
         print(f"[BRAVE] Found {len(results)} results for '{query}'")
         return results
@@ -596,3 +601,366 @@ async def brave_web_search(query: str, count: int = 5) -> list[dict]:
     except Exception as e:
         print(f"[BRAVE] Search error: {e}")
         return []
+
+
+# ────────── BUSINESS WEBSITE DISCOVERY ──────────
+
+# Suffixes to strip from business names before building domain guesses
+_BIZ_SUFFIXES = re.compile(
+    r'\b(pty\.?\s*ltd\.?|proprietary\s+limited|limited|inc\.?|llc|group)\b',
+    re.IGNORECASE,
+)
+
+async def discover_business_website(business_name: str) -> str:
+    """Try to find a business website by inferring common AU domain patterns.
+
+    Strips 'PTY LTD' etc, builds candidate domains, does HEAD requests.
+    Returns the first URL that resolves, or empty string.
+    """
+    # Clean: "AT YOUR SERVICE PLUMBING PTY LTD" → "at your service plumbing"
+    clean = _BIZ_SUFFIXES.sub("", business_name).strip()
+    clean = re.sub(r'[^a-zA-Z0-9\s]', '', clean).strip()
+    slug = clean.lower().replace(" ", "")
+
+    if not slug or len(slug) < 4:
+        return ""
+
+    # Try common AU TLDs
+    candidates = [
+        f"https://www.{slug}.com.au",
+        f"https://{slug}.com.au",
+        f"https://www.{slug}.au",
+        f"https://{slug}.au",
+        f"https://www.{slug}.net.au",
+    ]
+
+    # Use a fresh client for discovery — shared client can have stale connections
+    import asyncio
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        async def _check(url: str) -> str:
+            try:
+                resp = await client.head(url, follow_redirects=True)
+                if resp.status_code < 400:
+                    content_type = resp.headers.get("content-type", "")
+                    if "text/html" in content_type or "application" in content_type:
+                        print(f"[DISCOVER] Found: {url} → {resp.status_code}")
+                        return str(resp.url)  # Return final URL after redirects
+            except Exception as e:
+                print(f"[DISCOVER] Failed: {url} → {type(e).__name__}")
+            return ""
+
+        results = await asyncio.gather(*[_check(u) for u in candidates])
+
+    # Prefer .com.au over .au (more likely to be the real content site)
+    for r in results:
+        if r:
+            return r
+
+    print(f"[DISCOVER] No website found for '{business_name}' (tried {slug}.*)")
+    return ""
+
+
+# ────────── WEBSITE IMAGE SCRAPER ──────────
+
+# Patterns that indicate an image is a logo
+_LOGO_PATTERNS = re.compile(r'logo|brand|header-img|site-icon', re.IGNORECASE)
+# Patterns that indicate an image is junk (tracking pixels, social icons, etc.)
+_JUNK_PATTERNS = re.compile(
+    r'pixel|tracker|badge|icon-\d|sprite|spacer|gravatar|avatar'
+    r'|facebook|twitter|linkedin|instagram|youtube|google|yelp'
+    r'|\.svg$|1x1|blank\.|widget|button|arrow|caret|loading|spinner',
+    re.IGNORECASE,
+)
+# Extensions we care about
+_IMG_EXTENSIONS = re.compile(r'\.(jpe?g|png|webp)(\?|$)', re.IGNORECASE)
+
+
+async def scrape_website_images(url: str) -> dict:
+    """Fetch a website and extract logo + photo URLs from HTML.
+
+    Returns {"logo": "url_or_empty", "photos": ["url1", ...]}
+    """
+    result = {"logo": "", "photos": []}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+                follow_redirects=True,
+            )
+        if resp.status_code != 200:
+            print(f"[SCRAPE] {url} returned {resp.status_code}")
+            return result
+
+        html = resp.text
+        base_url = str(resp.url)  # After redirects
+
+        # ── Extract logo ──
+        # Priority: og:image > twitter:image > apple-touch-icon > link[rel=icon]
+        logo = ""
+        for pattern in [
+            r'<meta\s+(?:property|name)=["\']og:image["\']\s+content=["\']([^"\']+)["\']',
+            r'<meta\s+content=["\']([^"\']+)["\']\s+(?:property|name)=["\']og:image["\']',
+            r'<meta\s+(?:property|name)=["\']twitter:image["\']\s+content=["\']([^"\']+)["\']',
+            r'<link\s+[^>]*rel=["\']apple-touch-icon["\'][^>]*href=["\']([^"\']+)["\']',
+        ]:
+            m = re.search(pattern, html, re.IGNORECASE)
+            if m:
+                logo = _resolve_url(m.group(1), base_url)
+                break
+
+        # If no meta logo, look for <img> with logo-like attributes
+        if not logo:
+            for m in re.finditer(r'<img\s+[^>]*src=["\']([^"\']+)["\'][^>]*/?\s*>', html, re.IGNORECASE):
+                tag = m.group(0)
+                src = m.group(1)
+                if _LOGO_PATTERNS.search(tag):
+                    logo = _resolve_url(src, base_url)
+                    break
+
+        result["logo"] = logo
+
+        # ── Extract photos ──
+        seen = set()
+        photos = []
+        for m in re.finditer(r'<img\s+[^>]*src=["\']([^"\']+)["\'][^>]*/?\s*>', html, re.IGNORECASE):
+            src = m.group(1)
+            tag = m.group(0)
+
+            # Skip junk
+            if _JUNK_PATTERNS.search(src) or _JUNK_PATTERNS.search(tag):
+                continue
+
+            # Only keep image file extensions
+            if not _IMG_EXTENSIONS.search(src):
+                continue
+
+            # Skip logo (already captured)
+            if logo and src in logo:
+                continue
+
+            # Skip tiny images (explicit width/height attrs)
+            width_m = re.search(r'width=["\']?(\d+)', tag)
+            height_m = re.search(r'height=["\']?(\d+)', tag)
+            if width_m and int(width_m.group(1)) < 100:
+                continue
+            if height_m and int(height_m.group(1)) < 100:
+                continue
+
+            full_url = _resolve_url(src, base_url)
+            if full_url not in seen:
+                seen.add(full_url)
+                photos.append(full_url)
+
+            if len(photos) >= 6:
+                break
+
+        result["photos"] = photos
+        print(f"[SCRAPE] {url}: logo={'yes' if logo else 'no'}, {len(photos)} photos")
+
+    except Exception as e:
+        print(f"[SCRAPE] Error fetching {url}: {e}")
+
+    return result
+
+
+# ────────── SOCIAL MEDIA IMAGE SCRAPER ──────────
+
+async def scrape_social_images(urls: list[str]) -> dict:
+    """Fetch og:image from Facebook/Instagram pages.
+
+    Returns {"logo": "url", "photos": ["url1", ...]}.
+    Facebook profile/cover photos → logo candidate.
+    Instagram profile pic → logo candidate, post images → photos.
+    """
+    result = {"logo": "", "photos": []}
+
+    async def _fetch_og_image(url: str) -> tuple[str, str]:
+        """Fetch a URL, return (og_image_url, source_type)."""
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+                    follow_redirects=True,
+                )
+            if resp.status_code != 200:
+                return "", ""
+
+            html = resp.text
+            # Extract og:image
+            for pattern in [
+                r'<meta\s+(?:property|name)=["\']og:image["\']\s+content=["\']([^"\']+)["\']',
+                r'<meta\s+content=["\']([^"\']+)["\']\s+(?:property|name)=["\']og:image["\']',
+            ]:
+                m = re.search(pattern, html, re.IGNORECASE)
+                if m:
+                    img_url = m.group(1)
+                    if img_url and not img_url.endswith('.svg'):
+                        source = "facebook" if "facebook.com" in url else "instagram"
+                        return img_url, source
+        except Exception as e:
+            print(f"[SOCIAL] Error fetching {url}: {e}")
+        return "", ""
+
+    import asyncio
+    if not urls:
+        return result
+
+    tasks = [_fetch_og_image(u) for u in urls[:4]]  # Cap at 4 fetches
+    fetched = await asyncio.gather(*tasks)
+
+    for img_url, source in fetched:
+        if not img_url:
+            continue
+
+        # Facebook profile/cover → use as logo if we don't have one
+        if source == "facebook" and not result["logo"]:
+            result["logo"] = img_url
+            print(f"[SOCIAL] Facebook logo: {img_url[:80]}")
+        # Instagram profile → logo fallback; post images → photos
+        elif source == "instagram":
+            if not result["logo"]:
+                result["logo"] = img_url
+                print(f"[SOCIAL] Instagram logo: {img_url[:80]}")
+            else:
+                result["photos"].append(img_url)
+                print(f"[SOCIAL] Instagram photo: {img_url[:80]}")
+
+    return result
+
+
+# ────────── AI IMAGE FILTER ──────────
+
+async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradesperson") -> list[str]:
+    """Use Haiku vision to filter photos, keeping only real work/gallery images.
+
+    Downloads each image, sends batch to Haiku for classification.
+    Returns filtered list of URLs that look like genuine work photos.
+    """
+    import asyncio
+    import base64
+    from langchain_anthropic import ChatAnthropic
+    from langchain_core.messages import HumanMessage
+    from agent.config import ANTHROPIC_API_KEY, MODEL_FAST
+
+    if not photo_urls:
+        return []
+
+    # Download images in parallel
+    async def _download(url: str) -> tuple[str, str, str]:
+        """Download image, return (url, base64_data, media_type) or empty on failure."""
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+                    follow_redirects=True,
+                )
+            if resp.status_code != 200:
+                return url, "", ""
+            content_type = resp.headers.get("content-type", "")
+            if "jpeg" in content_type or "jpg" in content_type:
+                media_type = "image/jpeg"
+            elif "png" in content_type:
+                media_type = "image/png"
+            elif "webp" in content_type:
+                media_type = "image/webp"
+            elif "gif" in content_type:
+                media_type = "image/gif"
+            else:
+                # Guess from URL
+                if ".png" in url.lower():
+                    media_type = "image/png"
+                elif ".webp" in url.lower():
+                    media_type = "image/webp"
+                else:
+                    media_type = "image/jpeg"
+            size_kb = len(resp.content) / 1024
+            # Skip if too small (<2KB likely an icon) or too large (>2MB)
+            if len(resp.content) < 2000 or len(resp.content) > 2_000_000:
+                print(f"[AI-FILTER] Skip {url[:60]} — {size_kb:.0f}KB (too {'small' if size_kb < 2 else 'large'})")
+                return url, "", ""
+            print(f"[AI-FILTER] Downloaded {url[:60]} — {size_kb:.0f}KB {media_type}")
+            b64 = base64.b64encode(resp.content).decode("utf-8")
+            return url, b64, media_type
+        except Exception as e:
+            print(f"[AI-FILTER] Download error {url[:60]}: {e}")
+            return url, "", ""
+
+    downloads = await asyncio.gather(*[_download(u) for u in photo_urls[:8]])
+    valid = [(url, b64, mt) for url, b64, mt in downloads if b64]
+
+    if not valid:
+        print("[AI-FILTER] No images downloaded successfully")
+        return []
+
+    # Build multimodal message with all images
+    content_parts = [{
+        "type": "text",
+        "text": f"""You are reviewing images scraped from a {business_type}'s website.
+For each image, classify it as one of:
+- WORK: A photo showing completed work, a job in progress, before/after, or a work portfolio image
+- SKIP: A logo, icon, banner, stock photo, headshot, decoration, UI element, map, or anything NOT a work photo
+
+Respond with one line per image in format: IMAGE_N: WORK or IMAGE_N: SKIP
+where N is the image number (1-indexed)."""
+    }]
+
+    for i, (url, b64, mt) in enumerate(valid):
+        content_parts.append({
+            "type": "text",
+            "text": f"IMAGE_{i+1}:"
+        })
+        content_parts.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": mt,
+                "data": b64,
+            }
+        })
+
+    try:
+        llm = ChatAnthropic(
+            model=MODEL_FAST,
+            api_key=ANTHROPIC_API_KEY,
+            max_tokens=256,
+            temperature=0,
+        )
+        response = await llm.ainvoke([HumanMessage(content=content_parts)])
+        response_text = response.content.strip()
+        print(f"[AI-FILTER] Response: {response_text}")
+
+        # Parse response — keep only WORK images
+        kept = []
+        for i, (url, b64, mt) in enumerate(valid):
+            marker = f"IMAGE_{i+1}"
+            if f"{marker}: WORK" in response_text or f"{marker}:WORK" in response_text:
+                kept.append(url)
+
+        print(f"[AI-FILTER] Kept {len(kept)}/{len(valid)} images as work photos")
+        return kept
+
+    except Exception as e:
+        print(f"[AI-FILTER] LLM error: {e}")
+        # On failure, return all images unfiltered
+        return [url for url, b64, mt in valid]
+
+
+def _resolve_url(src: str, base_url: str) -> str:
+    """Resolve a potentially relative URL against a base URL."""
+    if src.startswith("//"):
+        return "https:" + src
+    if src.startswith("http"):
+        return src
+    if src.startswith("/"):
+        # Absolute path — extract origin from base
+        from urllib.parse import urlparse
+        parsed = urlparse(base_url)
+        return f"{parsed.scheme}://{parsed.netloc}{src}"
+    # Relative path
+    if "/" in base_url:
+        return base_url.rsplit("/", 1)[0] + "/" + src
+    return src

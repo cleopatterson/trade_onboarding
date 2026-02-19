@@ -91,17 +91,34 @@
 
 ---
 
-## Phase 4: Confirmation + Output ✅
-> Final review, edit routing, structured JSON output
+## Phase 4: Profile Builder + Output ✅
+> Profile preview, editable services/areas, LLM description, image scraping
 
-- [x] Build `confirmation` node — formatted summary of all data
-- [x] LLM intent classifier (Haiku): CONFIRMED / EDIT_SERVICES / EDIT_AREAS / EDIT_BUSINESS
-- [x] Handle edit requests — route back to relevant section (reset confirmed flag)
-- [x] Data-driven confirmation buttons: "Confirm & Register" / "Edit Services" / "Edit Service Areas"
-- [x] Build `complete` node — generate final structured JSON
-- [x] Auto-chain: confirmed → complete
-- [x] Output JSON includes: business, ABN, licence (number, classes, status, expiry), services, service_areas, contact
+- [x] Build `profile` node — LLM-generated description + intro, website image scraping
+- [x] Website discovery: infer business domain from name, try common AU TLDs
+- [x] Scrape logo + photos from business website (og:image, logo patterns, large images)
+- [x] AI image filter: Haiku vision classifies scraped photos as WORK/SKIP
+- [x] Social media scraping: Facebook/Instagram og:image for logo/photo fallback
+- [x] Profile builder UI: SS blue gradient hero, white card sections on gray background
+- [x] Hero: logo upload, business name, contact, suburb/postcode, establishment year, trust badges
+- [x] Editable About section: LLM-generated description in textarea with char counter
+- [x] Editable services: pencil toggle → tap to strikethrough, hint text, checkmark when done
+- [x] Editable areas: same pencil toggle UX as services
+- [x] Licences card: green rows with shield icons, 2-column grid
+- [x] Gallery card: photo grid with add/remove, drag-drop upload
+- [x] CTA card: "Publish My Profile" with SS blue gradient + green button
+- [x] Upload endpoint: `POST /api/upload` for logo + work photos (base64, max 5MB)
+- [x] Save sends JSON payload: `{description, removed_services, removed_areas}`
+- [x] Confirmation step removed — editing absorbed into profile preview
+- [x] Auto-chain: service_areas_confirmed → profile → pricing → complete
+- [x] Conversational AI intro on profile page (LLM-generated, varies per session)
+- [x] Build `complete` node — generate final structured JSON with profile data
+- [x] Output JSON includes: business, ABN, licence, services, service_areas, contact, profile, subscription
 - [x] Result endpoint: `GET /api/session/:id/result`
+- [x] Pricing/subscription node — data-driven plan recommendation after profile publish
+- [x] 3-turn pricing flow: plan selection → billing frequency → confirmation (or skip)
+- [x] Plan recommendation based on region count (≤2→Standard, ≤5→Plus, >5→Pro)
+- [x] Subscription data in output JSON (plan, billing, price) — omitted when skipped
 
 ---
 
@@ -133,7 +150,7 @@
 - [x] LLM JSON fallback when plain text returned
 - [x] Performance optimisation: Haiku for all nodes, parallel auto-chain (21s → 6s, 11s → 5s)
 - [x] Prompt de-scripting: removed turn-by-turn scripts, replaced with guidance
-- [x] Editable confirmation screen: services + areas as toggleable chips
+- [x] ~~Editable confirmation screen~~ (replaced by profile builder — services/areas editable there)
 - [x] Progressive loading: magic stars + API activity steps for key transitions
 - [x] Completion screen fix: service areas showing regions instead of "0 suburbs"
 - [x] CSS refinements: info-box spacing, question text line-height/weight/smoothing
@@ -167,9 +184,9 @@
 > Not scoped, revisit later
 
 - [ ] Licence verification for other states (VIC, QLD, WA, SA — need separate APIs)
-- [ ] Photo upload for business logo
+- [x] ~~Photo upload for business logo~~ (done in profile builder)
 - [ ] Insurance details capture
-- [ ] Portfolio/previous work links
+- [x] ~~Portfolio/previous work links~~ (gallery upload in profile builder)
 - [ ] Multi-language support
 - [ ] Voice input (Whisper)
 - [ ] A/B test against traditional form
@@ -258,3 +275,54 @@
 - **Deployment**: Git init, pushed to github.com/cleopatterson/trade_onboarding, deployed on Railway
   - Procfile: `uvicorn server.app:app --host 0.0.0.0 --port $PORT`
   - Live at: https://trade-onboarding.up.railway.app
+
+### Feb 19, 2026 — Profile Builder + Confirmation Removal
+- **Profile Builder**: New `profile` node replaces raw completion screen with polished profile preview
+  - SS blue gradient hero (#298AE3) with logo upload, business name, trust badges, suburb + est. year
+  - White card sections on gray (#F8FAFC) background: Licences, About, Services, Areas, Gallery, CTA
+  - LLM-generated business description (Haiku) + conversational intro message
+  - JSON prompt output with markdown code fence stripping (`\`\`\`json` → parsed)
+  - Services + areas editable via pencil toggle (tap to strikethrough, hint text, checkmark icon)
+  - Photo gallery with upload, remove buttons, drag-drop support
+  - "Publish My Profile" CTA sends JSON payload with description + removed services/areas
+- **Website Image Scraping**: Domain discovery + AI image filter
+  - `discover_business_website()`: infers domain from business name, tries .com.au/.au/.net.au
+  - Always runs in parallel with Brave scrape — discovered domain takes priority
+  - `ai_filter_photos()`: downloads candidate images, sends batch to Haiku vision
+  - Classifies each image as WORK (real job photos) or SKIP (logos, banners, stock)
+  - Size thresholds: skip <2KB (icons) and >2MB, download up to 8 candidates
+  - Directory site filtering: mylocaltrades, hipages, etc. added to skip list
+- **Confirmation Step Removed**: Flow now goes SERVICE_AREA → PROFILE → COMPLETE
+  - Saves one step in the wizard (faster onboarding)
+  - Services/areas editing moved to profile preview (pencil toggle)
+  - `determine_node()` and both auto-chain paths updated to skip confirmation
+  - `confirmed` flag set automatically during auto-chain
+- **Service Discovery Improvements**
+  - Gap questions: 2-3 per session instead of 1 (more thorough service coverage)
+  - Safety cap: forces `services_confirmed` after 4 turns (prevents infinite gap loops)
+  - Turn 2+ prompt includes subcategory guide + licence classes for better follow-up questions
+  - Declined gap questions trigger immediate wrap-up (no more stuck loops)
+- **Licence Search Fix**: Apostrophe handling improved
+  - Searches with original business name first (e.g. "DAN'S PLUMBING")
+  - Only retries without apostrophe if 0 results (was always stripping before)
+- **Loading Screen Fix**: Profile building animation now shows correctly
+  - Combined `isServiceConfirm || isAreaConfirm` into single trigger
+  - Handles parallel path (gap question → services confirm → area confirm → profile build)
+  - 4-step animation: finalising services → pulling images → generating description → preparing preview
+- **Design**: SS blue (#298AE3) for hero + CTA, existing green (#1FC759) for publish button
+  - 2-column grid for licences and service areas
+  - Shield icon for licences, map pin for areas
+  - Responsive: grids collapse to single column on mobile
+
+### Feb 19, 2026 — Pricing/Subscription Node
+- **Pricing Node**: New `pricing_node` between profile publish and completion
+  - Data-driven (no LLM call) — recommends plan based on service area region count
+  - 3 plans: Standard ($49/mo, 10km), Plus ($79/mo, 20km), Pro ($119/mo, 50km)
+  - Quarterly (20% off) and annual (40% off) billing options
+  - 3-turn flow: plan recommendation → billing frequency → confirmation
+  - Skip path: "Not ready yet" sets `subscription_plan: "skip"`, proceeds to complete
+  - Guard logic: `_selected_plan` distinguishes plan selection turn from billing turn
+- **Auto-chain**: profile_saved → pricing → complete (both normal + parallel paths)
+- **State**: 4 new fields: `pricing_shown`, `subscription_plan`, `subscription_billing`, `subscription_price`
+- **Output JSON**: `subscription` object included when plan selected (omitted on skip)
+- **Frontend**: Progress bar updated to 6 steps, pricing uses standard chat Q&A layout
