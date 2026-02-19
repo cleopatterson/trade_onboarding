@@ -23,7 +23,8 @@ from agent.tools import (
     get_suburbs_in_radius_grouped, get_regional_guide,
     find_subcategory_guide,
     nsw_licence_browse, nsw_licence_details,
-    brave_web_search,
+    brave_web_search, scrape_website_images,
+    discover_business_website, scrape_social_images, ai_filter_photos,
 )
 
 
@@ -237,12 +238,25 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     licence_info = state.get("licence_info", {})
 
     is_follow_up = bool(services)  # Services already mapped = turn 2+
+    svc_turn = state.get("_svc_turn", 1 if not is_follow_up else 2)
+
+    # Safety cap: force completion after 3 turns (2 gap questions max)
+    if svc_turn > 3 and is_follow_up:
+        print(f"[SVC] Safety cap: forcing completion after {svc_turn} turns")
+        return {
+            "current_node": "service_discovery",
+            "services": services,
+            "services_confirmed": True,
+            "_svc_turn": svc_turn,
+            "messages": [AIMessage(content="All sorted — let's move on to your service area!")],
+        }
 
     # ── TURN 2+: Haiku with trimmed prompt ──
     if is_follow_up:
         model = llm_fast_json
         model_name = MODEL_FAST
         taxonomy = get_category_taxonomy_text()
+        guide = find_subcategory_guide(business_name)
         current_cats = list(set(s.get("category_name", "") for s in services))
         relevant_taxonomy = _get_relevant_taxonomy(taxonomy, current_cats)
 
@@ -250,18 +264,26 @@ async def service_discovery_node(state: OnboardingState) -> dict:
 
 BUSINESS: {business_name}
 CURRENT SERVICES: {json.dumps(services)}
+{f'NSW LICENCE CLASSES: {", ".join(licence_classes)}' if licence_classes else ''}
+GAP QUESTION TURN: {svc_turn - 1} of 2 max
+
+SUBCATEGORY GUIDE:
+{guide[:3000] if guide else "No specific guide available."}
 
 RELEVANT TAXONOMY (for looking up IDs if adding new services):
 {relevant_taxonomy}
 
 The user responded to your gap question. Update the services list:
-- If they want to add a service, add it with correct category_id/subcategory_id from the taxonomy
+- If they said yes/confirmed: add the service(s) with correct category_id/subcategory_id from the taxonomy
+- If they said no/declined: don't add anything
 - If they want to remove something, remove it
 - Keep all existing services unless they explicitly asked to remove them
-- Set step_complete = true — you're done
+- You MUST set step_complete=true if this is gap question turn 2 or higher. The tradie has answered enough — time to move on.
+- Only set step_complete=false if this is turn 1 AND there's one clearly significant service gap remaining.
+- Keep your response to 1-2 sentences.
 
 Return a JSON object:
-{{"response": "brief one-line confirmation of changes", "services": [full updated array with input, category_name, category_id, subcategory_name, subcategory_id, confidence], "buttons": [], "step_complete": true}}
+{{"response": "your message", "services": [full updated array], "buttons": ["2-4 quick-tap options if asking another gap question, or empty if done"], "step_complete": true/false}}
 
 Return ONLY the JSON object."""
 
@@ -310,18 +332,21 @@ GUIDELINES:
 - Be conversational and Australian. Keep it short — tradies are busy.
 - Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for. Web results and business name add context.
 - Map as many services as you can in one go. The full detail is in the JSON services array — your response text is just a conversational summary. Keep it to a sentence or two: mention the total count and group names, not every individual service. No headers, no bullet points, no line breaks in the summary.
-- Then ask ONE short gap question — a service they likely offer but you haven't mapped yet. Just the question, no preamble or explanation. Focus on actual trade services, not scheduling preferences (emergency call-outs, after-hours aren't service types in the taxonomy).
-- When the tradie answers your gap question, update the list and wrap up. Two turns max — be decisive.
+- Then ask ONE short gap question about a high-value service they likely offer but haven't mentioned yet. Focus on actual trade work, not preferences (emergency call-outs, after-hours aren't service types). Pick the question that would help them win the most work if they said yes.
+- After each gap answer, update the list and ask another gap question if there are still significant services unaccounted for. Don't rush — missing services means missing work for the tradie.
+- Wrap up (step_complete=true) after 2-3 gap questions, or earlier if the tradie signals they're done.
 - Don't announce what you're doing, just do it. Keep your total response under 3 sentences.
 
 Return a JSON object:
 {{"response": "your conversational message", "services": [array of mapped services with input, category_name, category_id, subcategory_name, subcategory_id, confidence], "buttons": ["2-4 button options that let the tradie answer your gap question with a tap"], "step_complete": true/false}}
 
-step_complete = true when: the tradie has confirmed or responded to the gap question, or hasn't raised issues with the mapped services.
+step_complete = true when: you've asked 2-3 gap questions, or the tradie has signalled they're done, or there are no more significant service gaps to cover.
 
 Return ONLY the JSON object."""
 
+        contact = state.get("contact_name", "")
         dynamic_context = f"""BUSINESS: {business_name}
+{f'CONTACT: {contact}' if contact else ''}
 SERVICES MAPPED SO FAR: {json.dumps(services) if services else "None yet"}
 {licence_context}
 {web_context}
@@ -368,6 +393,7 @@ CONVERSATION SO FAR:
             "services": new_services,
             "services_raw": last_msg or f"Inferred from: {business_name}",
             "services_confirmed": step_complete,
+            "_svc_turn": svc_turn + 1,
             "buttons": [{"label": b, "value": b} for b in buttons],
             "messages": [AIMessage(content=message)],
         }
@@ -484,7 +510,9 @@ step_complete = true when the tradie has indicated which regions they cover.
 
 Return ONLY the JSON object."""
 
+        contact = state.get("contact_name", "")
         dynamic_context = f"""BUSINESS: {business_name}
+{f'CONTACT: {contact}' if contact else ''}
 BASE SUBURB: {grouped.get("base_suburb", "Unknown")} ({postcode})
 STATE: {business_state}
 CURRENT SERVICE AREA: Not set yet"""
@@ -672,6 +700,400 @@ Everything look good?"""
     }
 
 
+def _compute_years_in_business(state: dict) -> int:
+    """Compute years in business from licence start_date or ABR registration date."""
+    from datetime import datetime
+
+    # Try licence start date first (more reliable for tradies)
+    licence_info = state.get("licence_info", {})
+    date_str = licence_info.get("start_date", "")
+
+    # Fall back to ABR registration date
+    if not date_str:
+        date_str = state.get("abn_registration_date", "")
+
+    if not date_str:
+        return 0
+
+    try:
+        # Handle common date formats: "2015-01-15", "15/01/2015", "2015"
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y"):
+            try:
+                dt = datetime.strptime(date_str.strip(), fmt)
+                years = datetime.now().year - dt.year
+                return max(0, years)
+            except ValueError:
+                continue
+        return 0
+    except Exception:
+        return 0
+
+
+async def profile_node(state: OnboardingState) -> dict:
+    """Generate a profile preview with LLM description and years in business.
+
+    First call (auto-chained from confirmation): generate description draft.
+    Save call (__SAVE_PROFILE__: prefix): store edited description, mark saved.
+    """
+    messages = state.get("messages", [])
+    last_msg = _get_last_human_message(messages)
+
+    # ── Save call: user clicked Save Profile ──
+    if last_msg and last_msg.startswith("__SAVE_PROFILE__:"):
+        payload = last_msg[len("__SAVE_PROFILE__:"):].strip()
+        result = {
+            "current_node": "profile",
+            "profile_saved": True,
+        }
+
+        # Parse JSON payload with description + optional edits
+        try:
+            data = json.loads(payload)
+            result["profile_description"] = data.get("description", "")
+
+            # Handle service removals
+            removed_svcs = data.get("removed_services", [])
+            if removed_svcs:
+                services = state.get("services", [])
+                result["services"] = [s for s in services if s.get("subcategory_name", s.get("input", "")) not in removed_svcs]
+
+            # Handle area removals
+            removed_areas = data.get("removed_areas", [])
+            if removed_areas:
+                service_areas = dict(state.get("service_areas", {}))
+                service_areas["regions_included"] = [r for r in service_areas.get("regions_included", []) if r not in removed_areas]
+                service_areas["regions_excluded"] = service_areas.get("regions_excluded", []) + removed_areas
+                result["service_areas"] = service_areas
+        except (json.JSONDecodeError, AttributeError):
+            # Backwards compat: plain text description
+            result["profile_description"] = payload
+
+        return result
+
+    # ── Idempotency: if draft already exists, return early ──
+    if state.get("profile_description_draft"):
+        return {
+            "current_node": "profile",
+        }
+
+    # ── First call: compute years, generate description, scrape website images ──
+    years = _compute_years_in_business(state)
+
+    business_name = state.get("business_name", "")
+    licence_classes = state.get("licence_classes", [])
+    services = state.get("services", [])
+    service_areas = state.get("service_areas", {})
+    web_results = state.get("web_results", [])
+    contact_name = state.get("contact_name", "")
+
+    services_text = ", ".join([s.get("subcategory_name", s.get("input", "")) for s in services])
+    regions = service_areas.get("regions_included", [])
+    regions_text = ", ".join(regions) if regions else "local area"
+
+    web_context = ""
+    if web_results:
+        web_lines = [f"- {r.get('title', '')}: {r.get('description', '')}" for r in web_results[:3]]
+        web_context = "\nWEB RESULTS:\n" + "\n".join(web_lines)
+
+    # ── Run LLM description + intro in parallel with scrape ──
+    llm_task = llm_fast_json.ainvoke([
+        SystemMessage(content=f"""You're helping a tradie set up their Service Seeking profile. Do two things:
+
+1. Write a short "intro" message (1 sentence) presenting their profile preview and inviting them to make changes. Speak as one person (not "we"), conversational and Australian, use their first name if known. Like "Here's your profile [name] — let me know if you want to change anything." Vary the wording naturally. Don't give specific UI instructions.
+2. Write a "description" (2-3 sentences) for their profile listing.
+
+BUSINESS: {business_name}
+{f'OWNER: {contact_name}' if contact_name else ''}
+{f'LICENCE CLASSES: {", ".join(licence_classes)}' if licence_classes else ''}
+SERVICES: {services_text}
+AREAS: {regions_text}
+{f'YEARS IN BUSINESS: {years}' if years else ''}
+{web_context}
+
+DESCRIPTION GUIDELINES:
+- Third person, professional but warm Australian tone
+- Mention key services, areas covered, and years of experience if available
+- Keep under 500 characters — punchy and specific, not generic
+- Don't mention ABN, licence numbers, or compliance details
+- Focus on what makes this business worth hiring
+
+Return JSON: {{"intro": "...", "description": "..."}}"""),
+        HumanMessage(content="Generate the intro and profile description."),
+    ])
+
+    # Separate web results into: business site, social media, junk
+    scrape_url = ""
+    social_urls = []
+    _directory_domains = [
+        "yelp.com", "yellowpages", "truelocal", "hipages.com", "oneflare.com",
+        "airtasker.com", "serviceseeking.com", "productreview.com", "localsearch.com",
+        "hotfrog.com", "startlocal.com", "word-of-mouth.com", "mylocaltrades",
+        ".gov.au", "wikipedia.org", "linkedin.com", "gumtree.com",
+    ]
+    for wr in web_results:
+        url = wr.get("url", "")
+        if "facebook.com" in url or "instagram.com" in url:
+            social_urls.append(url)
+        elif not scrape_url and not any(d in url for d in _directory_domains):
+            scrape_url = url
+
+    # ── Run everything in parallel: LLM + domain discovery + brave scrape + social ──
+    # Always run domain discovery — Brave often returns only directory sites for tradies
+    t0 = time.time()
+    parallel_tasks = [llm_task, discover_business_website(business_name)]
+    if scrape_url:
+        parallel_tasks.append(scrape_website_images(scrape_url))
+    parallel_tasks.append(scrape_social_images(social_urls))
+
+    results = await asyncio.gather(*parallel_tasks)
+    response = results[0]
+    discovered_url = results[1]  # str: discovered domain URL or ""
+    if scrape_url:
+        brave_scraped = results[2]
+        social_result = results[3]
+    else:
+        brave_scraped = {"logo": "", "photos": []}
+        social_result = results[2]
+
+    # Discovered domain takes priority — scrape it if found
+    if discovered_url:
+        scraped = await scrape_website_images(discovered_url)
+        scrape_url = discovered_url
+        # Fall back to Brave scrape if discovery site had nothing
+        if not scraped.get("logo") and not scraped.get("photos"):
+            scraped = brave_scraped
+    else:
+        scraped = brave_scraped
+
+    llm_time = time.time() - t0
+
+    # Parse LLM response — JSON with intro + description
+    raw = response.content.strip()
+    # Strip markdown code fences if present (```json ... ```)
+    if raw.startswith("```"):
+        raw = re.sub(r'^```(?:json)?\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+    print(f"[PROFILE] Raw LLM response: {raw[:200]}")
+    try:
+        parsed = json.loads(raw)
+        intro = parsed.get("intro", "")
+        description = parsed.get("description", "")
+        print(f"[PROFILE] Parsed intro: {intro[:80]}")
+        print(f"[PROFILE] Parsed desc: {description[:80]}")
+    except json.JSONDecodeError:
+        # Fallback: treat entire response as description
+        intro = ""
+        description = raw.strip('"')
+        print(f"[PROFILE] JSON parse failed, using raw as description")
+
+    # ── Merge images: website > social > Brave thumbnails ──
+    logo = scraped.get("logo", "")
+    photos = list(scraped.get("photos", []))
+
+    # Layer in social media images
+    if social_result:
+        if not logo and social_result.get("logo"):
+            logo = social_result["logo"]
+        for p in social_result.get("photos", []):
+            if p not in photos and p != logo and len(photos) < 6:
+                photos.append(p)
+
+    # Brave thumbnails as last resort — only from non-junk sources
+    _skip_thumb_domains = _directory_domains + ["facebook.com", "instagram.com"]
+    for wr in web_results:
+        thumb = wr.get("thumbnail", "")
+        wr_url = wr.get("url", "")
+        if thumb and thumb not in photos and thumb != logo:
+            if not any(d in wr_url for d in _skip_thumb_domains):
+                photos.append(thumb)
+        if len(photos) >= 6:
+            break
+
+    _trace(state, "LLM: Profile Description", llm_time,
+           f"Generated {len(description)} char description",
+           {"years_in_business": years})
+    if scrape_url:
+        _trace(state, "Website Scrape", llm_time,
+               f"logo={'yes' if logo else 'no'}, {len(scraped.get('photos', []))} photos from site, {len(photos)} total",
+               {"url": scrape_url, "logo": bool(logo), "site_photos": len(scraped.get("photos", [])),
+                "brave_thumbs": len(photos) - len(scraped.get("photos", []))})
+
+    # ── AI filter: use vision to keep only real work photos ──
+    print(f"[PROFILE] {len(photos)} candidate photos before AI filter: {[u[:60] for u in photos]}")
+    if photos:
+        trade_type = ""
+        if services:
+            cats = list(dict.fromkeys(s.get("category_name", "") for s in services if s.get("category_name")))
+            trade_type = cats[0].lower() if cats else "tradesperson"
+        photos = await ai_filter_photos(photos[:8], trade_type or "tradesperson")
+
+    return {
+        "current_node": "profile",
+        "years_in_business": years,
+        "profile_description": description,
+        "profile_description_draft": description,
+        "profile_intro": intro,
+        "profile_logo": logo,
+        "profile_photos": photos[:6],
+        "messages": [AIMessage(content=intro or description)],
+    }
+
+
+PRICING_PLANS = {
+    "standard": {"coverage": "10km", "monthly": 49, "quarterly": 118, "annual": 349,
+                  "monthly_equiv_q": 39, "monthly_equiv_a": 29},
+    "plus":     {"coverage": "20km", "monthly": 79, "quarterly": 190, "annual": 569,
+                  "monthly_equiv_q": 63, "monthly_equiv_a": 47},
+    "pro":      {"coverage": "50km", "monthly": 119, "quarterly": 286, "annual": 859,
+                  "monthly_equiv_q": 95, "monthly_equiv_a": 72},
+}
+
+
+async def pricing_node(state: OnboardingState) -> dict:
+    """Present subscription options after profile publish.
+
+    Turn 1 (auto-chained): recommend plan based on region count, show buttons.
+    Turn 2: user selected plan → ask billing frequency (or skip).
+    Turn 3: user selected billing → set subscription, done.
+    """
+    messages = state.get("messages", [])
+    last_msg = _get_last_human_message(messages)
+
+    service_areas = state.get("service_areas", {})
+    regions = service_areas.get("regions_included", [])
+    region_count = len(regions)
+    regions_text = ", ".join(regions) if regions else "your area"
+
+    # ── Turn 1: Recommend a plan (no LLM call) ──
+    if not state.get("pricing_shown"):
+        # Pick recommendation based on region count
+        if region_count <= 2:
+            rec = "standard"
+        elif region_count <= 5:
+            rec = "plus"
+        else:
+            rec = "pro"
+
+        plan = PRICING_PLANS[rec]
+        rec_label = rec.capitalize()
+
+        message = (
+            f"Your profile is live! Based on your coverage in {regions_text}, "
+            f"I'd recommend the **{rec_label}** plan at ${plan['monthly']}/mo — "
+            f"covers up to {plan['coverage']} and gets you all leads in your area. "
+            f"No commissions, no per-lead fees."
+        )
+
+        # Build buttons: recommended first, then others, then skip
+        button_order = [rec] + [p for p in ["standard", "plus", "pro"] if p != rec]
+        buttons = []
+        for p in button_order:
+            info = PRICING_PLANS[p]
+            label = f"{p.capitalize()} — ${info['monthly']}/mo"
+            if p == rec:
+                label += " (Recommended)"
+            buttons.append({"label": label, "value": f"__PLAN__:{p}"})
+        buttons.append({"label": "Not ready yet — skip", "value": "__PLAN__:skip"})
+
+        return {
+            "current_node": "pricing",
+            "pricing_shown": True,
+            "buttons": buttons,
+            "messages": [AIMessage(content=message)],
+        }
+
+    # ── Turn 3: User selected billing (plan already chosen on prev turn) ──
+    selected_plan = state.get("_selected_plan", "")
+    if selected_plan:
+        billing = ""
+        if last_msg and "__BILLING__:" in last_msg:
+            billing = last_msg.split("__BILLING__:")[1].strip().lower()
+        elif last_msg:
+            lower = last_msg.lower()
+            for b in ["annual", "quarterly", "monthly"]:
+                if b in lower:
+                    billing = b
+                    break
+
+        if billing and selected_plan in PRICING_PLANS:
+            plan = PRICING_PLANS[selected_plan]
+            if billing == "monthly":
+                price = f"${plan['monthly']}/mo"
+            elif billing == "quarterly":
+                price = f"${plan['quarterly']}/qtr"
+            else:
+                price = f"${plan['annual']}/yr"
+
+            return {
+                "current_node": "pricing",
+                "subscription_plan": selected_plan,
+                "subscription_billing": billing,
+                "subscription_price": price,
+                "messages": [AIMessage(content=f"Locked in — {selected_plan.capitalize()} plan, {billing}. Let's get you set up!")],
+            }
+
+        # Couldn't parse billing — re-show billing buttons
+        plan = PRICING_PLANS[selected_plan]
+        buttons = [
+            {"label": f"Monthly — ${plan['monthly']}/mo", "value": "__BILLING__:monthly"},
+            {"label": f"Quarterly — ${plan['quarterly']} (save 20%)", "value": "__BILLING__:quarterly"},
+            {"label": f"Annual — ${plan['annual']} (save 40%)", "value": "__BILLING__:annual"},
+        ]
+        return {
+            "current_node": "pricing",
+            "buttons": buttons,
+            "messages": [AIMessage(content="How would you like to pay — monthly, quarterly, or annual?")],
+        }
+
+    # ── Turn 2: User selected a plan ──
+    selected = ""
+    if last_msg and "__PLAN__:" in last_msg:
+        selected = last_msg.split("__PLAN__:")[1].strip().lower()
+    elif last_msg:
+        lower = last_msg.lower()
+        if "skip" in lower or "not ready" in lower:
+            selected = "skip"
+        else:
+            for p in ["standard", "plus", "pro"]:
+                if p in lower:
+                    selected = p
+                    break
+
+    if selected == "skip":
+        return {
+            "current_node": "pricing",
+            "subscription_plan": "skip",
+            "messages": [AIMessage(content="No worries — you can always upgrade later from your dashboard.")],
+        }
+
+    if selected in PRICING_PLANS:
+        plan = PRICING_PLANS[selected]
+        label = selected.capitalize()
+        buttons = [
+            {"label": f"Monthly — ${plan['monthly']}/mo", "value": "__BILLING__:monthly"},
+            {"label": f"Quarterly — ${plan['quarterly']} (save 20%)", "value": "__BILLING__:quarterly"},
+            {"label": f"Annual — ${plan['annual']} (save 40%)", "value": "__BILLING__:annual"},
+        ]
+        return {
+            "current_node": "pricing",
+            "_selected_plan": selected,
+            "buttons": buttons,
+            "messages": [AIMessage(content=f"Great choice! The {label} plan it is. How would you like to pay?")],
+        }
+
+    # Couldn't parse — re-show plan buttons
+    buttons = []
+    for p in ["standard", "plus", "pro"]:
+        info = PRICING_PLANS[p]
+        buttons.append({"label": f"{p.capitalize()} — ${info['monthly']}/mo", "value": f"__PLAN__:{p}"})
+    buttons.append({"label": "Not ready yet — skip", "value": "__PLAN__:skip"})
+    return {
+        "current_node": "pricing",
+        "buttons": buttons,
+        "messages": [AIMessage(content="Which plan works best for you?")],
+    }
+
+
 async def complete_node(state: OnboardingState) -> dict:
     """Generate final JSON output."""
     services_output = []
@@ -725,12 +1147,24 @@ async def complete_node(state: OnboardingState) -> dict:
         },
         "contact_name": state.get("contact_name", ""),
         "contact_phone": state.get("contact_phone", ""),
+        "profile": {
+            "description": state.get("profile_description", ""),
+            "years_in_business": state.get("years_in_business"),
+            "logo": state.get("profile_logo", ""),
+            "photos": state.get("profile_photos", []),
+        },
+        "subscription": {
+            "plan": state.get("subscription_plan", ""),
+            "billing": state.get("subscription_billing", ""),
+            "price": state.get("subscription_price", ""),
+        } if state.get("subscription_plan") and state.get("subscription_plan") != "skip" else None,
     }
 
     return {
         "current_node": "complete",
         "output_json": output,
         "confirmed": True,
+        "profile_saved": True,
         "messages": [AIMessage(content="You're all set! Your profile is ready on Service Seeking — you'll start getting matched with relevant jobs in your area soon. Welcome aboard!")],
     }
 
@@ -760,19 +1194,23 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     postcode = abr.get("postcode", "")
     business_state = abr.get("state", "")
 
-    # Clean the search term (remove special chars that break the licence API)
-    clean_name = business_name.replace("'", "").replace("'", "")
-
     # Run licence lookup and web search in parallel for enrichment
     t0 = time.time()
-    licence_task = nsw_licence_browse(clean_name)
+    licence_task = nsw_licence_browse(business_name)
     web_task = brave_web_search(f"{business_name} {business_state} tradesperson")
     licence_results, web_results = await asyncio.gather(licence_task, web_task)
     t1 = time.time()
     print(f"[BIZ] Licence browse + web search: {t1 - t0:.1f}s (parallel)")
 
+    # If no results and name has apostrophe, retry without it
+    search_name = business_name
+    if not licence_results.get("results") and ("'" in business_name or "\u2019" in business_name):
+        search_name = business_name.replace("'", "").replace("\u2019", "")
+        licence_results = await nsw_licence_browse(search_name)
+        print(f"[BIZ] Licence retry without apostrophe: {len(licence_results.get('results', []))} results")
+
     _trace(state, "NSW Licence Browse", t1 - t0,
-           f"{len(licence_results.get('results', []))} licence matches for '{clean_name}'",
+           f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
            {"results": [
                {"licensee": r.get("licensee"), "status": r.get("status"),
                 "licence_number": r.get("licence_number"), "suburb": r.get("suburb")}
@@ -796,7 +1234,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         if lic.get("status") != "Current":
             continue
         licensee = lic.get("licensee", "").lower()
-        if clean_name.lower() in licensee or licensee in clean_name.lower():
+        if search_name.lower() in licensee or licensee in search_name.lower():
             best_match = lic
             break
 
@@ -866,6 +1304,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "web_results": web_results[:3] if web_results else [],
         "contact_name": contact_name,
         "contact_phone": contact_phone,
+        "abn_registration_date": abr.get("entity_start_date", ""),
         "messages": [AIMessage(content=f"Great, {business_name} is confirmed!")],
     }
 

@@ -8,7 +8,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+import base64
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +18,8 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from agent.graph import (
     welcome_node, business_verification_node, service_discovery_node,
-    service_area_node, confirmation_node, complete_node,
+    service_area_node, confirmation_node, profile_node, pricing_node,
+    complete_node,
 )
 from agent.config import PORT
 from agent.tools import _get_nsw_trades_token
@@ -85,6 +87,8 @@ NODE_FUNCTIONS = {
     "service_discovery": service_discovery_node,
     "service_area": service_area_node,
     "confirmation": confirmation_node,
+    "profile": profile_node,
+    "pricing": pricing_node,
     "complete": complete_node,
 }
 
@@ -97,8 +101,10 @@ def determine_node(state: dict) -> str:
         return "service_discovery"
     if not state.get("service_areas_confirmed"):
         return "service_area"
-    if not state.get("confirmed"):
-        return "confirmation"
+    if not state.get("profile_saved"):
+        return "profile"
+    if not state.get("subscription_plan"):
+        return "pricing"
     return "complete"
 
 
@@ -141,10 +147,13 @@ async def run_node(state: dict) -> dict:
         _raw_merge(svc_result)
         if state.get("services_confirmed"):
             _merge(area_result)
-            # Continue auto-chain: area confirmed → confirmation
-            if state.get("service_areas_confirmed") and not state.get("confirmed") and state.get("current_node") != "confirmation":
-                _merge(await NODE_FUNCTIONS["confirmation"](state))
-            if state.get("confirmed") and not state.get("output_json"):
+            # Continue auto-chain: area confirmed → profile
+            if state.get("service_areas_confirmed") and not state.get("profile_saved") and not state.get("profile_description_draft"):
+                state["confirmed"] = True  # Skip confirmation step
+                _merge(await NODE_FUNCTIONS["profile"](state))
+            if state.get("profile_saved") and not state.get("subscription_plan"):
+                _merge(await NODE_FUNCTIONS["pricing"](state))
+            if state.get("subscription_plan") and not state.get("output_json"):
                 _merge(await NODE_FUNCTIONS["complete"](state))
         return state
 
@@ -157,15 +166,21 @@ async def run_node(state: dict) -> dict:
         _merge(await NODE_FUNCTIONS["service_discovery"](state))
 
     # Auto-chain: services confirmed → immediately run service area
-    if state.get("services_confirmed") and not state.get("service_areas", {}).get("regions_included") and not state.get("service_areas_confirmed"):
+    # Use base_suburb as the guard (set on first area run) instead of regions_included (can be empty [])
+    if state.get("services_confirmed") and not state.get("service_areas", {}).get("base_suburb") and not state.get("service_areas_confirmed"):
         _merge(await NODE_FUNCTIONS["service_area"](state))
 
-    # Auto-chain: service areas confirmed → immediately show confirmation summary
-    if state.get("service_areas_confirmed") and not state.get("confirmed") and state.get("current_node") != "confirmation":
-        _merge(await NODE_FUNCTIONS["confirmation"](state))
+    # Auto-chain: service areas confirmed → profile (skip confirmation step)
+    if state.get("service_areas_confirmed") and not state.get("profile_saved") and not state.get("profile_description_draft"):
+        state["confirmed"] = True  # Skip confirmation step
+        _merge(await NODE_FUNCTIONS["profile"](state))
 
-    # Auto-chain: confirmation → complete
-    if state.get("confirmed") and not state.get("output_json"):
+    # Auto-chain: profile saved → pricing
+    if state.get("profile_saved") and not state.get("subscription_plan"):
+        _merge(await NODE_FUNCTIONS["pricing"](state))
+
+    # Auto-chain: subscription done → complete
+    if state.get("subscription_plan") and not state.get("output_json"):
         _merge(await NODE_FUNCTIONS["complete"](state))
 
     return state
@@ -214,6 +229,17 @@ async def create_session(req: StartRequest):
         "service_areas_confirmed": False,
         "confirmed": False,
         "output_json": {},
+        "abn_registration_date": "",
+        "years_in_business": 0,
+        "profile_description": "",
+        "profile_description_draft": "",
+        "profile_logo": "",
+        "profile_photos": [],
+        "profile_saved": False,
+        "pricing_shown": False,
+        "subscription_plan": "",
+        "subscription_billing": "",
+        "subscription_price": "",
     }
 
     # Run welcome node
@@ -372,6 +398,46 @@ async def get_log(session_id: str):
     }
 
 
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_PHOTOS = 6
+
+
+@app.post("/api/upload")
+async def upload_image(
+    session_id: str = Form(...),
+    upload_type: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Upload a logo or work photo. Stores as base64 data URL in session state."""
+    state = sessions.get(session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if upload_type not in ("logo", "photo"):
+        raise HTTPException(status_code=400, detail="upload_type must be 'logo' or 'photo'")
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid image type: {file.content_type}")
+
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="File exceeds 5MB limit")
+
+    data_url = f"data:{file.content_type};base64,{base64.b64encode(data).decode()}"
+
+    if upload_type == "logo":
+        state["profile_logo"] = data_url
+    else:
+        photos = state.get("profile_photos", [])
+        if len(photos) >= MAX_PHOTOS:
+            raise HTTPException(status_code=400, detail=f"Maximum {MAX_PHOTOS} photos allowed")
+        photos.append(data_url)
+        state["profile_photos"] = photos
+
+    return {"ok": True, "upload_type": upload_type, "count": len(state.get("profile_photos", []))}
+
+
 # ────────── HELPERS ──────────
 
 def _get_buttons_for_state(state: dict) -> list:
@@ -440,6 +506,17 @@ def _safe_state(state: dict) -> dict:
         "output_json": state.get("output_json"),
         "contact_name": state.get("contact_name", ""),
         "contact_phone": state.get("contact_phone", ""),
+        "years_in_business": state.get("years_in_business", 0),
+        "profile_description": state.get("profile_description", ""),
+        "profile_description_draft": state.get("profile_description_draft", ""),
+        "profile_intro": state.get("profile_intro", ""),
+        "profile_logo": state.get("profile_logo", ""),
+        "profile_photos": state.get("profile_photos", []),
+        "profile_saved": state.get("profile_saved", False),
+        "pricing_shown": state.get("pricing_shown", False),
+        "subscription_plan": state.get("subscription_plan", ""),
+        "subscription_billing": state.get("subscription_billing", ""),
+        "subscription_price": state.get("subscription_price", ""),
     }
 
 

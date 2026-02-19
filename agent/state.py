@@ -48,3 +48,18 @@ class OnboardingState(TypedDict):
     # Completion
     confirmed: bool
     output_json: dict
+
+    # Profile Builder
+    abn_registration_date: str
+    years_in_business: int
+    profile_description: str
+    profile_description_draft: str
+    profile_logo: str
+    profile_photos: list[str]
+    profile_saved: bool
+
+    # Pricing / Subscription
+    pricing_shown: bool
+    subscription_plan: str        # "standard" | "plus" | "pro" | "skip" | ""
+    subscription_billing: str     # "monthly" | "quarterly" | "annual" | ""
+    subscription_price: str       # e.g. "$79/mo"

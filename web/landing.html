@@ -836,6 +836,297 @@
       margin: 3px;
     }
 
+    /* ─── Profile Builder (matches mockup v3) ─── */
+    .profile-wrap {
+      background: #F8FAFC;
+      margin: -20px -32px -40px;
+      padding: 0;
+    }
+    /* Hero — SS blue gradient */
+    .profile-hero {
+      background: linear-gradient(135deg, #0A2266 0%, #1565B8 40%, #298AE3 100%);
+      padding: 28px 24px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-hero::before {
+      content: '';
+      position: absolute; top: -40%; right: -20%;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(0,182,122,0.2) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .profile-hero::after {
+      content: '';
+      position: absolute; bottom: -30%; left: -15%;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .profile-logo-upload {
+      width: 80px; height: 80px; border-radius: 18px;
+      border: 3px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden;
+      margin: 0 auto 14px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative; z-index: 1;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .profile-logo-upload:hover, .profile-logo-upload.drag-over {
+      border-color: rgba(255,255,255,0.6); transform: scale(1.05);
+    }
+    .profile-logo-placeholder {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px; color: rgba(255,255,255,0.5); font-size: 10px;
+    }
+    .profile-logo-placeholder i { font-size: 22px; }
+    .profile-logo-preview {
+      width: 100%; height: 100%; object-fit: cover; border-radius: 15px;
+    }
+    .profile-business-name {
+      font-size: 21px; font-weight: 800; color: #fff;
+      margin: 0 0 2px; letter-spacing: -0.02em; line-height: 1.2;
+      position: relative; z-index: 1;
+    }
+    .profile-contact-name {
+      font-size: 13px; color: rgba(255,255,255,0.6);
+      margin-bottom: 4px; position: relative; z-index: 1;
+    }
+    .profile-hero-subtitle {
+      font-size: 12px; color: rgba(255,255,255,0.5);
+      margin-bottom: 14px; position: relative; z-index: 1;
+      letter-spacing: 0.3px;
+    }
+    .profile-hero-subtitle i {
+      font-size: 10px; margin-right: 2px;
+    }
+    /* Trust badges in hero */
+    .profile-trust-bar {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      justify-content: center; position: relative; z-index: 1;
+    }
+    .profile-trust-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 12px; border-radius: 8px;
+      font-size: 11px; font-weight: 600;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; letter-spacing: 0.2px;
+    }
+    .profile-trust-badge i { font-size: 11px; }
+    .profile-trust-badge.green {
+      background: rgba(0,182,122,0.25);
+      border-color: rgba(0,182,122,0.35);
+    }
+    .profile-trust-badge.gold {
+      background: rgba(245,158,11,0.25);
+      border-color: rgba(245,158,11,0.35);
+    }
+    /* Cards on gray background */
+    .profile-cards {
+      padding: 16px 16px 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .profile-card {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      overflow: hidden;
+    }
+    .profile-card-head {
+      padding: 16px 20px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .profile-card-label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: #94A3B8;
+    }
+    .profile-card-edit {
+      width: 30px; height: 30px; border-radius: 8px;
+      border: none; background: #F1F5F9; color: #94A3B8;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; font-size: 12px;
+    }
+    .profile-card-edit:hover {
+      background: #EBF0FF; color: #1A56DB;
+    }
+    .profile-card-inner { padding: 12px 20px 20px; }
+    /* About textarea */
+    .profile-description-textarea {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid #E2E8F0; border-radius: 10px;
+      font-size: 14px; font-family: inherit; line-height: 1.75;
+      resize: none; outline: none; min-height: 140px;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      box-sizing: border-box;
+      background: #FAFBFC; color: #334155;
+    }
+    .profile-description-textarea:focus {
+      border-color: #1A56DB;
+      box-shadow: 0 0 0 3px rgba(26,86,219,0.08);
+      background: #fff;
+    }
+    .profile-char-counter {
+      text-align: right; font-size: 11px; color: #CBD5E1; margin-top: 5px;
+    }
+    /* Service tags — gray, blue on hover */
+    .profile-services-flow {
+      display: flex; flex-wrap: wrap; gap: 7px;
+    }
+    .profile-stag {
+      padding: 7px 14px; border-radius: 7px;
+      font-size: 13px; font-weight: 500;
+      color: #334155; background: #F1F5F9;
+      transition: all 0.15s; cursor: default;
+    }
+    .profile-stag:hover {
+      background: #EBF0FF; color: #1A56DB;
+    }
+    /* Editable toggle states */
+    .profile-services-flow.editing .profile-stag,
+    .profile-area-list.editing .profile-area-item {
+      cursor: pointer; user-select: none;
+    }
+    .profile-services-flow.editing .profile-stag:hover {
+      background: #FEE2E2; color: #DC2626;
+    }
+    .profile-area-list.editing .profile-area-item:hover {
+      background: #FEE2E2; border-color: rgba(220,38,38,0.15);
+    }
+    .profile-stag.toggled-off {
+      opacity: 0.35; text-decoration: line-through;
+      background: #F1F5F9; color: #94A3B8;
+    }
+    .profile-area-item.toggled-off {
+      opacity: 0.35; text-decoration: line-through;
+    }
+    .profile-area-item.toggled-off .profile-area-name { color: #94A3B8; }
+    .profile-card-edit.active {
+      background: #1A56DB; color: white;
+    }
+    .profile-card.editing {
+      border-color: #298AE3;
+      box-shadow: 0 0 0 2px rgba(41,138,227,0.12);
+    }
+    .profile-edit-hint {
+      font-size: 11px; color: #94A3B8; margin-top: 8px;
+      display: none;
+    }
+    .profile-card.editing .profile-edit-hint { display: block; }
+    /* Licence items — green rows, 2 columns */
+    .profile-lic-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .profile-lic-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px;
+      background: #E8F8F1; border-radius: 10px;
+      border: 1px solid rgba(0,182,122,0.15);
+    }
+    .profile-lic-check {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #00B67A;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .profile-lic-check i { color: white; font-size: 11px; }
+    .profile-lic-name {
+      font-size: 13px; font-weight: 600; color: #065F46;
+    }
+    /* Area items — blue rows, 2 columns */
+    .profile-area-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .profile-area-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px;
+      background: #EBF0FF; border-radius: 10px;
+      border: 1px solid rgba(26,86,219,0.12);
+    }
+    .profile-area-pin {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #1A56DB;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .profile-area-pin i { color: white; font-size: 10px; }
+    .profile-area-name {
+      font-size: 14px; font-weight: 600; color: #1E3A8A;
+    }
+    /* Photo grid */
+    .profile-photos-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .profile-photo-thumb {
+      position: relative; aspect-ratio: 4/3;
+      border-radius: 10px; overflow: hidden; background: #F1F5F9;
+    }
+    .profile-photo-thumb img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.2s;
+    }
+    .profile-photo-thumb:hover img { transform: scale(1.05); }
+    .profile-photo-remove {
+      position: absolute; top: 6px; right: 6px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(0,0,0,0.5); color: white; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; opacity: 0; transition: opacity 0.15s;
+    }
+    .profile-photo-thumb:hover .profile-photo-remove { opacity: 1; }
+    .profile-photo-add {
+      aspect-ratio: 4/3; border: 2px dashed #CBD5E1; border-radius: 10px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; cursor: pointer; color: #94A3B8; font-size: 11px;
+      transition: all 0.2s; background: #F8FAFC;
+    }
+    .profile-photo-add:hover {
+      border-color: #00B67A; color: #00B67A; background: #E8F8F1;
+    }
+    .profile-photo-add i { font-size: 18px; }
+    /* CTA card — blue gradient with green button */
+    .profile-cta {
+      background: linear-gradient(135deg, #298AE3 0%, #1565B8 100%);
+      border-radius: 16px; padding: 28px 24px;
+      text-align: center; position: relative; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(41,138,227,0.25);
+    }
+    .profile-cta::before {
+      content: '';
+      position: absolute; top: -40%; right: -30%;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(0,182,122,0.25) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .profile-cta-title {
+      font-size: 18px; font-weight: 800; color: white;
+      margin-bottom: 6px; position: relative; line-height: 1.3;
+    }
+    .profile-cta-sub {
+      font-size: 13px; color: rgba(255,255,255,0.7);
+      margin-bottom: 18px; position: relative; line-height: 1.5;
+    }
+    .profile-save-btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; width: 100%; padding: 14px;
+      background: #1FC759; color: white; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; position: relative; font-family: inherit;
+    }
+    .profile-save-btn:hover {
+      background: #00BB4D;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(31,199,89,0.4);
+    }
+    .profile-save-btn:active { transform: translateY(0); }
+
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -856,6 +1147,18 @@
         border-radius: 0;
       }
       #wizard-content { padding: 16px 24px 40px; }
+      .profile-photos-grid { grid-template-columns: repeat(2, 1fr); }
+      .profile-lic-list { grid-template-columns: 1fr; }
+      .profile-area-list { grid-template-columns: 1fr; }
+      .profile-hero { padding: 20px 16px 18px; }
+      .profile-logo-upload { width: 64px; height: 64px; border-radius: 14px; }
+      .profile-logo-preview { border-radius: 11px; }
+      .profile-business-name { font-size: 18px; }
+      .profile-cards { padding: 12px 12px 16px; }
+      .profile-card-inner { padding: 10px 16px 16px; }
+      .profile-card-head { padding: 14px 16px 0; }
+      .profile-trust-bar { gap: 4px; }
+      .profile-trust-badge { font-size: 10px; padding: 5px 10px; }
     }
   </style>
 </head>
@@ -1017,13 +1320,15 @@
     let currentState = {};
 
     // Step tracking
-    const STEPS = ['business', 'services', 'areas', 'done'];
+    const STEPS = ['business', 'services', 'areas', 'profile', 'pricing', 'done'];
     const NODE_TO_STEP = {
       'welcome': 'business',
       'business_verification': 'business',
       'service_discovery': 'services',
       'service_area': 'areas',
-      'confirmation': 'done',
+      'confirmation': 'profile',
+      'profile': 'profile',
+      'pricing': 'pricing',
       'complete': 'done',
     };
 
@@ -1145,14 +1450,15 @@
       const content = document.getElementById('wizard-content');
       content.scrollTop = 0;
 
-      // Check for confirmation review (editable summary)
-      if (node === 'confirmation' && !state?.confirmed) {
-        showConfirmation(content, state);
+      // Check for profile builder (services/areas now editable here)
+      if ((node === 'profile' || node === 'confirmation') && !state?.profile_saved) {
+        console.log('[PROFILE] intro:', state?.profile_intro, '| desc:', state?.profile_description?.substring(0, 50));
+        showProfileBuilder(content, state);
         return;
       }
 
-      // Check for completion
-      if (node === 'complete' || state?.confirmed) {
+      // Check for completion (only when subscription is resolved)
+      if (node === 'complete' || (state?.profile_saved && state?.subscription_plan)) {
         showCompletion(content, state);
         return;
       }
@@ -1293,6 +1599,32 @@
     }
 
     // ────────── SEND MESSAGE ──────────
+    function showSkeleton(content) {
+      const el = document.createElement('div');
+      el.className = 'wizard-question-container';
+      const num = document.createElement('div');
+      num.className = 'wizard-question-number';
+      num.textContent = '\u00A0';
+      el.appendChild(num);
+      const txt = document.createElement('div');
+      txt.className = 'wizard-question-text';
+      const s1 = document.createElement('div');
+      s1.className = 'skeleton-text';
+      const s2 = document.createElement('div');
+      s2.className = 'skeleton-text skeleton-text-short';
+      txt.appendChild(s1);
+      txt.appendChild(s2);
+      el.appendChild(txt);
+      const b1 = document.createElement('div');
+      b1.className = 'skeleton-button';
+      const b2 = document.createElement('div');
+      b2.className = 'skeleton-button';
+      el.appendChild(b1);
+      el.appendChild(b2);
+      content.textContent = '';
+      content.appendChild(el);
+    }
+
     function showProgressLoading(content, title, steps) {
       const stepsHtml = steps.map((s, i) =>
         `<div class="progress-step" id="pStep${i}"><div class="progress-step-icon" id="pIcon${i}"><div class="step-spinner"></div></div><span>${s}</span></div>`
@@ -1327,13 +1659,22 @@
     async function sendMessage(message) {
       const content = document.getElementById('wizard-content');
 
-      // Detect key auto-chain transitions for enriched loading
+      // Detect transitions for loading screens:
+      // - Cross-node transitions → progress loading (magic stars + activity steps)
+      // - Same-node turns → skeleton shimmer
       const isBusinessConfirm = currentState.current_node === 'business_verification'
         && !currentState.business_verified
         && (message.toLowerCase().startsWith('yes') || message.includes('ABN:'));
-      const isServiceConfirm = currentState.current_node === 'service_discovery'
-        && currentState.services_confirmed === false
+      // Service gap answer: parallel path runs (service_discovery + service_area simultaneously)
+      // May stay in services or transition to areas — loading works for both
+      const isServiceGap = currentState.current_node === 'service_discovery'
         && currentState.services?.length > 0;
+      // Area confirm: always transitions to profile (turn 2 always completes)
+      const isAreaConfirm = currentState.current_node === 'service_area'
+        && !currentState.service_areas_confirmed;
+      // Pricing answer that resolves subscription (plan selected + billing, or skip)
+      const isPricingDone = currentState.current_node === 'pricing'
+        && currentState.pricing_shown;
 
       if (isBusinessConfirm) {
         showProgressLoading(content, 'Setting up your services...', [
@@ -1341,25 +1682,23 @@
           'Searching web for business details',
           'Mapping your services',
         ]);
-      } else if (isServiceConfirm) {
-        showProgressLoading(content, 'Working out your area...', [
-          'Updating your service list',
-          'Loading suburb and region data',
-          'Mapping your coverage area',
+      } else if (isAreaConfirm) {
+        showProgressLoading(content, 'Building your profile...', [
+          'Finalising your services',
+          'Pulling images from your website',
+          'Generating your business description',
+          'Preparing your profile preview',
         ]);
+      } else if (isServiceGap) {
+        showProgressLoading(content, 'Updating your services...', [
+          'Processing your answer',
+          'Preparing next step',
+        ]);
+      } else if (isPricingDone) {
+        showSkeleton(content);
       } else {
-        // Default skeleton for other transitions
-        content.innerHTML = `
-          <div class="wizard-question-container">
-            <div class="wizard-question-number">&nbsp;</div>
-            <div class="wizard-question-text">
-              <div class="skeleton-text"></div>
-              <div class="skeleton-text skeleton-text-short"></div>
-            </div>
-            <div class="skeleton-button"></div>
-            <div class="skeleton-button"></div>
-          </div>
-        `;
+        // Default skeleton for same-node turns (welcome, ABR results, etc.)
+        showSkeleton(content);
       }
 
       try {
@@ -1470,62 +1809,573 @@
       }, 100);
     }
 
+    // ────────── SHOW PROFILE BUILDER ──────────
+    function showProfileBuilder(content, state) {
+      const businessName = state?.business_name || '';
+      const abn = state?.abn || '';
+      const contactName = state?.contact_name || '';
+      const years = state?.years_in_business || 0;
+      const description = state?.profile_description || '';
+      const licenceClassList = state?.licence_classes || [];
+      const licenceInfo = state?.licence_info || {};
+      const services = state?.services || [];
+      const regions = state?.service_areas?.regions_included || [];
+      const logoUrl = state?.profile_logo || '';
+      const photos = state?.profile_photos || [];
+      const intro = state?.profile_intro || '';
+
+      // Build the profile card using DOM methods for safety
+      const el = document.createElement('div');
+      el.className = 'wizard-question-container';
+
+      // Intro message — standard wizard question style
+      if (intro) {
+        const qNum = document.createElement('div');
+        qNum.className = 'wizard-question-number';
+        qNum.textContent = 'Profile Preview';
+        el.appendChild(qNum);
+        const qText = document.createElement('div');
+        qText.className = 'wizard-question-text';
+        const p = document.createElement('p');
+        p.textContent = intro;
+        qText.appendChild(p);
+        el.appendChild(qText);
+      }
+
+      // Profile wrapper — gray bg, full bleed
+      const wrap = document.createElement('div');
+      wrap.className = 'profile-wrap';
+
+      // ══════ HERO (blue gradient header) ══════
+      const hero = document.createElement('div');
+      hero.className = 'profile-hero';
+
+      // Logo upload
+      const logoLabel = document.createElement('label');
+      logoLabel.className = 'profile-logo-upload';
+      logoLabel.id = 'logoUploadZone';
+      if (logoUrl) {
+        const img = document.createElement('img');
+        img.src = logoUrl;
+        img.className = 'profile-logo-preview';
+        img.alt = 'Logo';
+        logoLabel.appendChild(img);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'profile-logo-placeholder';
+        placeholder.innerHTML = '<i class="fas fa-camera"></i><span>Add Logo</span>';
+        logoLabel.appendChild(placeholder);
+      }
+      const logoInput = document.createElement('input');
+      logoInput.type = 'file';
+      logoInput.accept = 'image/*';
+      logoInput.style.display = 'none';
+      logoInput.id = 'logoFileInput';
+      logoLabel.appendChild(logoInput);
+      hero.appendChild(logoLabel);
+
+      // Business name
+      const h3 = document.createElement('h3');
+      h3.className = 'profile-business-name';
+      h3.textContent = businessName;
+      hero.appendChild(h3);
+
+      // Contact name
+      if (contactName) {
+        const cn = document.createElement('div');
+        cn.className = 'profile-contact-name';
+        cn.textContent = contactName;
+        hero.appendChild(cn);
+      }
+
+      // Suburb + establishment year subtitle
+      const suburb = state?.service_areas?.base_suburb || '';
+      const postcode = state?.business_postcode || '';
+      const estYear = years > 0 ? new Date().getFullYear() - years : 0;
+      const subtitleParts = [];
+      if (suburb) subtitleParts.push(suburb + (postcode ? ' ' + postcode : ''));
+      if (estYear > 0) subtitleParts.push('Est. ' + estYear);
+      if (subtitleParts.length > 0) {
+        const sub = document.createElement('div');
+        sub.className = 'profile-hero-subtitle';
+        sub.innerHTML = '<i class="fas fa-map-marker-alt"></i> ' + escapeHtml(subtitleParts.join('  \u00B7  '));
+        hero.appendChild(sub);
+      }
+
+      // Trust badges
+      const trustBar = document.createElement('div');
+      trustBar.className = 'profile-trust-bar';
+      if (abn) {
+        const b = document.createElement('span');
+        b.className = 'profile-trust-badge green';
+        b.innerHTML = '<i class="fas fa-check"></i>';
+        b.appendChild(document.createTextNode(' ABN Verified'));
+        trustBar.appendChild(b);
+      }
+      if (licenceClassList.length > 0) {
+        const b = document.createElement('span');
+        b.className = 'profile-trust-badge gold';
+        b.innerHTML = '<i class="fas fa-shield-alt"></i>';
+        b.appendChild(document.createTextNode(' Licensed'));
+        trustBar.appendChild(b);
+      }
+      if (years > 0) {
+        const b = document.createElement('span');
+        b.className = 'profile-trust-badge';
+        b.innerHTML = '<i class="fas fa-clock"></i>';
+        b.appendChild(document.createTextNode(' ' + years + ' Yr' + (years !== 1 ? 's' : '') + ' Experience'));
+        trustBar.appendChild(b);
+      }
+      hero.appendChild(trustBar);
+      wrap.appendChild(hero);
+
+      // Helper: build a card with label + optional edit pencil
+      function makeCard(label, editable) {
+        const card = document.createElement('div');
+        card.className = 'profile-card';
+        const head = document.createElement('div');
+        head.className = 'profile-card-head';
+        const lbl = document.createElement('span');
+        lbl.className = 'profile-card-label';
+        lbl.textContent = label;
+        head.appendChild(lbl);
+        if (editable) {
+          const btn = document.createElement('button');
+          btn.className = 'profile-card-edit';
+          btn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+          head.appendChild(btn);
+        }
+        card.appendChild(head);
+        const inner = document.createElement('div');
+        inner.className = 'profile-card-inner';
+        card.appendChild(inner);
+        return { card, inner, editBtn: editable ? card.querySelector('.profile-card-edit') : null };
+      }
+
+      // ══════ CARDS CONTAINER ══════
+      const cards = document.createElement('div');
+      cards.className = 'profile-cards';
+
+      // ── Licences card ──
+      if (licenceClassList.length > 0) {
+        const { card: licCard, inner: licInner } = makeCard('Licences', false);
+        const licList = document.createElement('div');
+        licList.className = 'profile-lic-list';
+        licenceClassList.forEach(cls => {
+          const item = document.createElement('div');
+          item.className = 'profile-lic-item';
+          const check = document.createElement('div');
+          check.className = 'profile-lic-check';
+          check.innerHTML = '<i class="fas fa-shield-alt"></i>';
+          item.appendChild(check);
+          const name = document.createElement('span');
+          name.className = 'profile-lic-name';
+          name.textContent = escapeHtml(cls);
+          item.appendChild(name);
+          licList.appendChild(item);
+        });
+        licInner.appendChild(licList);
+        cards.appendChild(licCard);
+      }
+
+      // ── About card ──
+      const { card: aboutCard, inner: aboutInner, editBtn: aboutEdit } = makeCard('About', true);
+      if (aboutEdit) aboutEdit.addEventListener('click', () => document.getElementById('profileDescription')?.focus());
+      const textarea = document.createElement('textarea');
+      textarea.className = 'profile-description-textarea';
+      textarea.id = 'profileDescription';
+      textarea.maxLength = 500;
+      textarea.value = description;
+      aboutInner.appendChild(textarea);
+      const counter = document.createElement('div');
+      counter.className = 'profile-char-counter';
+      counter.innerHTML = '<span id="charCount">' + description.length + '</span> / 500';
+      aboutInner.appendChild(counter);
+      cards.appendChild(aboutCard);
+
+      // ── Services card (editable — click pencil to toggle off) ──
+      const { card: svcCard, inner: svcInner, editBtn: svcEdit } = makeCard('Services We Provide', true);
+      const svcFlow = document.createElement('div');
+      svcFlow.className = 'profile-services-flow';
+      let svcEditing = false;
+      services.forEach((s, i) => {
+        const tag = document.createElement('span');
+        tag.className = 'profile-stag';
+        tag.id = 'profileSvc' + i;
+        tag.textContent = s.subcategory_name || s.input || '';
+        tag.addEventListener('click', () => {
+          if (!svcEditing) return;
+          tag.classList.toggle('toggled-off');
+        });
+        svcFlow.appendChild(tag);
+      });
+      if (services.length === 0) { svcFlow.style.color = '#94A3B8'; svcFlow.textContent = 'None mapped'; }
+      svcInner.appendChild(svcFlow);
+      const svcHint = document.createElement('div');
+      svcHint.className = 'profile-edit-hint';
+      svcHint.textContent = 'Tap a service to remove it';
+      svcInner.appendChild(svcHint);
+      if (svcEdit) svcEdit.addEventListener('click', () => {
+        svcEditing = !svcEditing;
+        svcFlow.classList.toggle('editing', svcEditing);
+        svcEdit.classList.toggle('active', svcEditing);
+        svcCard.classList.toggle('editing', svcEditing);
+        svcEdit.innerHTML = svcEditing ? '<i class="fas fa-check"></i>' : '<i class="fas fa-pencil-alt"></i>';
+      });
+      cards.appendChild(svcCard);
+
+      // ── Service Areas card (editable — click pencil to toggle off) ──
+      const { card: areaCard, inner: areaInner, editBtn: areaEdit } = makeCard('Service Areas', true);
+      const areaList = document.createElement('div');
+      areaList.className = 'profile-area-list';
+      let areaEditing = false;
+      regions.forEach((r, i) => {
+        const item = document.createElement('div');
+        item.className = 'profile-area-item';
+        item.id = 'profileArea' + i;
+        const pin = document.createElement('div');
+        pin.className = 'profile-area-pin';
+        pin.innerHTML = '<i class="fas fa-map-marker-alt"></i>';
+        item.appendChild(pin);
+        const name = document.createElement('span');
+        name.className = 'profile-area-name';
+        name.textContent = escapeHtml(r);
+        item.appendChild(name);
+        item.addEventListener('click', () => {
+          if (!areaEditing) return;
+          item.classList.toggle('toggled-off');
+        });
+        areaList.appendChild(item);
+      });
+      if (regions.length === 0) { areaList.style.color = '#94A3B8'; areaList.textContent = 'None set'; }
+      areaInner.appendChild(areaList);
+      const areaHint = document.createElement('div');
+      areaHint.className = 'profile-edit-hint';
+      areaHint.textContent = 'Tap an area to remove it';
+      areaInner.appendChild(areaHint);
+      if (areaEdit) areaEdit.addEventListener('click', () => {
+        areaEditing = !areaEditing;
+        areaList.classList.toggle('editing', areaEditing);
+        areaEdit.classList.toggle('active', areaEditing);
+        areaCard.classList.toggle('editing', areaEditing);
+        areaEdit.innerHTML = areaEditing ? '<i class="fas fa-check"></i>' : '<i class="fas fa-pencil-alt"></i>';
+      });
+      cards.appendChild(areaCard);
+
+      // ── Gallery card ──
+      const { card: galleryCard, inner: galleryInner } = makeCard('Gallery', false);
+      const photoGrid = document.createElement('div');
+      photoGrid.className = 'profile-photos-grid';
+      photos.forEach((p, i) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'profile-photo-thumb';
+        thumb.id = 'photoThumb' + i;
+        const img = document.createElement('img');
+        img.src = p;
+        img.alt = 'Work photo ' + (i + 1);
+        thumb.appendChild(img);
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'profile-photo-remove';
+        removeBtn.dataset.index = i;
+        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = parseInt(removeBtn.dataset.index);
+          const currentPhotos = currentState.profile_photos || [];
+          currentPhotos.splice(idx, 1);
+          currentState.profile_photos = currentPhotos;
+          showProfileBuilder(content, currentState);
+        });
+        thumb.appendChild(removeBtn);
+        photoGrid.appendChild(thumb);
+      });
+      if (photos.length < 6) {
+        const addLabel = document.createElement('label');
+        addLabel.className = 'profile-photo-add';
+        addLabel.id = 'addPhotoBtn';
+        addLabel.innerHTML = '<i class="fas fa-plus"></i><span>Add Photos</span>';
+        const photoFileInput = document.createElement('input');
+        photoFileInput.type = 'file';
+        photoFileInput.accept = 'image/*';
+        photoFileInput.style.display = 'none';
+        photoFileInput.id = 'photoFileInput';
+        photoFileInput.multiple = true;
+        photoFileInput.addEventListener('change', (e) => {
+          Array.from(e.target.files).forEach(f => handlePhotoFile(f));
+        });
+        addLabel.appendChild(photoFileInput);
+        photoGrid.appendChild(addLabel);
+      }
+      galleryInner.appendChild(photoGrid);
+      cards.appendChild(galleryCard);
+
+      // ── CTA card (save profile) ──
+      const cta = document.createElement('div');
+      cta.className = 'profile-cta';
+      const ctaTitle = document.createElement('h3');
+      ctaTitle.className = 'profile-cta-title';
+      ctaTitle.textContent = 'Ready to start winning work?';
+      cta.appendChild(ctaTitle);
+      const ctaSub = document.createElement('p');
+      ctaSub.className = 'profile-cta-sub';
+      const trades = [...new Set(services.map(s => s.category_name).filter(Boolean))];
+      const tradeText = trades[0] ? trades[0].toLowerCase() + 's' : 'tradies';
+      ctaSub.textContent = 'Publish your profile to get matched with customers looking for ' + tradeText + ' in your area';
+      cta.appendChild(ctaSub);
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'profile-save-btn';
+      saveBtn.id = 'saveProfileBtn';
+      saveBtn.textContent = 'Publish My Profile \u2192';
+      cta.appendChild(saveBtn);
+      cards.appendChild(cta);
+
+      wrap.appendChild(cards);
+      el.appendChild(wrap);
+
+      content.textContent = '';
+      content.appendChild(el);
+
+      // ── Char counter ──
+      textarea.addEventListener('input', () => {
+        document.getElementById('charCount').textContent = textarea.value.length;
+      });
+
+      // ── Logo upload ──
+      logoInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleLogoFile(e.target.files[0]);
+      });
+
+      // Logo drag-drop
+      logoLabel.addEventListener('dragover', (e) => { e.preventDefault(); logoLabel.classList.add('drag-over'); });
+      logoLabel.addEventListener('dragleave', () => logoLabel.classList.remove('drag-over'));
+      logoLabel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        logoLabel.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) handleLogoFile(e.dataTransfer.files[0]);
+      });
+
+      // ── Save Profile ──
+      saveBtn.addEventListener('click', () => {
+        const desc = document.getElementById('profileDescription').value.trim();
+        // Collect toggled-off services and areas
+        const removedServices = [];
+        const removedAreas = [];
+        services.forEach((s, i) => {
+          const el = document.getElementById('profileSvc' + i);
+          if (el && el.classList.contains('toggled-off')) {
+            removedServices.push(s.subcategory_name || s.input || '');
+          }
+        });
+        regions.forEach((r, i) => {
+          const el = document.getElementById('profileArea' + i);
+          if (el && el.classList.contains('toggled-off')) {
+            removedAreas.push(r);
+          }
+        });
+        saveProfile(JSON.stringify({
+          description: desc,
+          removed_services: removedServices,
+          removed_areas: removedAreas,
+        }));
+      });
+    }
+
+    function handleLogoFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); return; }
+
+      // Instant local preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const zone = document.getElementById('logoUploadZone');
+        if (!zone) return;
+        // Clear and rebuild with DOM
+        while (zone.firstChild) zone.removeChild(zone.firstChild);
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'profile-logo-preview';
+        img.alt = 'Logo';
+        zone.appendChild(img);
+        const newInput = document.createElement('input');
+        newInput.type = 'file';
+        newInput.accept = 'image/*';
+        newInput.style.display = 'none';
+        newInput.id = 'logoFileInput';
+        newInput.addEventListener('change', (ev) => { if (ev.target.files[0]) handleLogoFile(ev.target.files[0]); });
+        zone.appendChild(newInput);
+        if (currentState) currentState.profile_logo = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to server
+      const formData = new FormData();
+      formData.append('session_id', sessionId);
+      formData.append('upload_type', 'logo');
+      formData.append('file', file);
+      fetch(API_URL + '/api/upload', { method: 'POST', body: formData })
+        .catch(e => console.error('Logo upload error:', e));
+    }
+
+    function handlePhotoFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); return; }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (!currentState.profile_photos) currentState.profile_photos = [];
+        if (currentState.profile_photos.length >= 6) return;
+        currentState.profile_photos.push(e.target.result);
+        // Re-render
+        const content = document.getElementById('wizard-content');
+        showProfileBuilder(content, currentState);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to server
+      const formData = new FormData();
+      formData.append('session_id', sessionId);
+      formData.append('upload_type', 'photo');
+      formData.append('file', file);
+      fetch(API_URL + '/api/upload', { method: 'POST', body: formData })
+        .catch(e => console.error('Photo upload error:', e));
+    }
+
+    function saveProfile(description) {
+      const content = document.getElementById('wizard-content');
+      showProgressLoading(content, 'Publishing your profile...', [
+        'Saving profile details',
+        'Preparing subscription options',
+      ]);
+      sendMessage('__SAVE_PROFILE__:' + description);
+    }
+
     // ────────── SHOW COMPLETION ──────────
     function showCompletion(content, state) {
       updateProgress('done');
       const output = state?.output_json || {};
+      const profile = output.profile || {};
       const jsonStr = JSON.stringify(output, null, 2);
 
       // Format services as chips
       const services = output.services || [];
-      let serviceChips = '';
+      const regions = (output.service_areas?.regions_included || []);
+
+      const logoUrl = profile.logo || state?.profile_logo || '';
+      const description = profile.description || state?.profile_description || '';
+
+      // Build completion screen with DOM
+      const wrapper = document.createElement('div');
+      wrapper.className = 'wizard-completion';
+
+      // Logo or check icon
+      const iconDiv = document.createElement('div');
+      iconDiv.className = 'wizard-success-icon';
+      if (logoUrl) {
+        const img = document.createElement('img');
+        img.src = logoUrl;
+        img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover;';
+        img.alt = 'Business logo';
+        iconDiv.appendChild(img);
+      } else {
+        iconDiv.innerHTML = '<i class="fas fa-check-circle"></i>';
+      }
+      wrapper.appendChild(iconDiv);
+
+      const contactName = state?.contact_name || '';
+      const firstName = contactName ? contactName.split(' ')[0] : '';
+
+      const h2 = document.createElement('h2');
+      h2.textContent = firstName
+        ? "You're live, " + firstName + "!"
+        : "You're live on Service Seeking!";
+      wrapper.appendChild(h2);
+
+      const subtitle = document.createElement('p');
+      const strong = document.createElement('strong');
+      strong.textContent = output.business_name || '';
+      subtitle.appendChild(document.createTextNode('Welcome to Service Seeking, '));
+      subtitle.appendChild(strong);
+      subtitle.appendChild(document.createTextNode('!'));
+      wrapper.appendChild(subtitle);
+
+      if (description) {
+        const descP = document.createElement('p');
+        descP.style.fontStyle = 'italic';
+        descP.style.color = '#555';
+        descP.textContent = description;
+        wrapper.appendChild(descP);
+      }
+
+      // Services summary
+      const infoBox = document.createElement('div');
+      infoBox.style.cssText = 'margin:24px 0;text-align:left;';
+      const box = document.createElement('div');
+      box.className = 'wizard-info-box';
+
+      // Services row
+      const svcRow = document.createElement('div');
+      svcRow.className = 'wizard-summary-item';
+      const svcLabel = document.createElement('span');
+      svcLabel.className = 'wizard-summary-label';
+      svcLabel.textContent = 'Services';
+      svcRow.appendChild(svcLabel);
+      const svcValue = document.createElement('span');
+      svcValue.className = 'wizard-summary-value';
       services.forEach(cat => {
         (cat.subcategories || []).forEach(sc => {
-          serviceChips += `<span class="service-chip">${escapeHtml(sc.name)}</span> `;
+          const chip = document.createElement('span');
+          chip.className = 'service-chip';
+          chip.textContent = sc.name;
+          svcValue.appendChild(chip);
+          svcValue.appendChild(document.createTextNode(' '));
         });
       });
+      if (services.length === 0) svcValue.textContent = 'None';
+      svcRow.appendChild(svcValue);
+      box.appendChild(svcRow);
 
-      const regions = (output.service_areas?.regions_included || []);
-      const regionList = regions.join(', ');
+      // Areas row
+      const areaRow = document.createElement('div');
+      areaRow.className = 'wizard-summary-item';
+      const areaLabel = document.createElement('span');
+      areaLabel.className = 'wizard-summary-label';
+      areaLabel.textContent = 'Service Areas';
+      areaRow.appendChild(areaLabel);
+      const areaValue = document.createElement('span');
+      areaValue.className = 'wizard-summary-value';
+      areaValue.textContent = regions.length ? regions.join(', ') : 'Not set';
+      areaRow.appendChild(areaValue);
+      box.appendChild(areaRow);
 
-      content.innerHTML = `
-        <div class="wizard-completion">
-          <div class="wizard-success-icon">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <h2>Registration Complete!</h2>
-          <p>Welcome to Service Seeking, <strong>${escapeHtml(output.business_name || '')}</strong>!</p>
-          <p>You'll start receiving relevant job leads in your service areas soon.</p>
+      infoBox.appendChild(box);
+      wrapper.appendChild(infoBox);
 
-          <div style="margin: 24px 0; text-align: left;">
-            <div class="wizard-info-box">
-              <div class="wizard-summary-item">
-                <span class="wizard-summary-label">ABN</span>
-                <span class="wizard-summary-value">${escapeHtml(output.abn || '')}</span>
-              </div>
-              <div class="wizard-summary-item">
-                <span class="wizard-summary-label">Services</span>
-                <span class="wizard-summary-value">${serviceChips || 'None'}</span>
-              </div>
-              <div class="wizard-summary-item">
-                <span class="wizard-summary-label">Service Areas</span>
-                <span class="wizard-summary-value">${regionList ? escapeHtml(regionList) : 'Not set'}</span>
-              </div>
-            </div>
-          </div>
+      const subtext = document.createElement('p');
+      subtext.textContent = "You'll start receiving relevant job leads in your area soon.";
+      wrapper.appendChild(subtext);
 
-          <details style="text-align: left; margin: 16px 0;">
-            <summary style="cursor: pointer; color: #888; font-size: 13px; margin-bottom: 8px;">
-              View raw JSON output
-            </summary>
-            <div class="wizard-result-json">${escapeHtml(jsonStr)}</div>
-          </details>
+      // JSON details
+      const details = document.createElement('details');
+      details.style.cssText = 'text-align:left;margin:16px 0;';
+      const summary = document.createElement('summary');
+      summary.style.cssText = 'cursor:pointer;color:#888;font-size:13px;margin-bottom:8px;';
+      summary.textContent = 'View raw JSON output';
+      details.appendChild(summary);
+      const jsonDiv = document.createElement('div');
+      jsonDiv.className = 'wizard-result-json';
+      jsonDiv.textContent = jsonStr;
+      details.appendChild(jsonDiv);
+      wrapper.appendChild(details);
 
-          <button class="wizard-close-btn" onclick="closeWizard()">
-            Done <i class="fas fa-check" style="margin-left: 8px;"></i>
-          </button>
-        </div>
-      `;
+      // Close button
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'wizard-close-btn';
+      closeBtn.addEventListener('click', () => closeWizard());
+      closeBtn.innerHTML = 'Done <i class="fas fa-check" style="margin-left:8px;"></i>';
+      wrapper.appendChild(closeBtn);
+
+      content.textContent = '';
+      content.appendChild(wrapper);
     }
 
     // ────────── UPDATE PROGRESS ──────────
