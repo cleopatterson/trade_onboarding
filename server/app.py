@@ -469,9 +469,11 @@ def _get_buttons_for_state(state: dict) -> list:
                     location = r.get("state", "")
                     if r.get("postcode"):
                         location = f"{location} {r['postcode']}"
-                    label = f"{name} ({location})" if location else name
-                    if len(label) > 45:
-                        label = f"{name[:30]}... ({location})"
+                    # Show ABN suffix so tradies can distinguish near-duplicates
+                    abn_short = f" · ABN ...{abn[-5:]}" if len(abn) >= 5 else ""
+                    label = f"{name} ({location}{abn_short})" if location else f"{name}{abn_short}"
+                    if len(label) > 60:
+                        label = f"{name[:28]}... ({location}{abn_short})"
                     buttons.append({"label": label, "value": f"Yes, it's {name} (ABN: {abn})"})
                 buttons.append({"label": "None of these", "value": "No, none of those are my business"})
                 return buttons

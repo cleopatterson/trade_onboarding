@@ -237,10 +237,10 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     licence_info = state.get("licence_info", {})
 
     is_follow_up = bool(services)
-    svc_turn = state.get("_svc_turn", 1 if not is_follow_up else 2)
+    svc_turn = state.get("_svc_turn", 1)
 
-    # Safety cap: force completion after 5 turns (up to 4 gap questions)
-    if svc_turn > 5 and is_follow_up:
+    # Safety cap: force completion after 5 turns
+    if svc_turn > 5:
         print(f"[SVC] Safety cap: forcing completion after {svc_turn} turns")
         return {
             "current_node": "service_discovery",
@@ -251,7 +251,19 @@ async def service_discovery_node(state: OnboardingState) -> dict:
         }
 
     # ── Compute remaining gaps deterministically ──
-    gaps = compute_service_gaps(services, business_name)
+    licence_classes = state.get("licence_classes", [])
+    google_biz_name = state.get("google_business_name", "")
+    google_type = state.get("google_primary_type", "")
+    gaps = compute_service_gaps(services, business_name, licence_classes,
+                                google_biz_name, google_type)
+
+    # If gaps don't match what the user is describing (e.g. licence says Concreter
+    # but user says Landscaper), clear them so the LLM uses full taxonomy
+    if gaps and not services and svc_turn >= 3:
+        # After 2 failed turns with 0 services mapped, the gap list isn't helping
+        print(f"[SVC] Clearing unhelpful gaps (0 services after {svc_turn} turns)")
+        gaps = []
+
     gaps_text = ""
     if gaps:
         gap_entries = [f"{g['subcategory_name']} (id: {g['subcategory_id']})" for g in gaps]
@@ -267,6 +279,9 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             licence_context += f"\nLicence #{licence_info['licence_number']} — Status: {licence_info.get('status', 'Unknown')}, Expiry: {licence_info.get('expiry_date', 'Unknown')}"
         if licence_info.get("compliance_clean") is False:
             licence_context += "\n⚠️ Compliance issues on record"
+    elif gaps:
+        # No licence but we detected the trade from business name or Google
+        licence_context = f"\nNO LICENCE ON FILE — trade detected from business profile. Map all subcategories as a starting point and let the tradie confirm."
 
     web_context = ""
     if web_results:
@@ -281,9 +296,6 @@ async def service_discovery_node(state: OnboardingState) -> dict:
         if review_lines:
             reviews_context = f"\nGOOGLE REVIEWS ({state.get('google_rating', 0)}★, {state.get('google_review_count', 0)} reviews):\n" + "\n".join(review_lines)
 
-    fb_url = state.get("facebook_url", "")
-    if fb_url:
-        reviews_context += f"\nFACEBOOK PAGE: {fb_url}"
 
     contact = state.get("contact_name", "")
     conv_history = _format_conversation(messages, max_turns=6)
@@ -305,7 +317,7 @@ GUIDELINES:
 - This flows directly from business confirmation — the conversation is already going. Don't re-introduce yourself.
 - Be conversational and Australian. Keep it short — tradies are busy.
 - Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for. A licensed Electrician can do ALL electrical subcategories. A licensed Plumber can do ALL plumbing subcategories. Map aggressively.
-- TURN 1 RULE: If the tradie has a licence class, map EVERY subcategory in that category by default. Most tradies do most things in their trade — it's better to include everything and let them remove what they don't do. Add ALL subcategories from the REMAINING GAPS list using their exact IDs. Then ask a short confirmation: "I've added all 20 electrical services based on your licence — anything you DON'T do that I should remove?"
+- TURN 1 RULE: If there are REMAINING UNCOVERED SUBCATEGORIES, map ALL of them by default — whether detected from licence, business name, or Google profile. Most tradies do most things in their trade — it's better to include everything and let them remove what they don't do. Add ALL subcategories from the REMAINING GAPS list using their exact IDs. Then ask a short confirmation: "I've added all 20 electrical services — anything you DON'T do that I should remove?"
 - Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate your aggressive mapping.
 - On follow-up turns: process the tradie's answer (remove services they said they don't do, or confirm). Then check REMAINING GAPS — if there are still uncovered subcategories from OTHER categories the tradie might do, ask about those as a batch.
 - Use batch gap questions — group 3-5 related REMAINING subcategories together. Ask about them naturally. Don't ask about services already mapped.
@@ -364,7 +376,8 @@ CONVERSATION SO FAR:
         step_complete = data.get("step_complete", False)
 
         # Compute post-turn gaps for logging
-        new_gaps = compute_service_gaps(new_services, business_name)
+        new_gaps = compute_service_gaps(new_services, business_name, licence_classes,
+                                        google_biz_name, google_type)
 
         print(f"[SVC] user='{last_msg}' | mapped={len(new_services)} | gaps={len(new_gaps)} | complete={step_complete}")
         _trace(state, "LLM: Service Discovery", llm_time,
@@ -385,6 +398,8 @@ CONVERSATION SO FAR:
         print(f"[SVC ERROR] {e} | raw response: {response.content[:300]}")
         return {
             "current_node": "service_discovery",
+            "services": services,
+            "_svc_turn": svc_turn + 1,
             "messages": [AIMessage(content=f"What services does {business_name} offer? Just tell me in your own words.")],
         }
 
@@ -830,10 +845,6 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         elif not scrape_url and not any(d in url for d in _directory_domains):
             scrape_url = url
 
-    # Add facebook_url from targeted search if not already in social_urls
-    fb_url = state.get("facebook_url", "")
-    if fb_url and fb_url not in social_urls:
-        social_urls.insert(0, fb_url)
 
     # Google Places website is the most reliable source — use it as primary scrape URL
     google_website = state.get("business_website", "")
@@ -1212,10 +1223,13 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
             await asyncio.sleep(delay)
         return await brave_web_search(query, count=count)
 
+    # Strip PTY LTD etc. for Facebook — pages use short names
+    _fb_name = re.sub(r'\s*(PTY\.?\s*LTD\.?|LTD\.?|INC\.?|CO\.?)\s*$', '', business_name, flags=re.IGNORECASE).strip()
+
     t0 = time.time()
     licence_task = nsw_licence_browse(business_name)
     web_task = _delayed_brave(f"{business_name} {business_state} tradesperson")
-    fb_task = _delayed_brave(f'"{business_name}" {business_state} site:facebook.com', count=3, delay=0.15)
+    fb_task = _delayed_brave(f'"{_fb_name}" {business_state} site:facebook.com', count=3, delay=0.15)
     google_task = google_places_search(business_name, business_state)
     licence_results, web_results, fb_results, google_place = await asyncio.gather(
         licence_task, web_task, fb_task, google_task,
@@ -1353,6 +1367,8 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "google_reviews": google_reviews,
         "facebook_url": facebook_url,
         "business_website": google_place.get("website", ""),
+        "google_business_name": google_place.get("name", ""),
+        "google_primary_type": google_place.get("primary_type", ""),
         "abn_registration_date": abr.get("entity_start_date", ""),
         "messages": [AIMessage(content=f"Great, {business_name} is confirmed!")],
     }

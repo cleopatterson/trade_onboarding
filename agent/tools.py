@@ -93,28 +93,38 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
                 "count": 1,
             }
         else:
-            # Name search returns a Names array
+            # Name search returns a Names array — same ABN can appear
+            # multiple times (once as Entity Name, once as Business/Trading Name).
+            # Deduplicate by ABN, preferring Business/Trading Name over Entity Name.
             names = data.get("Names", [])
-            results = []
-            for entry in names[:5]:
+            by_abn: dict[str, dict] = {}
+            for entry in names:
                 abn = entry.get("Abn", "")
+                if not abn:
+                    continue
                 name = entry.get("Name", "Unknown")
                 name_type = entry.get("NameType", "")
                 state = entry.get("State", "")
                 postcode = entry.get("Postcode", "")
                 score = entry.get("Score", 0)
 
-                results.append({
+                record = {
                     "abn": abn,
                     "entity_name": name,
                     "entity_type": name_type,
-                    "gst_registered": False,  # Not available in name search
+                    "gst_registered": False,
                     "state": state,
                     "postcode": postcode,
                     "status": "Active",
                     "score": score,
-                })
+                }
 
+                if abn not in by_abn:
+                    by_abn[abn] = record
+                elif name_type in ("Business Name", "Trading Name"):
+                    by_abn[abn] = record
+
+            results = list(by_abn.values())[:5]
             return {"results": results, "count": len(results)}
 
     except (json.JSONDecodeError, KeyError) as e:
@@ -236,7 +246,10 @@ _TRADE_CATEGORY_MAP = {
 }
 
 
-def compute_service_gaps(services: list[dict], business_name: str) -> list[dict]:
+def compute_service_gaps(services: list[dict], business_name: str,
+                         licence_classes: list[str] | None = None,
+                         google_business_name: str = "",
+                         google_primary_type: str = "") -> list[dict]:
     """Compute which subcategories are NOT yet mapped for this trade.
 
     Loads the full subcategory list for the matched category, diffs against
@@ -247,13 +260,56 @@ def compute_service_gaps(services: list[dict], business_name: str) -> list[dict]
     if not categories:
         return []
 
-    # Match business name to category
-    name_lower = business_name.lower()
+    # Priority 1: if services are already mapped, detect category from them
+    # (avoids mismatch for multi-trade businesses, e.g. licence says Electrician
+    #  but mapped services are all Plumber)
     matched_cat_key = None
-    for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-        if keyword in name_lower:
-            matched_cat_key = cat_key
-            break
+    if services:
+        cat_counts: dict[str, int] = {}
+        for s in services:
+            cn = s.get("category_name", "")
+            if cn:
+                cat_counts[cn] = cat_counts.get(cn, 0) + 1
+        if cat_counts:
+            most_common = max(cat_counts, key=cat_counts.get)
+            if most_common in categories:
+                matched_cat_key = most_common
+
+    # Priority 2: match business name to category
+    if not matched_cat_key:
+        name_lower = business_name.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in name_lower:
+                matched_cat_key = cat_key
+                break
+
+    # Priority 3: match licence classes (for sole traders with personal names)
+    if not matched_cat_key and licence_classes:
+        for lc in licence_classes:
+            lc_lower = lc.lower()
+            for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+                if keyword in lc_lower:
+                    matched_cat_key = cat_key
+                    break
+            if matched_cat_key:
+                break
+
+    # Priority 4: match Google Places business name (e.g. "Stacey Electrical"
+    # when ABR name is "STACEY, MATTHEW GREGORY")
+    if not matched_cat_key and google_business_name:
+        gname_lower = google_business_name.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in gname_lower:
+                matched_cat_key = cat_key
+                break
+
+    # Priority 5: match Google Places primary type (e.g. "electrician", "plumber")
+    if not matched_cat_key and google_primary_type:
+        gtype_lower = google_primary_type.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in gtype_lower:
+                matched_cat_key = cat_key
+                break
 
     if not matched_cat_key or matched_cat_key not in categories:
         return []
@@ -726,7 +782,7 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             headers={
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.reviews",
+                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.reviews,places.primaryType,places.types",
             },
             json={"textQuery": query},
         )
@@ -757,6 +813,9 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             if text:
                 reviews.append({"text": text, "rating": rev_rating})
 
+        primary_type = place.get("primaryType", "")
+        types = place.get("types", [])
+
         result = {
             "name": name,
             "rating": rating,
@@ -765,9 +824,11 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             "maps_url": maps_url,
             "address": address,
             "reviews": reviews[:5],
+            "primary_type": primary_type,
+            "types": types,
         }
 
-        print(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}")
+        print(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}")
         return result
 
     except Exception as e:
@@ -894,39 +955,94 @@ async def scrape_website_images(url: str) -> dict:
         result["logo"] = logo
 
         # ── Extract photos ──
+        # Collect candidates from <img> tags, then rank to prioritize real photos
         seen = set()
-        photos = []
-        for m in re.finditer(r'<img\s+[^>]*src=["\']([^"\']+)["\'][^>]*/?\s*>', html, re.IGNORECASE):
-            src = m.group(1)
-            tag = m.group(0)
+        candidates = []  # (score, url) — higher score = more likely a real photo
 
-            # Skip junk
-            if _JUNK_PATTERNS.search(src) or _JUNK_PATTERNS.search(tag):
-                continue
-
-            # Only keep image file extensions
+        def _score_and_add(src: str, tag: str):
+            """Score an image URL and add to candidates if it passes filters."""
+            if not src or src.startswith('data:'):
+                return
+            # Only check junk patterns on the URL, not the full tag
+            # (tag contains attrs like loading="lazy" which false-match "loading")
+            if _JUNK_PATTERNS.search(src):
+                return
             if not _IMG_EXTENSIONS.search(src):
-                continue
-
-            # Skip logo (already captured)
+                return
             if logo and src in logo:
-                continue
-
-            # Skip tiny images (explicit width/height attrs)
+                return
             width_m = re.search(r'width=["\']?(\d+)', tag)
             height_m = re.search(r'height=["\']?(\d+)', tag)
             if width_m and int(width_m.group(1)) < 100:
-                continue
+                return
             if height_m and int(height_m.group(1)) < 100:
-                continue
+                return
 
             full_url = _resolve_url(src, base_url)
-            if full_url not in seen:
-                seen.add(full_url)
-                photos.append(full_url)
+            if full_url in seen:
+                return
+            seen.add(full_url)
 
-            if len(photos) >= 6:
+            # Score: prefer JPEGs (real photos) over PNGs (often icons/graphics)
+            score = 0
+            src_lower = src.lower()
+            if '.jpg' in src_lower or '.jpeg' in src_lower:
+                score += 10  # JPEGs are almost always real photos
+            if re.search(r'(\d{3,4})x(\d{3,4})', src):
+                score += 5  # URL contains large dimensions (e.g. -1024x768)
+            if 'scaled' in src_lower:
+                score += 5  # WordPress scaled images are typically gallery photos
+            if width_m and int(width_m.group(1)) >= 400:
+                score += 5  # Large explicit width
+            if re.search(r'gallery|portfolio|project|work|photo|slider|slide', src_lower):
+                score += 5  # Gallery-like path
+            if re.search(r'gallery|portfolio|project|work', tag.lower()):
+                score += 3  # Gallery-like alt/class
+            candidates.append((score, full_url))
+
+        for m in re.finditer(r'<img\s+[^>]*?>', html, re.IGNORECASE):
+            tag = m.group(0)
+            # Try src first, then lazy-load attributes (WordPress, WP Rocket, etc.)
+            for attr in ['src', 'data-src', 'data-lazy-src', 'data-original']:
+                attr_m = re.search(rf'{attr}=["\']([^"\']+)["\']', tag, re.IGNORECASE)
+                if attr_m:
+                    _score_and_add(attr_m.group(1), tag)
+
+            # Also check srcset for high-res versions
+            srcset_m = re.search(r'srcset=["\']([^"\']+)["\']', tag, re.IGNORECASE)
+            if srcset_m:
+                # srcset format: "url1 300w, url2 600w, url3 1024w"
+                # Pick the largest one
+                parts = srcset_m.group(1).split(',')
+                best_url, best_w = "", 0
+                for part in parts:
+                    tokens = part.strip().split()
+                    if len(tokens) >= 2 and tokens[1].rstrip('w').isdigit():
+                        w = int(tokens[1].rstrip('w'))
+                        if w > best_w:
+                            best_w = w
+                            best_url = tokens[0]
+                    elif len(tokens) == 1:
+                        best_url = tokens[0]
+                if best_url and best_w >= 400:
+                    _score_and_add(best_url, tag)
+
+            if len(candidates) >= 30:
                 break
+
+        # Also extract gallery images from non-<img> elements:
+        # Elementor galleries use <a href="...jpg"> and <div data-thumbnail="...jpg">
+        for pattern in [
+            r'<a\s+[^>]*href=["\']([^"\']+\.(?:jpe?g|png|webp))["\']',
+            r'data-thumbnail=["\']([^"\']+\.(?:jpe?g|png|webp))["\']',
+        ]:
+            for m in re.finditer(pattern, html, re.IGNORECASE):
+                url = m.group(1)
+                _score_and_add(url, m.group(0))
+
+        # Sort by score (highest first), take top 8 for AI filter
+        candidates.sort(key=lambda x: -x[0])
+        photos = [url for _, url in candidates[:8]]
 
         result["photos"] = photos
         print(f"[SCRAPE] {url}: logo={'yes' if logo else 'no'}, {len(photos)} photos")
@@ -1021,8 +1137,8 @@ async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradespe
         return []
 
     # Download images in parallel
-    async def _download(url: str) -> tuple[str, str, str]:
-        """Download image, return (url, base64_data, media_type) or empty on failure."""
+    async def _download(url: str) -> tuple[str, str, str, int]:
+        """Download image, return (url, base64_data, media_type, size_bytes) or empty on failure."""
         try:
             async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.get(
@@ -1031,7 +1147,7 @@ async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradespe
                     follow_redirects=True,
                 )
             if resp.status_code != 200:
-                return url, "", ""
+                return url, "", "", 0
             content_type = resp.headers.get("content-type", "")
             if "jpeg" in content_type or "jpg" in content_type:
                 media_type = "image/jpeg"
@@ -1049,20 +1165,21 @@ async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradespe
                     media_type = "image/webp"
                 else:
                     media_type = "image/jpeg"
-            size_kb = len(resp.content) / 1024
-            # Skip if too small (<2KB likely an icon) or too large (>2MB)
-            if len(resp.content) < 2000 or len(resp.content) > 2_000_000:
-                print(f"[AI-FILTER] Skip {url[:60]} — {size_kb:.0f}KB (too {'small' if size_kb < 2 else 'large'})")
-                return url, "", ""
+            size_bytes = len(resp.content)
+            size_kb = size_bytes / 1024
+            # Skip if too small (<5KB likely a logo/icon) or too large (>2MB)
+            if size_bytes < 5000 or size_bytes > 2_000_000:
+                print(f"[AI-FILTER] Skip {url[:60]} — {size_kb:.0f}KB (too {'small' if size_kb < 5 else 'large'})")
+                return url, "", "", 0
             print(f"[AI-FILTER] Downloaded {url[:60]} — {size_kb:.0f}KB {media_type}")
             b64 = base64.b64encode(resp.content).decode("utf-8")
-            return url, b64, media_type
+            return url, b64, media_type, size_bytes
         except Exception as e:
             print(f"[AI-FILTER] Download error {url[:60]}: {e}")
-            return url, "", ""
+            return url, "", "", 0
 
     downloads = await asyncio.gather(*[_download(u) for u in photo_urls[:8]])
-    valid = [(url, b64, mt) for url, b64, mt in downloads if b64]
+    valid = [(url, b64, mt, sz) for url, b64, mt, sz in downloads if b64]
 
     if not valid:
         print("[AI-FILTER] No images downloaded successfully")
@@ -1080,7 +1197,7 @@ Respond with one line per image in format: IMAGE_N: WORK or IMAGE_N: SKIP
 where N is the image number (1-indexed)."""
     }]
 
-    for i, (url, b64, mt) in enumerate(valid):
+    for i, (url, b64, mt, sz) in enumerate(valid):
         content_parts.append({
             "type": "text",
             "text": f"IMAGE_{i+1}:"
@@ -1107,18 +1224,28 @@ where N is the image number (1-indexed)."""
 
         # Parse response — keep only WORK images
         kept = []
-        for i, (url, b64, mt) in enumerate(valid):
+        for i, (url, b64, mt, sz) in enumerate(valid):
             marker = f"IMAGE_{i+1}"
             if f"{marker}: WORK" in response_text or f"{marker}:WORK" in response_text:
                 kept.append(url)
 
         print(f"[AI-FILTER] Kept {len(kept)}/{len(valid)} images as work photos")
+
+        # Fallback: if AI skipped everything, keep large JPEGs only (>=20KB)
+        # Small JPEGs (<20KB) are almost always logos/icons, not work photos
+        if not kept:
+            jpeg_fallback = [url for url, b64, mt, sz in valid
+                            if mt == "image/jpeg" and sz >= 20_000]
+            if jpeg_fallback:
+                print(f"[AI-FILTER] All SKIP — falling back to {len(jpeg_fallback)} large JPEG(s)")
+                return jpeg_fallback[:4]
+
         return kept
 
     except Exception as e:
         print(f"[AI-FILTER] LLM error: {e}")
         # On failure, return all images unfiltered
-        return [url for url, b64, mt in valid]
+        return [url for url, b64, mt, sz in valid]
 
 
 # ────────── SEARCH RESULT EXTRACTORS ──────────

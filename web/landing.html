@@ -944,10 +944,6 @@
       background: rgba(251,191,36,0.25);
       border-color: rgba(251,191,36,0.35);
     }
-    .profile-trust-badge.blue {
-      background: rgba(24,119,242,0.25);
-      border-color: rgba(24,119,242,0.35);
-    }
     .profile-trust-badge a {
       color: inherit; text-decoration: none;
     }
@@ -1985,21 +1981,6 @@
         starIcon.className = 'fas fa-star';
         b.appendChild(starIcon);
         b.appendChild(document.createTextNode(' ' + googleRating + '\u2605 (' + googleReviews + ' reviews)'));
-        trustBar.appendChild(b);
-      }
-      const facebookUrl = state?.facebook_url || '';
-      if (facebookUrl) {
-        const b = document.createElement('span');
-        b.className = 'profile-trust-badge blue';
-        const fbIcon = document.createElement('i');
-        fbIcon.className = 'fab fa-facebook';
-        b.appendChild(fbIcon);
-        const a = document.createElement('a');
-        a.href = facebookUrl;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.textContent = ' Facebook';
-        b.appendChild(a);
         trustBar.appendChild(b);
       }
       hero.appendChild(trustBar);
