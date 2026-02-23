@@ -157,7 +157,8 @@
 - [x] Mobile responsiveness fixes (body scroll lock, width overflow, progress bar, profile wrap margins)
 - [x] Missing `python-multipart` dependency for Railway deployment
 - [ ] Streaming SSE implementation (currently JSON responses)
-- [ ] Edge cases: very long service lists, unusual business types, non-trade businesses
+- [x] Edge cases: non-trade businesses (Google Places type gate), short input guard, NOABN intent
+- [ ] Edge cases: very long service lists
 - [ ] Handle non-NSW businesses gracefully (no licence data, inform user)
 - [ ] LangSmith tracing integration
 - [ ] Conversation quality review (20+ test sessions)
@@ -174,10 +175,19 @@
 - [x] Git repo: github.com/cleopatterson/trade_onboarding
 - [x] Environment variable documentation (.env.example)
 - [ ] Dockerfile + production config
-- [ ] API security (rate limiting, input validation)
+- [x] API security (rate limiting 15/60s, input validation min/max, CORS whitelist, PII redaction)
 - [ ] Session persistence (currently in-memory dict)
 - [ ] Monitoring + alerting setup
 - [ ] Analytics dashboard (completion rates, drop-off, timing)
+
+---
+
+## Next Up
+> Scoped, ready to pick up
+
+- [ ] **Specialist gap clustering**: Pre-define cluster groups in `service_tiers.json` so the LLM asks about related services together (e.g. "Do you do data cabling and security?" rather than asking separately). Carpenter (11 gaps) and Cleaner (14 gaps) need this most — too many specialist items to cover in 2-3 single-select turns. Consider grouping by: equipment needed, commercial vs residential, specialist accreditation.
+- [ ] **Multi-category tradies**: Builder who also does carpentry + tiling; handyman who spans multiple trades. Current `_detect_category()` returns single category. Need to detect secondary categories and merge tier mappings.
+- [ ] **Live testing session**: Run 20+ test sessions across all 6 tiered trades + 2-3 non-tiered trades. Validate: correct pre-mapping, sensible gap questions, no invented IDs, clean completion. Log results.
 
 ---
 
@@ -337,3 +347,51 @@
   - Button hover `translateX` disabled on mobile (was pushing content right)
   - Smaller buttons/inputs on mobile (48px height, tighter padding)
   - Profile wrap negative margins matched to mobile content padding (-20px not -32px)
+
+### Feb 21, 2026 — Google Places, Service Discovery Rewrite, Trust Badges
+- **Google Places API**: Text Search for rating, reviews, website, primary type
+  - Website from Google Places used as primary scrape URL (beats domain discovery)
+  - Reviews fed into service discovery as mapping signal
+  - `google_primary_type` used for non-trade business gate
+- **Service Discovery Rewrite**: Single prompt path (no Turn 1/Turn 2+ split)
+  - `compute_service_gaps()` — deterministic gap tracking against subcategories.json
+  - `_TRADE_CATEGORY_MAP` maps business keywords → category keys
+  - Safety cap at turn 5, completion when gaps < 3
+- **Trust Badges**: Google rating stars + NSW licence verified badge in profile hero
+- **No-logo Monogram**: Frosted glass initials when no logo uploaded, camera hint on hover
+
+### Feb 23, 2026 — Server Hardening, Tiered Service Mapping, Cleanup
+- **Server Hardening** (`server/app.py`):
+  - `logging` module replaces all `print()` calls across server, graph, tools, config
+  - `asynccontextmanager` lifespan replaces deprecated `on_event`
+  - Session TTL cleanup: 30min inactive expiry, 500 session cap, background cleanup task
+  - Rate limiting: 15 requests/60s per session (429 with Retry-After header)
+  - CORS origin whitelist via `ALLOWED_ORIGINS` env var (no more wildcard)
+  - Message validation: min 1, max 2000 chars on `/api/chat`
+  - PII redaction in logs: ABN masked to last 3 digits, contact_name/phone stripped
+  - `_safe_state()` hardened: redacts ABN, strips google_reviews/contact_phone/internal fields
+  - `validate_env()` on startup: fails fast if ANTHROPIC_API_KEY missing, warns for optional keys
+- **Tiered Service Mapping** (`agent/tools.py`, `resources/service_tiers.json`):
+  - 3-tier deterministic mapping on turn 1: core → evidence keywords → licence signals
+  - `compute_initial_services()` pre-maps services before LLM call
+  - `_detect_category()` priority chain: business name → licence classes → Google name → Google type
+  - 6 trades covered: Electrician (20/20), Plumber (24/24), Painter (10/10), Carpenter (23/24), Cleaner (29/29), Gardener (17/18)
+  - Full subcategory coverage: every subcategory is core, evidence, or licence — no orphans
+  - Non-tiered trades fall back to full taxonomy + LLM mapping (existing behaviour)
+  - Specialist gaps (unmapped subcats) asked about in clusters by LLM, 2-3 questions max
+- **Business Verification Improvements**:
+  - Short input guard (< 2 chars)
+  - NOABN intent handler ("I don't have an ABN")
+  - Postcode mismatch feedback ("None matched postcode X, showing all results")
+  - Better licence matching: word-overlap fallback when no exact name match
+  - Classifier fallback: unclear intents get clarification prompt
+- **Non-Trade Business Gate**: Google Places `primary_type` checked against 40+ non-trade types
+  - Restaurants, shops, doctors, gyms, etc. get polite rejection + "try a different business" button
+  - `__RESTART_BIZ__` handler resets state back to business verification
+- **Code Quality**:
+  - Confirmation node removed entirely (editing absorbed into profile builder)
+  - `MODEL_SMART` removed — all nodes use Haiku
+  - `_extract_json()` rewritten with brace-depth counting (handles nested JSON correctly)
+  - Unused functions removed: `search_suburbs_by_name()`, `get_region_suburbs()`, `_get_relevant_taxonomy()`
+  - Caching added: regional guides, subcategory guides, service tiers
+  - Unit tests: 26 tests in `tests/test_tools.py` (ABR parsing, service gaps, suburbs, guides)

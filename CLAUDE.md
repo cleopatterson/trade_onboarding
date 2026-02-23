@@ -11,14 +11,17 @@ source venv/bin/activate
 # Start server (port 8001)
 python -m server.app
 
+# Run tests
+python -m pytest tests/test_tools.py -v
+
 # Open in browser
 open http://localhost:8001
 ```
 
 ## Architecture
 - **Server:** FastAPI (`server/app.py`) — endpoints, auto-chaining, session management
-- **Agent:** LangGraph-inspired state machine (`agent/graph.py`) — 7 nodes, prompts inline, no-scripting principle
-- **Tools:** ABR, NSW Fair Trading, Brave Search, geo helpers (`agent/tools.py`)
+- **Agent:** LangGraph-inspired state machine (`agent/graph.py`) — 6 nodes, prompts inline, no-scripting principle
+- **Tools:** ABR, NSW Fair Trading, Brave Search, Google Places, geo helpers, tiered service mapping (`agent/tools.py`)
 - **Frontend:** Single-file HTML/JS/CSS (`web/landing.html`) — landing page + wizard modal
 - **Models:** Claude Haiku 4.5 (all nodes + classifiers) — Sonnet removed for speed
 
@@ -27,8 +30,8 @@ open http://localhost:8001
 |------|---------|
 | `server/app.py` | FastAPI server, auto-chaining, session state, button logic, logging |
 | `agent/graph.py` | State machine nodes: welcome, business_verification, service_discovery, service_area, profile, pricing, complete (confirmation bypassed) |
-| `agent/tools.py` | ABR lookup, NSW licence browse/details, Brave search, suburb grouping, website scraping, AI image filter |
-| `agent/config.py` | Environment config, model IDs, API keys |
+| `agent/tools.py` | ABR lookup, NSW licence browse/details, Brave search, Google Places, suburb grouping, website scraping, AI image filter, tiered service mapping |
+| `agent/config.py` | Environment config, model IDs, API keys, CORS origins, env validation |
 | `agent/state.py` | OnboardingState TypedDict |
 | `web/landing.html` | Landing page + wizard modal (all-in-one) |
 | `resources/suburbs.csv` | 15,761 AU suburbs (name, state, postcode, lat, lng, area, region) |
@@ -36,6 +39,8 @@ open http://localhost:8001
 | `resources/*-subcategory-guide.md` | Trade-specific gap question guides (plumber, electrician, cleaner, gardener) |
 | `resources/*_subcategories.md` | Subcategory reference lists (plumbing, electrical, painter, carpentry) |
 | `resources/*_regions.md` | Regional guides (sydney, melbourne, brisbane, perth) |
+| `resources/service_tiers.json` | Tiered service mapping: core, evidence keywords, licence signals per trade |
+| `tests/test_tools.py` | Unit tests for tools (ABR parsing, service gaps, suburbs, guides) |
 
 ## Design Principles
 1. **No scripting** — prompts provide context/goals/guides, LLM figures out the conversation
@@ -53,7 +58,7 @@ WELCOME → BUSINESS_VERIFICATION → SERVICE_DISCOVERY → SERVICE_AREA → PRO
 - Pricing node: data-driven (no LLM), recommends plan based on region count, 3-turn flow (plan → billing → done) or skip
 
 ## External APIs
-ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API. See `docs/PRD.md` Section 4 for details, `.env.example` for required keys.
+ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API, Google Places API (Text Search). See `docs/PRD.md` Section 4 for details, `.env.example` for required keys.
 
 ## Development Notes
 - Server runs on port **8001** (Concierge uses 8000)
@@ -70,9 +75,13 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API. See `docs/
 - Website discovery: infers business domain from name (tries .com.au/.au/.net.au), scrapes logo + photos
 - Upload endpoint: `POST /api/upload` for logo + work photos (base64, max 5MB, photos capped at 6)
 - Progressive loading with magic stars + API activity steps for key transitions
-- Service discovery allows 2-3 gap questions with safety cap at 4 turns
+- Service discovery: tiered mapping (core → evidence → licence) on turn 1, specialist gap questions on follow-ups, safety cap at 5 turns
+- Tiered trades: Electrician, Plumber, Painter, Carpenter, Cleaner, Gardener (full subcategory coverage)
+- Non-tiered trades fall back to full taxonomy + LLM mapping
 - LLM JSON responses: strip markdown code fences before parsing (```json ... ```)
 - Parallel auto-chain: service_discovery turn 2 + service_area turn 1 via asyncio.gather
+- Server hardened: session TTL (30min), rate limiting (15/60s), CORS whitelist, PII redaction in logs
+- Non-trade business gate: Google Places type check rejects restaurants, shops, etc.
 - Deployed on Railway: https://trade-onboarding.up.railway.app
 
 ## Docs

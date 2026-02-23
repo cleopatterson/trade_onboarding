@@ -35,6 +35,7 @@ class OnboardingState(TypedDict):
     services_raw: str
     services: list[dict]
     services_confirmed: bool
+    _svc_turn: int
 
     # Service Areas
     location_raw: str
@@ -65,9 +66,15 @@ class OnboardingState(TypedDict):
     google_reviews: list[dict]        # [{text: "...", rating: 5}, ...]
     facebook_url: str                 # e.g. "https://facebook.com/SmithPlumbing"
     business_website: str             # from Google Places websiteUri
+    google_business_name: str         # display name from Google Places
+    google_primary_type: str          # e.g. "electrician", "plumber"
 
     # Pricing / Subscription
     pricing_shown: bool
     subscription_plan: str        # "standard" | "plus" | "pro" | "skip" | ""
     subscription_billing: str     # "monthly" | "quarterly" | "annual" | ""
     subscription_price: str       # e.g. "$79/mo"
+    _selected_plan: str           # guard for pricing node turn 2 vs turn 3
+
+    # UI
+    buttons: list[dict]           # node-generated button options

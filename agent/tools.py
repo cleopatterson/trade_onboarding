@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import csv
 import json
-import os
+import logging
 import math
 import re
 from pathlib import Path
-from typing import Optional
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from agent.config import (
     ABR_GUID, NSW_TRADES_API_KEY, NSW_TRADES_AUTH_HEADER, BRAVE_SEARCH_API_KEY,
@@ -51,8 +52,17 @@ async def abr_lookup(search_term: str, search_type: str = "name") -> dict:
 
         return _parse_jsonp_response(resp.text, search_type)
 
+    except httpx.TimeoutException as e:
+        logger.error(f"ABR lookup timeout: {e}")
+        return _mock_abr_lookup(search_term, search_type)
+    except httpx.HTTPError as e:
+        logger.error(f"ABR lookup HTTP error: {e}")
+        return _mock_abr_lookup(search_term, search_type)
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        logger.error(f"ABR lookup parse error: {e}")
+        return _mock_abr_lookup(search_term, search_type)
     except Exception as e:
-        print(f"ABR lookup error: {e}")
+        logger.error(f"ABR lookup unexpected error ({type(e).__name__}): {e}")
         return _mock_abr_lookup(search_term, search_type)
 
 
@@ -344,6 +354,184 @@ def compute_service_gaps(services: list[dict], business_name: str,
     return gaps
 
 
+# ────────── TIERED SERVICE MAPPING ──────────
+
+_tiers_cache = None
+
+def _load_service_tiers() -> dict:
+    """Load tier definitions for guided trades. Cached on first read."""
+    global _tiers_cache
+    if _tiers_cache is not None:
+        return _tiers_cache
+
+    tiers_file = RESOURCES_DIR / "service_tiers.json"
+    if tiers_file.exists():
+        with open(tiers_file) as f:
+            _tiers_cache = json.load(f)
+        return _tiers_cache
+    _tiers_cache = {}
+    return _tiers_cache
+
+
+def _detect_category(business_name: str, licence_classes: list[str] | None,
+                     google_business_name: str, google_primary_type: str) -> str | None:
+    """Detect the trade category using the standard priority chain.
+
+    Same logic as compute_service_gaps but without requiring existing services.
+    Returns category key (e.g. "Electrician") or None.
+    """
+    # Priority 1: business name
+    name_lower = business_name.lower()
+    for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+        if keyword in name_lower:
+            return cat_key
+
+    # Priority 2: licence classes
+    if licence_classes:
+        for lc in licence_classes:
+            lc_lower = lc.lower()
+            for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+                if keyword in lc_lower:
+                    return cat_key
+
+    # Priority 3: Google Places business name
+    if google_business_name:
+        gname_lower = google_business_name.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in gname_lower:
+                return cat_key
+
+    # Priority 4: Google Places primary type
+    if google_primary_type:
+        gtype_lower = google_primary_type.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in gtype_lower:
+                return cat_key
+
+    return None
+
+
+def compute_initial_services(
+    business_name: str,
+    licence_classes: list[str],
+    google_business_name: str,
+    google_primary_type: str,
+    google_reviews: list[dict],
+    web_results: list[dict],
+) -> dict:
+    """Build initial service list using tiered mapping from guides.
+
+    Returns:
+      {"services": [...], "specialist_gaps": [...], "category_name": str, "tiered": True}
+      or {"tiered": False} if no tier definition exists for this trade.
+    """
+    tiers = _load_service_tiers()
+    categories = _load_categories()
+    if not tiers or not categories:
+        return {"tiered": False}
+
+    # Detect category
+    cat_key = _detect_category(business_name, licence_classes,
+                               google_business_name, google_primary_type)
+    if not cat_key or cat_key not in tiers or cat_key not in categories:
+        return {"tiered": False}
+
+    tier_def = tiers[cat_key]
+    cat_data = categories[cat_key]
+    cat_id = cat_data.get("category_id", 0)
+    cat_name = cat_data.get("category_name", cat_key)
+    all_subcats = cat_data.get("subcategories", [])
+
+    # Build name→subcat lookup for resolving tier names to full objects
+    subcat_by_name: dict[str, dict] = {}
+    for sc in all_subcats:
+        subcat_by_name[sc["subcategory_name"]] = sc
+
+    def _resolve(name: str) -> dict | None:
+        sc = subcat_by_name.get(name)
+        if not sc:
+            return None
+        return {
+            "input": name,
+            "category_name": cat_name,
+            "category_id": cat_id,
+            "subcategory_name": sc["subcategory_name"],
+            "subcategory_id": sc["subcategory_id"],
+            "confidence": "high",
+        }
+
+    # 1. Core services — always mapped
+    services = []
+    mapped_names: set[str] = set()
+    for name in tier_def.get("core", []):
+        svc = _resolve(name)
+        if svc:
+            services.append(svc)
+            mapped_names.add(name)
+
+    # 2. Evidence-based services — scan reviews + web results for keywords
+    evidence_text = ""
+    for rev in google_reviews:
+        evidence_text += " " + rev.get("text", "")
+    for wr in web_results:
+        evidence_text += " " + wr.get("title", "") + " " + wr.get("description", "")
+    evidence_lower = evidence_text.lower()
+
+    for svc_name, keywords in tier_def.get("evidence_keywords", {}).items():
+        if svc_name in mapped_names:
+            continue
+        for kw in keywords:
+            if kw in evidence_lower:
+                svc = _resolve(svc_name)
+                if svc:
+                    svc["confidence"] = "evidence"
+                    services.append(svc)
+                    mapped_names.add(svc_name)
+                break
+
+    # 3. Licence signal services — scan licence classes for signal keywords
+    for svc_name, signals in tier_def.get("licence_signals", {}).items():
+        if svc_name in mapped_names:
+            continue
+        for lc in licence_classes:
+            lc_lower = lc.lower()
+            matched = False
+            for sig in signals:
+                if sig in lc_lower:
+                    svc = _resolve(svc_name)
+                    if svc:
+                        svc["confidence"] = "licence"
+                        services.append(svc)
+                        mapped_names.add(svc_name)
+                    matched = True
+                    break
+            if matched:
+                break
+
+    # 4. Specialist gaps — all subcategories NOT yet mapped
+    specialist_gaps = []
+    for sc in all_subcats:
+        if sc["subcategory_name"] not in mapped_names:
+            specialist_gaps.append({
+                "subcategory_id": sc["subcategory_id"],
+                "subcategory_name": sc["subcategory_name"],
+                "category_id": cat_id,
+                "category_name": cat_name,
+            })
+
+    logger.info(f"[TIERS] {cat_key}: {len(services)} pre-mapped (core={len(tier_def.get('core', []))}, "
+                f"evidence={sum(1 for s in services if s.get('confidence') == 'evidence')}, "
+                f"licence={sum(1 for s in services if s.get('confidence') == 'licence')}), "
+                f"{len(specialist_gaps)} specialist gaps")
+
+    return {
+        "services": services,
+        "specialist_gaps": specialist_gaps,
+        "category_name": cat_name,
+        "tiered": True,
+    }
+
+
 # ────────── LOCATION PARSER ──────────
 
 _suburbs_cache = None
@@ -371,13 +559,6 @@ def search_suburbs_by_postcode(postcode: str) -> list[dict]:
     """Find suburbs matching a postcode."""
     suburbs = _load_suburbs()
     return [s for s in suburbs if s.get("postcode") == postcode]
-
-
-def search_suburbs_by_name(name: str) -> list[dict]:
-    """Find suburbs matching a name (case insensitive)."""
-    suburbs = _load_suburbs()
-    name_lower = name.lower()
-    return [s for s in suburbs if name_lower in s.get("name", "").lower()]
 
 
 def get_suburbs_within_radius(lat: float, lng: float, radius_km: float) -> list[dict]:
@@ -409,17 +590,6 @@ def _haversine(lat1, lng1, lat2, lng2):
          math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
          math.sin(dlng/2)**2)
     return R * 2 * math.asin(math.sqrt(a))
-
-
-def get_region_suburbs(region_name: str) -> list[str]:
-    """Look up suburbs for a named region from region guide files."""
-    for fname in os.listdir(RESOURCES_DIR):
-        if fname.endswith("_regions.md"):
-            fpath = RESOURCES_DIR / fname
-            content = fpath.read_text()
-            if region_name.lower() in content.lower():
-                return content
-    return ""
 
 
 def get_suburbs_in_radius_grouped(base_postcode: str, radius_km: float = 20.0) -> dict:
@@ -472,20 +642,30 @@ def get_suburbs_in_radius_grouped(base_postcode: str, radius_km: float = 20.0) -
     }
 
 
+_regional_cache: dict[str, str] = {}
+
+
 def get_regional_guide(state_code: str) -> str:
-    """Get the regional guide for a state (sydney, melbourne, etc)."""
+    """Get the regional guide for a state (sydney, melbourne, etc). Cached on first read."""
+    key = state_code.upper()
+    if key in _regional_cache:
+        return _regional_cache[key]
     state_map = {"NSW": "sydney", "VIC": "melbourne", "QLD": "brisbane", "WA": "perth"}
-    city = state_map.get(state_code.upper(), "")
+    city = state_map.get(key, "")
     if not city:
+        _regional_cache[key] = ""
         return ""
     guide_path = RESOURCES_DIR / f"{city}_regions.md"
-    if guide_path.exists():
-        return guide_path.read_text()
-    return ""
+    content = guide_path.read_text() if guide_path.exists() else ""
+    _regional_cache[key] = content
+    return content
+
+
+_guide_cache: dict[str, str] = {}
 
 
 def find_subcategory_guide(business_name: str) -> str:
-    """Find the relevant subcategory guide based on business name trade type."""
+    """Find the relevant subcategory guide based on business name trade type. Cached on first read."""
     name_lower = business_name.lower()
 
     # Map trade keywords to guide files
@@ -502,9 +682,13 @@ def find_subcategory_guide(business_name: str) -> str:
     for keyword, files in trade_guides.items():
         if keyword in name_lower:
             for fname in files:
+                if fname in _guide_cache:
+                    return _guide_cache[fname]
                 fpath = RESOURCES_DIR / fname
                 if fpath.exists():
-                    return fpath.read_text()
+                    content = fpath.read_text()
+                    _guide_cache[fname] = content
+                    return content
 
     return ""
 
@@ -546,18 +730,18 @@ async def _get_nsw_trades_token() -> str:
                 if token:
                     _nsw_trades_token["access_token"] = token
                     _nsw_trades_token["expires_at"] = time.time() + expires_in
-                    print(f"[NSW TRADES] Got OAuth token, expires in {expires_in}s")
+                    logger.info(f"[NSW TRADES] Got OAuth token, expires in {expires_in}s")
                     return token
-                print(f"[NSW TRADES] Token response missing access_token: {resp.text[:200]}")
+                logger.warning(f"[NSW TRADES] Token response missing access_token: {resp.text[:200]}")
                 return ""
             except (json.JSONDecodeError, ValueError):
-                print(f"[NSW TRADES] Token response not JSON: {resp.text[:200]}")
+                logger.warning(f"[NSW TRADES] Token response not JSON: {resp.text[:200]}")
                 return ""
         else:
-            print(f"[NSW TRADES] Token request failed: {resp.status_code}")
+            logger.error(f"[NSW TRADES] Token request failed: {resp.status_code}")
             return ""
     except Exception as e:
-        print(f"[NSW TRADES] Token error: {e}")
+        logger.error(f"[NSW TRADES] Token error: {e}")
         return ""
 
 
@@ -569,12 +753,12 @@ async def nsw_licence_browse(search_term: str) -> dict:
     licenceType, status, suburb, postcode, expiryDate, categories, classes.
     """
     if not NSW_TRADES_API_KEY:
-        print("[NSW TRADES] No API key configured, skipping licence lookup")
+        logger.warning("[NSW TRADES] No API key configured, skipping licence lookup")
         return {"results": [], "error": "NSW Trades API not configured"}
 
     token = await _get_nsw_trades_token()
     if not token:
-        print("[NSW TRADES] Could not get OAuth token, skipping licence lookup")
+        logger.warning("[NSW TRADES] Could not get OAuth token, skipping licence lookup")
         return {"results": [], "error": "Could not authenticate with NSW Trades API"}
 
     try:
@@ -591,7 +775,7 @@ async def nsw_licence_browse(search_term: str) -> dict:
         )
 
         if resp.status_code != 200:
-            print(f"[NSW TRADES] Browse failed: {resp.status_code} - {resp.text[:200]}")
+            logger.error(f"[NSW TRADES] Browse failed: {resp.status_code} - {resp.text[:200]}")
             return {"results": [], "error": f"API returned {resp.status_code}"}
 
         data = resp.json()
@@ -613,11 +797,20 @@ async def nsw_licence_browse(search_term: str) -> dict:
                 "business_names": entry.get("businessNames"),
             })
 
-        print(f"[NSW TRADES] Found {len(results)} licence results for '{search_term}'")
+        logger.info(f"[NSW TRADES] Found {len(results)} licence results for '{search_term}'")
         return {"results": results, "count": len(results)}
 
+    except httpx.TimeoutException as e:
+        logger.error(f"[NSW TRADES] Lookup timeout: {e}")
+        return {"results": [], "error": "timeout"}
+    except httpx.HTTPError as e:
+        logger.error(f"[NSW TRADES] Lookup HTTP error: {e}")
+        return {"results": [], "error": str(e)}
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        logger.error(f"[NSW TRADES] Lookup parse error: {e}")
+        return {"results": [], "error": str(e)}
     except Exception as e:
-        print(f"[NSW TRADES] Lookup error: {e}")
+        logger.error(f"[NSW TRADES] Lookup unexpected error ({type(e).__name__}): {e}")
         return {"results": [], "error": str(e)}
 
 
@@ -649,7 +842,7 @@ async def nsw_licence_details(licence_id: str) -> dict:
         )
 
         if resp.status_code != 200:
-            print(f"[NSW TRADES] Details failed: {resp.status_code}")
+            logger.error(f"[NSW TRADES] Details failed: {resp.status_code}")
             return {"error": f"API returned {resp.status_code}"}
 
         data = resp.json()
@@ -693,8 +886,17 @@ async def nsw_licence_details(licence_id: str) -> dict:
             "raw": data,
         }
 
+    except httpx.TimeoutException as e:
+        logger.error(f"[NSW TRADES] Details timeout: {e}")
+        return {"error": "timeout"}
+    except httpx.HTTPError as e:
+        logger.error(f"[NSW TRADES] Details HTTP error: {e}")
+        return {"error": str(e)}
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        logger.error(f"[NSW TRADES] Details parse error: {e}")
+        return {"error": str(e)}
     except Exception as e:
-        print(f"[NSW TRADES] Details error: {e}")
+        logger.error(f"[NSW TRADES] Details unexpected error ({type(e).__name__}): {e}")
         return {"error": str(e)}
 
 
@@ -709,7 +911,7 @@ async def brave_web_search(query: str, count: int = 5) -> list[dict]:
     import asyncio as _aio
 
     if not BRAVE_SEARCH_API_KEY:
-        print("[BRAVE] No API key configured, skipping web search")
+        logger.warning("[BRAVE] No API key configured, skipping web search")
         return []
 
     for attempt in range(2):
@@ -728,12 +930,12 @@ async def brave_web_search(query: str, count: int = 5) -> list[dict]:
             )
 
             if resp.status_code == 429 and attempt == 0:
-                print(f"[BRAVE] Rate limited, retrying in 1s...")
+                logger.warning(f"[BRAVE] Rate limited, retrying in 1s...")
                 await _aio.sleep(1.0)
                 continue
 
             if resp.status_code != 200:
-                print(f"[BRAVE] Search failed: {resp.status_code}")
+                logger.error(f"[BRAVE] Search failed: {resp.status_code}")
                 return []
 
             data = resp.json()
@@ -749,11 +951,20 @@ async def brave_web_search(query: str, count: int = 5) -> list[dict]:
                     result["thumbnail"] = thumb["src"]
                 results.append(result)
 
-            print(f"[BRAVE] Found {len(results)} results for '{query}'")
+            logger.info(f"[BRAVE] Found {len(results)} results for '{query}'")
             return results
 
+        except httpx.TimeoutException as e:
+            logger.error(f"[BRAVE] Search timeout: {e}")
+            return []
+        except httpx.HTTPError as e:
+            logger.error(f"[BRAVE] Search HTTP error: {e}")
+            return []
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.error(f"[BRAVE] Search parse error: {e}")
+            return []
         except Exception as e:
-            print(f"[BRAVE] Search error: {e}")
+            logger.error(f"[BRAVE] Search unexpected error ({type(e).__name__}): {e}")
             return []
 
     return []
@@ -769,7 +980,7 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
     Returns empty dict on failure.
     """
     if not GOOGLE_PLACES_API_KEY:
-        print("[GOOGLE] No API key configured, skipping Places search")
+        logger.warning("[GOOGLE] No API key configured, skipping Places search")
         return {}
 
     try:
@@ -788,13 +999,13 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
         )
 
         if resp.status_code != 200:
-            print(f"[GOOGLE] Places search failed: {resp.status_code} - {resp.text[:200]}")
+            logger.error(f"[GOOGLE] Places search failed: {resp.status_code} - {resp.text[:200]}")
             return {}
 
         data = resp.json()
         places = data.get("places", [])
         if not places:
-            print(f"[GOOGLE] No places found for '{query}'")
+            logger.info(f"[GOOGLE] No places found for '{query}'")
             return {}
 
         place = places[0]
@@ -828,11 +1039,20 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             "types": types,
         }
 
-        print(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}")
+        logger.info(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}")
         return result
 
+    except httpx.TimeoutException as e:
+        logger.error(f"[GOOGLE] Places search timeout: {e}")
+        return {}
+    except httpx.HTTPError as e:
+        logger.error(f"[GOOGLE] Places search HTTP error: {e}")
+        return {}
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        logger.error(f"[GOOGLE] Places search parse error: {e}")
+        return {}
     except Exception as e:
-        print(f"[GOOGLE] Places search error: {e}")
+        logger.error(f"[GOOGLE] Places search unexpected error ({type(e).__name__}): {e}")
         return {}
 
 
@@ -867,33 +1087,34 @@ async def discover_business_website(business_name: str) -> str:
         f"https://www.{slug}.net.au",
     ]
 
-    # Use a fresh client for discovery — shared client can have stale connections
     import asyncio
-    async with httpx.AsyncClient(timeout=8.0) as client:
-        async def _check(url: str) -> str:
-            try:
-                resp = await client.head(url, follow_redirects=True)
-                if resp.status_code < 400:
-                    content_type = resp.headers.get("content-type", "")
-                    if "text/html" in content_type or "application" in content_type:
-                        print(f"[DISCOVER] Found: {url} → {resp.status_code}")
-                        return str(resp.url)  # Return final URL after redirects
-            except Exception as e:
-                print(f"[DISCOVER] Failed: {url} → {type(e).__name__}")
-            return ""
 
-        results = await asyncio.gather(*[_check(u) for u in candidates])
+    async def _check(url: str) -> str:
+        try:
+            resp = await _http_client.head(url, follow_redirects=True, timeout=8.0)
+            if resp.status_code < 400:
+                content_type = resp.headers.get("content-type", "")
+                if "text/html" in content_type or "application" in content_type:
+                    logger.info(f"[DISCOVER] Found: {url} → {resp.status_code}")
+                    return str(resp.url)  # Return final URL after redirects
+        except Exception as e:
+            logger.error(f"[DISCOVER] Failed: {url} → {type(e).__name__}")
+        return ""
+
+    results = await asyncio.gather(*[_check(u) for u in candidates])
 
     # Prefer .com.au over .au (more likely to be the real content site)
     for r in results:
         if r:
             return r
 
-    print(f"[DISCOVER] No website found for '{business_name}' (tried {slug}.*)")
+    logger.info(f"[DISCOVER] No website found for '{business_name}' (tried {slug}.*)")
     return ""
 
 
 # ────────── WEBSITE IMAGE SCRAPER ──────────
+
+_scrape_cache: dict[str, dict] = {}   # domain → {"logo": ..., "photos": [...]}
 
 # Patterns that indicate an image is a logo
 _LOGO_PATTERNS = re.compile(r'logo|brand|header-img|site-icon', re.IGNORECASE)
@@ -912,18 +1133,23 @@ async def scrape_website_images(url: str) -> dict:
     """Fetch a website and extract logo + photo URLs from HTML.
 
     Returns {"logo": "url_or_empty", "photos": ["url1", ...]}
+    Results are cached by domain (cleared on process restart).
     """
+    from urllib.parse import urlparse
+    domain = urlparse(url).netloc
+    if domain in _scrape_cache:
+        return _scrape_cache[domain]
+
     result = {"logo": "", "photos": []}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                url,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
-                follow_redirects=True,
-            )
+        resp = await _http_client.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+            follow_redirects=True,
+        )
         if resp.status_code != 200:
-            print(f"[SCRAPE] {url} returned {resp.status_code}")
+            logger.info(f"[SCRAPE] {url} returned {resp.status_code}")
             return result
 
         html = resp.text
@@ -1045,11 +1271,16 @@ async def scrape_website_images(url: str) -> dict:
         photos = [url for _, url in candidates[:8]]
 
         result["photos"] = photos
-        print(f"[SCRAPE] {url}: logo={'yes' if logo else 'no'}, {len(photos)} photos")
+        logger.info(f"[SCRAPE] {url}: logo={'yes' if logo else 'no'}, {len(photos)} photos")
 
+    except httpx.TimeoutException as e:
+        logger.error(f"[SCRAPE] Timeout fetching {url}: {e}")
+    except httpx.HTTPError as e:
+        logger.error(f"[SCRAPE] HTTP error fetching {url}: {e}")
     except Exception as e:
-        print(f"[SCRAPE] Error fetching {url}: {e}")
+        logger.error(f"[SCRAPE] Unexpected error fetching {url} ({type(e).__name__}): {e}")
 
+    _scrape_cache[domain] = result
     return result
 
 
@@ -1064,15 +1295,18 @@ async def scrape_social_images(urls: list[str]) -> dict:
     """
     result = {"logo": "", "photos": []}
 
+    import asyncio
+    if not urls:
+        return result
+
     async def _fetch_og_image(url: str) -> tuple[str, str]:
-        """Fetch a URL, return (og_image_url, source_type)."""
+        """Fetch a URL using shared client, return (og_image_url, source_type)."""
         try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                resp = await client.get(
-                    url,
-                    headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
-                    follow_redirects=True,
-                )
+            resp = await _http_client.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+                follow_redirects=True,
+            )
             if resp.status_code != 200:
                 return "", ""
 
@@ -1089,12 +1323,8 @@ async def scrape_social_images(urls: list[str]) -> dict:
                         source = "facebook" if "facebook.com" in url else "instagram"
                         return img_url, source
         except Exception as e:
-            print(f"[SOCIAL] Error fetching {url}: {e}")
+            logger.error(f"[SOCIAL] Error fetching {url}: {e}")
         return "", ""
-
-    import asyncio
-    if not urls:
-        return result
 
     tasks = [_fetch_og_image(u) for u in urls[:4]]  # Cap at 4 fetches
     fetched = await asyncio.gather(*tasks)
@@ -1106,15 +1336,15 @@ async def scrape_social_images(urls: list[str]) -> dict:
         # Facebook profile/cover → use as logo if we don't have one
         if source == "facebook" and not result["logo"]:
             result["logo"] = img_url
-            print(f"[SOCIAL] Facebook logo: {img_url[:80]}")
+            logger.info(f"[SOCIAL] Facebook logo: {img_url[:80]}")
         # Instagram profile → logo fallback; post images → photos
         elif source == "instagram":
             if not result["logo"]:
                 result["logo"] = img_url
-                print(f"[SOCIAL] Instagram logo: {img_url[:80]}")
+                logger.info(f"[SOCIAL] Instagram logo: {img_url[:80]}")
             else:
                 result["photos"].append(img_url)
-                print(f"[SOCIAL] Instagram photo: {img_url[:80]}")
+                logger.info(f"[SOCIAL] Instagram photo: {img_url[:80]}")
 
     return result
 
@@ -1136,16 +1366,15 @@ async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradespe
     if not photo_urls:
         return []
 
-    # Download images in parallel
+    # Download images in parallel using shared client
     async def _download(url: str) -> tuple[str, str, str, int]:
         """Download image, return (url, base64_data, media_type, size_bytes) or empty on failure."""
         try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                resp = await client.get(
-                    url,
-                    headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
-                    follow_redirects=True,
-                )
+            resp = await _http_client.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+                follow_redirects=True,
+            )
             if resp.status_code != 200:
                 return url, "", "", 0
             content_type = resp.headers.get("content-type", "")
@@ -1169,20 +1398,20 @@ async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradespe
             size_kb = size_bytes / 1024
             # Skip if too small (<5KB likely a logo/icon) or too large (>2MB)
             if size_bytes < 5000 or size_bytes > 2_000_000:
-                print(f"[AI-FILTER] Skip {url[:60]} — {size_kb:.0f}KB (too {'small' if size_kb < 5 else 'large'})")
+                logger.info(f"[AI-FILTER] Skip {url[:60]} — {size_kb:.0f}KB (too {'small' if size_kb < 5 else 'large'})")
                 return url, "", "", 0
-            print(f"[AI-FILTER] Downloaded {url[:60]} — {size_kb:.0f}KB {media_type}")
+            logger.info(f"[AI-FILTER] Downloaded {url[:60]} — {size_kb:.0f}KB {media_type}")
             b64 = base64.b64encode(resp.content).decode("utf-8")
             return url, b64, media_type, size_bytes
         except Exception as e:
-            print(f"[AI-FILTER] Download error {url[:60]}: {e}")
+            logger.error(f"[AI-FILTER] Download error {url[:60]}: {e}")
             return url, "", "", 0
 
     downloads = await asyncio.gather(*[_download(u) for u in photo_urls[:8]])
     valid = [(url, b64, mt, sz) for url, b64, mt, sz in downloads if b64]
 
     if not valid:
-        print("[AI-FILTER] No images downloaded successfully")
+        logger.info("[AI-FILTER] No images downloaded successfully")
         return []
 
     # Build multimodal message with all images
@@ -1220,7 +1449,7 @@ where N is the image number (1-indexed)."""
         )
         response = await llm.ainvoke([HumanMessage(content=content_parts)])
         response_text = response.content.strip()
-        print(f"[AI-FILTER] Response: {response_text}")
+        logger.info(f"[AI-FILTER] Response: {response_text}")
 
         # Parse response — keep only WORK images
         kept = []
@@ -1229,7 +1458,7 @@ where N is the image number (1-indexed)."""
             if f"{marker}: WORK" in response_text or f"{marker}:WORK" in response_text:
                 kept.append(url)
 
-        print(f"[AI-FILTER] Kept {len(kept)}/{len(valid)} images as work photos")
+        logger.info(f"[AI-FILTER] Kept {len(kept)}/{len(valid)} images as work photos")
 
         # Fallback: if AI skipped everything, keep large JPEGs only (>=20KB)
         # Small JPEGs (<20KB) are almost always logos/icons, not work photos
@@ -1237,49 +1466,18 @@ where N is the image number (1-indexed)."""
             jpeg_fallback = [url for url, b64, mt, sz in valid
                             if mt == "image/jpeg" and sz >= 20_000]
             if jpeg_fallback:
-                print(f"[AI-FILTER] All SKIP — falling back to {len(jpeg_fallback)} large JPEG(s)")
+                logger.info(f"[AI-FILTER] All SKIP — falling back to {len(jpeg_fallback)} large JPEG(s)")
                 return jpeg_fallback[:4]
 
         return kept
 
     except Exception as e:
-        print(f"[AI-FILTER] LLM error: {e}")
+        logger.error(f"[AI-FILTER] LLM error: {e}")
         # On failure, return all images unfiltered
         return [url for url, b64, mt, sz in valid]
 
 
 # ────────── SEARCH RESULT EXTRACTORS ──────────
-
-def extract_google_rating(results: list[dict]) -> tuple[float, int]:
-    """Extract Google Business rating + review count from Brave search results.
-
-    Looks for patterns like "4.8 · 47 reviews", "Rated 4.8/5 based on 47 reviews",
-    "4.8 stars (47)", "Rating: 4.8 (47 reviews)" in result descriptions.
-    Returns (rating, review_count) or (0.0, 0) if not found.
-    """
-    patterns = [
-        # "4.8 · 47 reviews" or "4.8 · 47 Google reviews"
-        r'(\d\.\d)\s*[·•]\s*(\d+)\s*(?:Google\s+)?reviews?',
-        # "Rated 4.8/5 based on 47 reviews"
-        r'[Rr]ated\s+(\d\.\d)/5\s+(?:based on\s+)?(\d+)\s*reviews?',
-        # "4.8 stars (47 reviews)" or "4.8 stars · 47 reviews"
-        r'(\d\.\d)\s*stars?\s*[·•(]\s*(\d+)\s*reviews?\)?',
-        # "Rating: 4.8 (47 reviews)" or "Rating: 4.8 (47)"
-        r'[Rr]ating:?\s*(\d\.\d)\s*\((\d+)\s*(?:reviews?)?\)',
-        # "4.8(47)" — compact format
-        r'(\d\.\d)\((\d+)\)',
-    ]
-    for r in results:
-        desc = r.get("description", "") + " " + r.get("title", "")
-        for pat in patterns:
-            m = re.search(pat, desc)
-            if m:
-                rating = float(m.group(1))
-                count = int(m.group(2))
-                if 1.0 <= rating <= 5.0 and count > 0:
-                    return rating, count
-    return 0.0, 0
-
 
 def extract_facebook_url(results: list[dict]) -> str:
     """Pick the best Facebook business page URL from Brave search results.

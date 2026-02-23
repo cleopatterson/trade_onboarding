@@ -1538,7 +1538,7 @@
       html += `
         <div class="wizard-input-row">
           <input type="text" class="wizard-text-input" id="wizardInput"
-                 placeholder="Type your answer..."
+                 placeholder="Type your answer..." maxlength="500"
                  onkeypress="if(event.key==='Enter')submitInput()">
           <button class="wizard-submit-btn" onclick="submitInput()">
             <i class="fas fa-paper-plane"></i>
@@ -1804,7 +1804,7 @@
         '<div class="edit-section"><div class="edit-section-label">Service Areas</div><div class="edit-chips-container">' + (areaChips || '<span style="color:#999">None set</span>') + '</div></div>',
         '<button class="wizard-button wizard-button-confirm" id="confirmBtn" style="width:100%;justify-content:center;margin-top:20px;"><span>Looks good, let\'s go</span><i class="fas fa-check"></i></button>',
         '<div class="wizard-divider"><span>or type below</span></div>',
-        '<div class="wizard-input-row"><input type="text" class="wizard-text-input" id="wizardInput" placeholder="Type to add services or areas..." onkeypress="if(event.key===\'Enter\')submitInput()"><button class="wizard-submit-btn" onclick="submitInput()"><i class="fas fa-paper-plane"></i></button></div>',
+        '<div class="wizard-input-row"><input type="text" class="wizard-text-input" id="wizardInput" placeholder="Type to add services or areas..." maxlength="500" onkeypress="if(event.key===\'Enter\')submitInput()"><button class="wizard-submit-btn" onclick="submitInput()"><i class="fas fa-paper-plane"></i></button></div>',
       ].join('');
       content.textContent = '';
       content.appendChild(confirmEl);

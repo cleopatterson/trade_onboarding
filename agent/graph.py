@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import time
-from pathlib import Path
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langgraph.graph import StateGraph, END
 
 from agent.state import OnboardingState
-from agent.config import ANTHROPIC_API_KEY, MODEL_SMART, MODEL_FAST
+
+logger = logging.getLogger(__name__)
+from agent.config import ANTHROPIC_API_KEY, MODEL_FAST
 from agent.tools import (
     abr_lookup, get_category_taxonomy_text,
     search_suburbs_by_postcode,
@@ -25,19 +26,12 @@ from agent.tools import (
     nsw_licence_browse, nsw_licence_details,
     brave_web_search, scrape_website_images,
     discover_business_website, scrape_social_images, ai_filter_photos,
-    extract_google_rating, extract_facebook_url,
-    google_places_search, compute_service_gaps,
+    extract_facebook_url,
+    google_places_search, compute_service_gaps, compute_initial_services,
 )
 
 
 # ────────── MODELS ──────────
-
-llm = ChatAnthropic(
-    model=MODEL_SMART,
-    api_key=ANTHROPIC_API_KEY,
-    max_tokens=2048,
-    temperature=0.3,
-)
 
 llm_fast = ChatAnthropic(
     model=MODEL_FAST,
@@ -105,6 +99,13 @@ async def business_verification_node(state: OnboardingState) -> dict:
     if not last_msg:
         return {"current_node": "business_verification"}
 
+    # Guard: reject very short input (likely typo or junk)
+    if last_msg and len(last_msg.strip()) < 2:
+        return {
+            "current_node": "business_verification",
+            "messages": [AIMessage(content="Could you give me your full business name or ABN? I need at least a couple of characters to search.")],
+        }
+
     # If no ABR results yet, do the lookup
     if not state.get("abr_results") and not state.get("business_verified"):
         clean = last_msg.strip().replace(" ", "")
@@ -118,7 +119,7 @@ async def business_verification_node(state: OnboardingState) -> dict:
         if postcode_match and not is_abn:
             user_postcode = postcode_match.group(1)
             search_term = last_msg[:postcode_match.start()].strip()
-            print(f"[BIZ] Detected postcode {user_postcode} in input, searching for '{search_term}'")
+            logger.info(f"[BIZ] Detected postcode {user_postcode} in input, searching for '{search_term}'")
 
         t0 = time.time()
         results = await abr_lookup(search_term, search_type)
@@ -134,14 +135,23 @@ async def business_verification_node(state: OnboardingState) -> dict:
         if user_postcode and abr_results:
             filtered = [r for r in abr_results if r.get("postcode") == user_postcode]
             if len(filtered) == 1:
-                print(f"[BIZ] Single match in postcode {user_postcode}: {filtered[0].get('entity_name')}, auto-confirming")
+                logger.info(f"[BIZ] Single match in postcode {user_postcode}: {filtered[0].get('entity_name')}, auto-confirming")
                 return await _confirm_business(filtered[0], state)
             elif filtered:
                 # Multiple matches in postcode — show only those
                 abr_results = filtered
                 results["results"] = filtered
                 results["count"] = len(filtered)
-            # If no matches in postcode, fall through and show all results
+            else:
+                # No matches in that postcode — show all with feedback
+                postcode_note = f"None of the results matched postcode {user_postcode}, so here are all the matches:\n\n"
+                return {
+                    "current_node": "business_verification",
+                    "business_name_input": search_term,
+                    "abn_input": "",
+                    "abr_results": abr_results,
+                    "messages": [AIMessage(content=postcode_note + _format_abr_results(results, search_term))],
+                }
 
         return {
             "current_node": "business_verification",
@@ -160,7 +170,7 @@ async def business_verification_node(state: OnboardingState) -> dict:
     for r in abr_results:
         abn = r.get("abn", "")
         if abn and abn in last_msg and ("yes" in last_msg.lower() or "it's" in last_msg.lower()):
-            print(f"[BIZ] Quick-match: ABN {abn} found in message, confirming directly")
+            logger.info(f"[BIZ] Quick-match: ABN {abn} found in message, confirming directly")
             selected_abr = r
             break
 
@@ -174,14 +184,15 @@ ABR RESULTS ON FILE: {json.dumps(abr_results)}
 The user has responded to the ABR results. Determine what they want:
 - If they're confirming or selecting a business (yes, that's me, correct, selecting by name, "Yes, it's [NAME]", etc): respond with JUST the word CONFIRMED
 - If they're rejecting ALL options (no, wrong, not me, none of these, etc): respond with JUST the word REJECTED
+- If they say they don't have or don't know their ABN: respond with JUST the word NOABN
 - If they're providing a new search term: respond with JUST the word NEWSEARCH
 
-Respond with ONLY one word: CONFIRMED, REJECTED, or NEWSEARCH"""),
+Respond with ONLY one word: CONFIRMED, REJECTED, NOABN, or NEWSEARCH"""),
             HumanMessage(content=last_msg),
         ])
 
         intent = response.content.strip().upper()
-        print(f"[BIZ] Classifier intent: {intent} for message: {last_msg[:80]}")
+        logger.info(f"[BIZ] Classifier intent: {intent} for message: {last_msg[:80]}")
 
         if "CONFIRMED" in intent:
             # Find which result was selected
@@ -202,6 +213,24 @@ Respond with ONLY one word: CONFIRMED, REJECTED, or NEWSEARCH"""),
             "messages": [AIMessage(content="No worries! Could you try a different business name, or enter your ABN directly?")],
         }
 
+    if "NOABN" in intent:
+        return {
+            "current_node": "business_verification",
+            "abr_results": [],
+            "business_verified": False,
+            "messages": [AIMessage(content=(
+                "No worries — most tradies have an ABN even if they don't know it off the top of their head. "
+                "Just tell me your business name and I'll look it up for you."
+            ))],
+        }
+
+    # Classifier fallback: if intent is unclear and message doesn't look like a search term, ask for clarification
+    if "NEWSEARCH" not in intent and not (last_msg.strip().replace(" ", "").isalnum() and len(last_msg.strip()) >= 3):
+        return {
+            "current_node": "business_verification",
+            "messages": [AIMessage(content="Sorry, I didn't quite catch that. Could you tell me your business name or ABN?")],
+        }
+
     # New search
     clean = last_msg.strip().replace(" ", "")
     is_abn = clean.isdigit() and len(clean) == 11
@@ -212,6 +241,22 @@ Respond with ONLY one word: CONFIRMED, REJECTED, or NEWSEARCH"""),
         "abr_results": results.get("results", []),
         "messages": [AIMessage(content=_format_abr_results(results, last_msg))],
     }
+
+
+_NON_TRADE_TYPES = {
+    "restaurant", "cafe", "bar", "bakery", "meal_delivery", "meal_takeaway",
+    "store", "supermarket", "pharmacy", "clothing_store", "shoe_store",
+    "jewelry_store", "book_store", "convenience_store", "department_store",
+    "shopping_mall", "furniture_store", "hardware_store", "home_goods_store",
+    "pet_store", "electronics_store",
+    "doctor", "dentist", "hospital", "physiotherapist", "veterinary_care",
+    "gym", "spa", "beauty_salon", "hair_care",
+    "bank", "insurance_agency", "real_estate_agency",
+    "school", "university", "library",
+    "church", "mosque", "synagogue",
+    "gas_station", "car_dealer", "car_rental", "car_wash",
+    "travel_agency", "lodging", "hotel",
+}
 
 
 async def service_discovery_node(state: OnboardingState) -> dict:
@@ -239,9 +284,24 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     is_follow_up = bool(services)
     svc_turn = state.get("_svc_turn", 1)
 
+    # ── Handle restart request: send back to business verification ──
+    if last_msg == "__RESTART_BIZ__":
+        return {
+            "current_node": "service_discovery",
+            "business_verified": False,
+            "abr_results": [],
+            "business_name": "",
+            "abn": "",
+            "services": [],
+            "licence_classes": [],
+            "licence_info": {},
+            "google_primary_type": "",
+            "messages": [AIMessage(content="No worries! What's the name of your trade business?")],
+        }
+
     # Safety cap: force completion after 5 turns
     if svc_turn > 5:
-        print(f"[SVC] Safety cap: forcing completion after {svc_turn} turns")
+        logger.info(f"[SVC] Safety cap: forcing completion after {svc_turn} turns")
         return {
             "current_node": "service_discovery",
             "services": services,
@@ -250,22 +310,63 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "messages": [AIMessage(content="All sorted — let's move on to your service area!")],
         }
 
-    # ── Compute remaining gaps deterministically ──
+    # ── Non-trade business gate (turn 1 only) ──
+    if svc_turn == 1 and not services and not licence_classes:
+        google_type = state.get("google_primary_type", "")
+        if google_type and google_type in _NON_TRADE_TYPES:
+            type_label = google_type.replace("_", " ")
+            return {
+                "current_node": "service_discovery",
+                "services": [],
+                "buttons": [
+                    {"label": "Try a different business", "value": "__RESTART_BIZ__"},
+                ],
+                "messages": [AIMessage(content=(
+                    f"It looks like {business_name} is listed as a {type_label} on Google. "
+                    f"Service Seeking is specifically for trade and home services — things like plumbing, electrical, building, cleaning, and similar. "
+                    f"Unfortunately we can't help with other business types. "
+                    f"If you have a different business that offers trade services, I can help you get that one set up."
+                ))],
+            }
+
+    # ── Tiered mapping on turn 1 ──
     licence_classes = state.get("licence_classes", [])
     google_biz_name = state.get("google_business_name", "")
     google_type = state.get("google_primary_type", "")
-    gaps = compute_service_gaps(services, business_name, licence_classes,
-                                google_biz_name, google_type)
+    google_reviews = state.get("google_reviews", [])
+    tiered_mode = False
+
+    if svc_turn == 1 and not services:
+        initial = compute_initial_services(
+            business_name, licence_classes,
+            google_biz_name, google_type,
+            google_reviews, web_results,
+        )
+        if initial.get("tiered"):
+            services = initial["services"]
+            tiered_mode = True
+            logger.info(f"[SVC] Tiered mapping: {len(services)} pre-mapped, {len(initial['specialist_gaps'])} specialist gaps")
+
+    # ── Compute remaining gaps deterministically ──
+    if tiered_mode:
+        # Use specialist-only gaps from tiered mapping
+        gaps = initial["specialist_gaps"]
+    else:
+        gaps = compute_service_gaps(services, business_name, licence_classes,
+                                    google_biz_name, google_type)
 
     # If gaps don't match what the user is describing (e.g. licence says Concreter
     # but user says Landscaper), clear them so the LLM uses full taxonomy
     if gaps and not services and svc_turn >= 3:
         # After 2 failed turns with 0 services mapped, the gap list isn't helping
-        print(f"[SVC] Clearing unhelpful gaps (0 services after {svc_turn} turns)")
+        logger.info(f"[SVC] Clearing unhelpful gaps (0 services after {svc_turn} turns)")
         gaps = []
 
     gaps_text = ""
-    if gaps:
+    if tiered_mode:
+        gap_entries = [f"{g['subcategory_name']} (id: {g['subcategory_id']})" for g in gaps]
+        gaps_text = f"\nSPECIALIST SUBCATEGORIES TO ASK ABOUT ({len(gaps)} remaining):\n{', '.join(gap_entries)}"
+    elif gaps:
         gap_entries = [f"{g['subcategory_name']} (id: {g['subcategory_id']})" for g in gaps]
         gaps_text = f"\nREMAINING UNCOVERED SUBCATEGORIES ({len(gaps)} remaining):\n{', '.join(gap_entries)}"
     elif services:
@@ -302,6 +403,34 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     guide = find_subcategory_guide(business_name)
     taxonomy = get_category_taxonomy_text()
 
+    # ── Build turn 1 rule based on tiered vs fallback mode ──
+    if tiered_mode:
+        specialist_names = [g["subcategory_name"] for g in gaps]
+        turn1_rule = (
+            f"- TURN 1 RULE (TIERED): {len(services)} core services have been pre-mapped. "
+            f"Summarise them in one casual sentence (count + 2-3 key groups, e.g. \"I have added "
+            f"13 services covering general electrical, switchboards, safety gear and a few more\"). "
+            f"Do NOT list every service. Include the pre-mapped services array exactly as-is in your output. "
+            f"Then ask about ONE cluster of specialist add-ons — pick the most common/likely group "
+            f"of 2-3 related services from the SPECIALIST SUBCATEGORIES list. "
+            f"The full specialist list is: {', '.join(specialist_names)}. "
+            f"Buttons are SINGLE-SELECT (no multi-select), so only ask about one cluster at a time. "
+            f"Make each button a specific service or small group the tradie can add with one tap. "
+            f"For example, for an electrician with data/solar/security gaps: "
+            f"ask \"Do you also do data and cabling work?\" with buttons "
+            f"\"Yes, data & cabling\", \"No, skip that\". "
+            f"Keep it to ONE simple question per turn. Remaining specialists will be asked on follow-up turns. "
+            f"Always include a skip button like \"Skip\" or \"No\"."
+        )
+    else:
+        turn1_rule = (
+            "- TURN 1 RULE (FULL TAXONOMY): No tier guide exists for this trade. Use the full "
+            "CATEGORY TAXONOMY to map services based on the business name, licence, and Google data. "
+            "Map aggressively — most tradies do most things in their trade. Add ALL subcategories "
+            "from the REMAINING GAPS list using their exact IDs. Then ask a short confirmation: "
+            "\"I have added all [N] services — anything you do not do that I should remove?\""
+        )
+
     # ── Static context (cacheable — taxonomy + guide + role + guidelines) ──
     static_context = f"""You are the Service Seeking onboarding assistant helping a tradie set up their services.
 
@@ -316,13 +445,12 @@ CATEGORY TAXONOMY:
 GUIDELINES:
 - This flows directly from business confirmation — the conversation is already going. Don't re-introduce yourself.
 - Be conversational and Australian. Keep it short — tradies are busy.
-- Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for. A licensed Electrician can do ALL electrical subcategories. A licensed Plumber can do ALL plumbing subcategories. Map aggressively.
-- TURN 1 RULE: If there are REMAINING UNCOVERED SUBCATEGORIES, map ALL of them by default — whether detected from licence, business name, or Google profile. Most tradies do most things in their trade — it's better to include everything and let them remove what they don't do. Add ALL subcategories from the REMAINING GAPS list using their exact IDs. Then ask a short confirmation: "I've added all 20 electrical services — anything you DON'T do that I should remove?"
-- Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate your aggressive mapping.
-- On follow-up turns: process the tradie's answer (remove services they said they don't do, or confirm). Then check REMAINING GAPS — if there are still uncovered subcategories from OTHER categories the tradie might do, ask about those as a batch.
-- Use batch gap questions — group 3-5 related REMAINING subcategories together. Ask about them naturally. Don't ask about services already mapped.
-- Provide buttons: "Looks good", "Remove a few", "I don't do [specific ones]". Keep button text short.
-- COMPLETION RULE: Set step_complete=true when the REMAINING GAPS list has fewer than 3 entries, OR the tradie confirms the list looks good, OR the tradie explicitly says they're done.
+- Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for.
+{turn1_rule}
+- Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate mapping.
+- On follow-up turns: process the tradie's answer (add services they confirmed, skip ones they declined). Then check REMAINING gaps — if there are still uncovered specialist subcategories, ask about the NEXT cluster (2-3 related services). One cluster per turn, one simple question, specific buttons. Keep it snappy — each turn should feel like a quick yes/no.
+- Buttons are SINGLE-SELECT. Each button should be a specific service or small group to add, plus a skip/done option. Never present 4+ clusters as buttons in one turn.
+- COMPLETION RULE: Set step_complete=true when there are no more specialist gaps to ask about, OR the tradie says they are done / wants to move on, OR you have asked about all the clusters. Do NOT drag it out — 2-3 specialist questions max, then wrap up.
 - The response text is a conversational summary. Keep it to 1-2 sentences: mention the total count and groups, not every service. No headers, no bullet points, no line breaks.
 - Don't announce what you're doing, just do it.
 
@@ -361,7 +489,7 @@ CONVERSATION SO FAR:
     try:
         raw_json = _extract_json(response.content)
         if not raw_json or raw_json[0] != "{":
-            print(f"[SVC] LLM returned plain text, wrapping: {response.content[:200]}")
+            logger.info(f"[SVC] LLM returned plain text, wrapping: {response.content[:200]}")
             data = {
                 "response": response.content,
                 "services": services,
@@ -379,11 +507,11 @@ CONVERSATION SO FAR:
         new_gaps = compute_service_gaps(new_services, business_name, licence_classes,
                                         google_biz_name, google_type)
 
-        print(f"[SVC] user='{last_msg}' | mapped={len(new_services)} | gaps={len(new_gaps)} | complete={step_complete}")
+        logger.info(f"[SVC] user='{last_msg}' | mapped={len(new_services)} | gaps={len(new_gaps)} | complete={step_complete} | tiered={tiered_mode}")
         _trace(state, "LLM: Service Discovery", llm_time,
-               f"Mapped {len(new_services)} services, {len(new_gaps)} gaps remaining, complete={step_complete}",
+               f"Mapped {len(new_services)} services, {len(new_gaps)} gaps remaining, complete={step_complete}, tiered={tiered_mode}",
                {"services_count": len(new_services), "gaps_remaining": len(new_gaps),
-                "step_complete": step_complete, "turn": svc_turn})
+                "step_complete": step_complete, "turn": svc_turn, "tiered": tiered_mode})
 
         return {
             "current_node": "service_discovery",
@@ -395,7 +523,7 @@ CONVERSATION SO FAR:
             "messages": [AIMessage(content=message)],
         }
     except Exception as e:
-        print(f"[SVC ERROR] {e} | raw response: {response.content[:300]}")
+        logger.error(f"[SVC] {e} | raw response: {response.content[:300]}")
         return {
             "current_node": "service_discovery",
             "services": services,
@@ -543,7 +671,7 @@ CURRENT SERVICE AREA: Not set yet"""
 
         included = new_areas.get("regions_included", [])
         excluded = new_areas.get("regions_excluded", [])
-        print(f"[AREA] user='{last_msg}' | model={model_name} | included={included} | excluded={excluded} | complete={step_complete}")
+        logger.info(f"[AREA] user='{last_msg}' | model={model_name} | included={included} | excluded={excluded} | complete={step_complete}")
         _trace(state, "LLM: Service Area", llm_time,
                f"{len(included)} regions included, {len(excluded)} excluded, complete={step_complete}",
                {"model": model_name, "regions_included": included,
@@ -558,145 +686,12 @@ CURRENT SERVICE AREA: Not set yet"""
             "messages": [AIMessage(content=message)],
         }
     except Exception as e:
-        print(f"[AREA ERROR] {e}")
+        logger.error(f"[AREA] {e}")
         base = grouped.get("base_suburb", "your area")
         return {
             "current_node": "service_area",
             "messages": [AIMessage(content=f"Where do you typically work? You're based in {base} — do you mainly work locally or travel further afield?")],
         }
-
-
-async def confirmation_node(state: OnboardingState) -> dict:
-    """Show final summary and handle edits."""
-    messages = state.get("messages", [])
-    last_msg = _get_last_human_message(messages)
-
-    business_name = state.get("business_name", "Unknown")
-    abn = state.get("abn", "Unknown")
-    entity_type = state.get("entity_type", "Unknown")
-    services = state.get("services", [])
-    service_areas = state.get("service_areas", {})
-    services_text = ", ".join([s.get("subcategory_name", s.get("input", "")) for s in services])
-    regions_included = service_areas.get("regions_included", [])
-    regions_excluded = service_areas.get("regions_excluded", [])
-    areas_text = ", ".join(regions_included) if regions_included else "Not set"
-    travel_notes = service_areas.get("travel_notes", "")
-
-    # Only classify intent if we're ALREADY in the confirmation node
-    # (i.e. the summary has been shown and the user is responding to it).
-    # On first entry (auto-chained from service_area), always show the summary.
-    already_in_confirmation = state.get("current_node") == "confirmation"
-
-    if last_msg and already_in_confirmation:
-        # Fast path: structured removal from the confirmation UI
-        if 'confirm and complete' in last_msg.lower() and ('remove services:' in last_msg.lower() or 'remove areas:' in last_msg.lower()):
-            svc_match = re.search(r'Remove services?:\s*(.+?)(?:\.\s*|$)', last_msg, re.IGNORECASE)
-            if svc_match:
-                removed_svcs = [s.strip() for s in svc_match.group(1).split(',')]
-                services = [s for s in services if s.get('subcategory_name', s.get('input', '')) not in removed_svcs]
-
-            area_match = re.search(r'Remove areas?:\s*(.+?)(?:\.\s*|$)', last_msg, re.IGNORECASE)
-            if area_match:
-                removed_areas = [a.strip() for a in area_match.group(1).split(',')]
-                current_included = service_areas.get('regions_included', [])
-                current_excluded = service_areas.get('regions_excluded', [])
-                service_areas['regions_included'] = [r for r in current_included if r not in removed_areas]
-                service_areas['regions_excluded'] = current_excluded + [r for r in removed_areas if r not in current_excluded]
-
-            return {
-                "current_node": "confirmation",
-                "services": services,
-                "services_confirmed": True,
-                "service_areas": service_areas,
-                "service_areas_confirmed": True,
-                "confirmed": True,
-            }
-
-        intent = await llm_fast.ainvoke([
-            SystemMessage(content=f"""A tradie is reviewing their setup summary. Determine their intent.
-
-SUMMARY:
-- Business: {business_name} (ABN: {abn})
-- Services: {services_text}
-- Service areas: {areas_text}
-
-If they want to confirm/complete: respond CONFIRMED
-If they want to edit services: respond EDIT_SERVICES
-If they want to edit service areas: respond EDIT_AREAS
-If they want to edit business details: respond EDIT_BUSINESS
-
-Respond with ONLY one word."""),
-            HumanMessage(content=last_msg),
-        ])
-
-        intent_text = intent.content.strip().upper()
-
-        if "CONFIRMED" in intent_text:
-            return {"current_node": "confirmation", "confirmed": True}
-        if "EDIT_SERVICES" in intent_text:
-            current_services = [s.get("subcategory_name", s.get("input", "")) for s in services]
-            buttons = [{"label": f"\u2715 {svc}", "value": f"Remove {svc}"} for svc in current_services]
-            buttons.append({"label": "Done editing", "value": "Keep current services, confirm and complete"})
-            return {
-                "current_node": "confirmation",
-                "services_confirmed": False,
-                "buttons": buttons,
-                "messages": [AIMessage(content="Tap any services to remove, or type to add more:")],
-            }
-        if "EDIT_AREAS" in intent_text:
-            buttons = [{"label": f"\u2715 {area}", "value": f"Remove {area} from my areas"} for area in regions_included]
-            buttons.append({"label": "Done editing", "value": "Keep current areas, confirm and complete"})
-            return {
-                "current_node": "confirmation",
-                "service_areas_confirmed": False,
-                "buttons": buttons,
-                "messages": [AIMessage(content="Tap any areas to remove, or type to add more:")],
-            }
-        if "EDIT_BUSINESS" in intent_text:
-            return {
-                "current_node": "confirmation",
-                "business_verified": False,
-                "messages": [AIMessage(content="No worries — what's the correct business name or ABN?")],
-            }
-
-    # Show summary
-    base_suburb = service_areas.get("base_suburb", "Unknown")
-    radius = service_areas.get("radius_km", 20)
-
-    contact_name = state.get("contact_name", "")
-    contact_phone = state.get("contact_phone", "")
-
-    # Derive trade from service categories (e.g. "Plumber", "Electrician")
-    trades = list(dict.fromkeys(s.get("category_name", "") for s in services if s.get("category_name")))
-    trade_text = ", ".join(trades) if trades else "Not set"
-
-    summary = f"""Here's a summary of your setup:
-
-- Business: {business_name}
-- ABN: {abn}
-- Trade: {trade_text}"""
-
-    if contact_name:
-        summary += f"\n- Contact: {contact_name}"
-    if contact_phone:
-        summary += f"\n- Phone: {contact_phone}"
-
-    summary += f"""
-- Services: {services_text}
-- Based in: {base_suburb}
-- Coverage: {areas_text} (within {radius}km)"""
-
-    if regions_excluded:
-        summary += f"\n- Excluding: {', '.join(regions_excluded)}"
-
-    summary += f"""
-
-Everything look good?"""
-
-    return {
-        "current_node": "confirmation",
-        "messages": [AIMessage(content=summary)],
-    }
 
 
 def _compute_years_in_business(state: dict) -> int:
@@ -850,7 +845,7 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
     google_website = state.get("business_website", "")
     if google_website:
         scrape_url = google_website
-        print(f"[PROFILE] Using Google Places website: {google_website}")
+        logger.info(f"[PROFILE] Using Google Places website: {google_website}")
 
     # ── Run everything in parallel: LLM + domain discovery (fallback) + scrape + social ──
     t0 = time.time()
@@ -895,18 +890,18 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
     if raw.startswith("```"):
         raw = re.sub(r'^```(?:json)?\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
-    print(f"[PROFILE] Raw LLM response: {raw[:200]}")
+    logger.info(f"[PROFILE] Raw LLM response: {raw[:200]}")
     try:
         parsed = json.loads(raw)
         intro = parsed.get("intro", "")
         description = parsed.get("description", "")
-        print(f"[PROFILE] Parsed intro: {intro[:80]}")
-        print(f"[PROFILE] Parsed desc: {description[:80]}")
+        logger.info(f"[PROFILE] Parsed intro: {intro[:80]}")
+        logger.info(f"[PROFILE] Parsed desc: {description[:80]}")
     except json.JSONDecodeError:
         # Fallback: treat entire response as description
         intro = ""
         description = raw.strip('"')
-        print(f"[PROFILE] JSON parse failed, using raw as description")
+        logger.info(f"[PROFILE] JSON parse failed, using raw as description")
 
     # ── Merge images: website > social > Brave thumbnails ──
     logo = scraped.get("logo", "")
@@ -941,7 +936,7 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
                 "brave_thumbs": len(photos) - len(scraped.get("photos", []))})
 
     # ── AI filter: use vision to keep only real work photos ──
-    print(f"[PROFILE] {len(photos)} candidate photos before AI filter: {[u[:60] for u in photos]}")
+    logger.info(f"[PROFILE] {len(photos)} candidate photos before AI filter: {[u[:60] for u in photos]}")
     if photos:
         trade_type = ""
         if services:
@@ -1196,15 +1191,39 @@ async def complete_node(state: OnboardingState) -> dict:
 def _extract_json(text: str) -> str:
     """Extract JSON from LLM response, handling markdown code blocks."""
     text = text.strip()
-    if "```" in text:
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.strip()
-    # Find the first { and last } to extract JSON object
+    # Strip markdown code fences — handle ```json ... ``` blocks
+    fence_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+    if fence_match:
+        return fence_match.group(1)
+    # Find first { and match its closing } using brace depth counting
     start = text.find("{")
+    if start == -1:
+        return text
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        c = text[i]
+        if escape:
+            escape = False
+            continue
+        if c == '\\' and in_string:
+            escape = True
+            continue
+        if c == '"' and not escape:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    # Fallback: first { to last }
     end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
+    if end > start:
         return text[start:end + 1]
     return text
 
@@ -1235,14 +1254,14 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         licence_task, web_task, fb_task, google_task,
     )
     t1 = time.time()
-    print(f"[BIZ] Licence + 2 Brave + Google Places: {t1 - t0:.1f}s (parallel)")
+    logger.info(f"[BIZ] Licence + 2 Brave + Google Places: {t1 - t0:.1f}s (parallel)")
 
     # If no results and name has apostrophe, retry without it
     search_name = business_name
     if not licence_results.get("results") and ("'" in business_name or "\u2019" in business_name):
         search_name = business_name.replace("'", "").replace("\u2019", "")
         licence_results = await nsw_licence_browse(search_name)
-        print(f"[BIZ] Licence retry without apostrophe: {len(licence_results.get('results', []))} results")
+        logger.info(f"[BIZ] Licence retry without apostrophe: {len(licence_results.get('results', []))} results")
 
     _trace(state, "NSW Licence Browse", t1 - t0,
            f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
@@ -1277,16 +1296,16 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
             "reviews": len(google_reviews)})
 
     if facebook_url:
-        print(f"[BIZ] Facebook page: {facebook_url}")
+        logger.info(f"[BIZ] Facebook page: {facebook_url}")
     if google_rating:
-        print(f"[BIZ] Google: {google_rating}★ ({google_review_count} reviews), {len(google_reviews)} review snippets")
+        logger.info(f"[BIZ] Google: {google_rating}★ ({google_review_count} reviews), {len(google_reviews)} review snippets")
 
     # Find the best licence match (current, matching name closely)
     licence_info = {}
     licence_classes = []
     licence_matches = licence_results.get("results", [])
 
-    # Try exact match first, then partial
+    # Try exact match first, then partial, then word-overlap fallback
     best_match = None
     for lic in licence_matches:
         if lic.get("status") != "Current":
@@ -1296,12 +1315,20 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
             best_match = lic
             break
 
-    # If no name match, take first current result
+    # Fallback: accept first current result only if single result or word overlap >= 50%
     if not best_match:
-        for lic in licence_matches:
-            if lic.get("status") == "Current":
-                best_match = lic
-                break
+        current_lics = [lic for lic in licence_matches if lic.get("status") == "Current"]
+        if len(current_lics) == 1:
+            best_match = current_lics[0]
+        elif current_lics:
+            search_words = set(search_name.lower().split())
+            for lic in current_lics:
+                lic_words = set(lic.get("licensee", "").lower().split())
+                if search_words and lic_words:
+                    overlap = len(search_words & lic_words) / min(len(search_words), len(lic_words))
+                    if overlap >= 0.5:
+                        best_match = lic
+                        break
 
     if best_match:
         lid = best_match.get("licence_id", "")
@@ -1309,13 +1336,13 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
             t2 = time.time()
             details = await nsw_licence_details(lid)
             t3 = time.time()
-            print(f"[BIZ] Licence details: {t3 - t2:.1f}s")
+            logger.info(f"[BIZ] Licence details: {t3 - t2:.1f}s")
             if not details.get("error"):
                 licence_info = details
                 licence_classes = [
                     c["name"] for c in details.get("classes", []) if c.get("active")
                 ]
-                print(f"[BIZ] Licence #{details.get('licence_number')} classes: {licence_classes}")
+                logger.info(f"[BIZ] Licence #{details.get('licence_number')} classes: {licence_classes}")
                 _trace(state, "NSW Licence Details", t3 - t2,
                        f"Licence #{details.get('licence_number')} — {', '.join(licence_classes)}",
                        {"licence_number": details.get("licence_number"),
@@ -1344,9 +1371,9 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                 break
 
     if contact_name:
-        print(f"[BIZ] Contact person: {contact_name}")
+        logger.info(f"[BIZ] Contact person: {contact_name}")
     if contact_phone:
-        print(f"[BIZ] Contact phone: {contact_phone}")
+        logger.info(f"[BIZ] Contact phone: {contact_phone}")
 
     return {
         "current_node": "business_verification",
@@ -1380,25 +1407,6 @@ def _get_last_human_message(messages: list) -> str | None:
         if isinstance(msg, HumanMessage):
             return msg.content
     return None
-
-
-def _get_relevant_taxonomy(full_taxonomy: str, category_names: list[str]) -> str:
-    """Extract taxonomy entries for the given categories (for trimmed turn 2 prompts)."""
-    if not category_names:
-        return full_taxonomy[:3000]
-
-    lines = full_taxonomy.split("\n")
-    relevant = []
-    include = False
-    for line in lines:
-        # Category header lines don't start with "  -"
-        if not line.startswith("  -"):
-            include = any(cat.lower() in line.lower() for cat in category_names)
-        if include:
-            relevant.append(line)
-
-    result = "\n".join(relevant)
-    return result if result else full_taxonomy[:3000]
 
 
 def _format_conversation(messages: list, max_turns: int = 6) -> str:
