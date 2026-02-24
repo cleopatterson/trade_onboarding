@@ -7,11 +7,11 @@ import time
 import json
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import base64
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,23 +43,26 @@ MAX_SESSIONS = 500
 
 # ────────── RATE LIMITING ──────────
 
-_rate_log: dict[str, list[float]] = {}   # session_id → [timestamp, ...]
-RATE_LIMIT = 15          # max requests
+_rate_log: dict[str, list[float]] = {}   # key → [timestamp, ...]
+RATE_LIMIT = 15          # max chat requests per session
 RATE_WINDOW = 60.0       # per 60 seconds
 
+SESSION_CREATE_LIMIT = 5     # max new sessions per IP
+SESSION_CREATE_WINDOW = 60.0  # per 60 seconds
 
-def _check_rate_limit(session_id: str) -> bool:
+
+def _check_rate_limit(key: str, limit: int = RATE_LIMIT, window: float = RATE_WINDOW) -> bool:
     """Return True if request is allowed, False if rate-limited."""
     now = time.time()
-    window_start = now - RATE_WINDOW
-    timestamps = _rate_log.get(session_id, [])
+    window_start = now - window
+    timestamps = _rate_log.get(key, [])
     # Trim old entries
     timestamps = [t for t in timestamps if t > window_start]
-    if len(timestamps) >= RATE_LIMIT:
-        _rate_log[session_id] = timestamps
+    if len(timestamps) >= limit:
+        _rate_log[key] = timestamps
         return False
     timestamps.append(now)
-    _rate_log[session_id] = timestamps
+    _rate_log[key] = timestamps
     return True
 
 
@@ -75,7 +78,7 @@ def _log_turn(session_id: str, turn: dict):
     Redacts PII: abn → last 3 digits, contact_name/contact_phone omitted.
     """
     log_file = LOG_DIR / f"{session_id}.jsonl"
-    turn["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    turn["timestamp"] = datetime.now(timezone.utc).isoformat()
     # Redact PII
     turn.pop("contact_name", None)
     turn.pop("contact_phone", None)
@@ -211,29 +214,36 @@ async def run_node(state: dict) -> dict:
             else:
                 state[key] = value
 
-    # ── Parallel path: service_discovery turn 2 + service_area turn 1 ──
-    # service_area only needs postcode + region data, not the services list,
-    # so we can fire both LLM calls simultaneously (~3s instead of ~11s)
+    # ── Parallel path: service_discovery turn 2+ alongside speculative service_area ──
+    # Fire both LLM calls simultaneously — but only use the area result if services
+    # were ALREADY confirmed going in (i.e. this is an area-focused turn).
+    # If services get confirmed THIS turn, discard the speculative area result
+    # entirely and fall through to the normal sequential auto-chain below, which
+    # runs area with the AI response already in state (so area sees the right context).
+    already_confirmed = state.get("services_confirmed", False)
     if (node_name == "service_discovery"
             and state.get("services")  # turn 2 — services already mapped
-            and not state.get("service_areas", {}).get("regions_included")
+            and not state.get("service_areas", {}).get("base_suburb")  # base_suburb guard ([] is falsy, base_suburb isn't)
             and not state.get("service_areas_confirmed")):
         svc_result, area_result = await asyncio.gather(
             node_fn(state),
             NODE_FUNCTIONS["service_area"](state),
         )
         _raw_merge(svc_result)
-        if state.get("services_confirmed"):
+        if state.get("services_confirmed") and already_confirmed:
+            # Services were already confirmed — this turn's message was for area
             _merge(area_result)
             # Continue auto-chain: area confirmed → profile
             if state.get("service_areas_confirmed") and not state.get("profile_saved") and not state.get("profile_description_draft"):
-                state["confirmed"] = True  # Skip confirmation step
+                state["confirmed"] = True
                 _merge(await NODE_FUNCTIONS["profile"](state))
             if state.get("profile_saved") and not state.get("subscription_plan"):
                 _merge(await NODE_FUNCTIONS["pricing"](state))
             if state.get("subscription_plan") and not state.get("output_json"):
                 _merge(await NODE_FUNCTIONS["complete"](state))
-        return state
+            return state
+        # Services just confirmed THIS turn (or not confirmed yet) — discard area result,
+        # fall through to sequential auto-chain which handles area with clean context
 
     # ── Normal sequential path ──
     result = await node_fn(state)
@@ -246,7 +256,9 @@ async def run_node(state: dict) -> dict:
     # Auto-chain: services confirmed → immediately run service area
     # Use base_suburb as the guard (set on first area run) instead of regions_included (can be empty [])
     if state.get("services_confirmed") and not state.get("service_areas", {}).get("base_suburb") and not state.get("service_areas_confirmed"):
+        state["_auto_chained"] = True  # Tell area node to ignore stale user message
         _merge(await NODE_FUNCTIONS["service_area"](state))
+        state.pop("_auto_chained", None)
 
     # Auto-chain: service areas confirmed → profile (skip confirmation step)
     if state.get("service_areas_confirmed") and not state.get("profile_saved") and not state.get("profile_description_draft"):
@@ -281,8 +293,17 @@ async def health():
 
 
 @app.post("/api/session")
-async def create_session(req: StartRequest):
+async def create_session(req: StartRequest, request: Request):
     """Create a new onboarding session and get the welcome message."""
+    # IP-based rate limit on session creation
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(f"ip:{client_ip}", SESSION_CREATE_LIMIT, SESSION_CREATE_WINDOW):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many sessions created — please wait a moment",
+            headers={"Retry-After": str(int(SESSION_CREATE_WINDOW))},
+        )
+
     session_id = str(uuid.uuid4())[:8]
 
     now = time.time()
@@ -319,12 +340,22 @@ async def create_session(req: StartRequest):
         "google_rating": 0.0,
         "google_review_count": 0,
         "google_reviews": [],
+        "google_business_name": "",
+        "google_primary_type": "",
         "facebook_url": "",
         "business_website": "",
+        "licence_info": {},
+        "licence_classes": [],
+        "contact_name": "",
+        "contact_phone": "",
         "pricing_shown": False,
         "subscription_plan": "",
         "subscription_billing": "",
         "subscription_price": "",
+        "_svc_turn": 1,
+        "_specialist_gap_ids": [],
+        "_pending_cluster_ids": [],
+        "_selected_plan": "",
         "_created_at": now,
         "_last_active": now,
     }

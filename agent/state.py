@@ -1,6 +1,5 @@
 """State definition for the Trade Onboarding wizard"""
-from typing import TypedDict, Annotated
-from langgraph.graph.message import add_messages
+from typing import TypedDict
 from langchain_core.messages import BaseMessage
 
 
@@ -10,7 +9,7 @@ class OnboardingState(TypedDict):
     current_node: str
 
     # Conversation
-    messages: Annotated[list[BaseMessage], add_messages]
+    messages: list[BaseMessage]
 
     # Business Verification (from ABR)
     business_name_input: str
@@ -28,14 +27,17 @@ class OnboardingState(TypedDict):
     licence_info: dict
     licence_classes: list[str]
 
-    # Web Enrichment (from Brave Search)
+    # Web Enrichment (from Brave Search + website scrape)
     web_results: list[dict]
+    website_text: str               # scraped text from business website (for evidence keywords)
 
     # Service Discovery
     services_raw: str
     services: list[dict]
     services_confirmed: bool
     _svc_turn: int
+    _specialist_gap_ids: list[int]     # persisted specialist gap IDs from tiered mapping
+    _pending_cluster_ids: list[int]    # subcategory IDs asked about last turn (for deterministic processing)
 
     # Service Areas
     location_raw: str

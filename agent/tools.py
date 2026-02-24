@@ -13,13 +13,22 @@ logger = logging.getLogger(__name__)
 
 from agent.config import (
     ABR_GUID, NSW_TRADES_API_KEY, NSW_TRADES_AUTH_HEADER, BRAVE_SEARCH_API_KEY,
-    GOOGLE_PLACES_API_KEY,
+    GOOGLE_PLACES_API_KEY, ANTHROPIC_API_KEY, MODEL_FAST,
 )
 
 RESOURCES_DIR = Path(__file__).parent.parent / "resources"
 
 # Persistent HTTP client — reuses connections across API calls (saves TLS handshake time)
 _http_client = httpx.AsyncClient(timeout=15.0)
+
+# Shared LLM client for vision tasks (AI photo filter) — avoids creating per-call instances
+from langchain_anthropic import ChatAnthropic as _ChatAnthropic
+_llm_vision = _ChatAnthropic(
+    model=MODEL_FAST,
+    api_key=ANTHROPIC_API_KEY,
+    max_tokens=256,
+    temperature=0,
+)
 
 
 # ────────── ABR LOOKUP ──────────
@@ -418,6 +427,7 @@ def compute_initial_services(
     google_primary_type: str,
     google_reviews: list[dict],
     web_results: list[dict],
+    website_text: str = "",
 ) -> dict:
     """Build initial service list using tiered mapping from guides.
 
@@ -469,12 +479,14 @@ def compute_initial_services(
             services.append(svc)
             mapped_names.add(name)
 
-    # 2. Evidence-based services — scan reviews + web results for keywords
+    # 2. Evidence-based services — scan reviews + web results + website text for keywords
     evidence_text = ""
     for rev in google_reviews:
         evidence_text += " " + rev.get("text", "")
     for wr in web_results:
         evidence_text += " " + wr.get("title", "") + " " + wr.get("description", "")
+    if website_text:
+        evidence_text += " " + website_text
     evidence_lower = evidence_text.lower()
 
     for svc_name, keywords in tier_def.get("evidence_keywords", {}).items():
@@ -1056,6 +1068,37 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
         return {}
 
 
+# ────────── WEBSITE TEXT SCRAPER (lightweight, for evidence keywords) ──────────
+
+async def scrape_website_text(url: str, max_chars: int = 5000) -> str:
+    """Fetch a website and extract visible text content for keyword matching.
+
+    Returns plain text (stripped of HTML tags), capped at max_chars.
+    Used during business confirmation to feed evidence into tiered mapping.
+    """
+    if not url:
+        return ""
+    try:
+        resp = await _http_client.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+            follow_redirects=True,
+            timeout=8.0,
+        )
+        if resp.status_code != 200:
+            return ""
+        html = resp.text
+        # Strip script/style blocks, then all tags
+        html = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', html)
+        text = re.sub(r'\s+', ' ', text).strip()
+        logger.info(f"[SCRAPE-TEXT] {url}: {len(text)} chars extracted")
+        return text[:max_chars]
+    except Exception as e:
+        logger.error(f"[SCRAPE-TEXT] {url}: {type(e).__name__}: {e}")
+        return ""
+
+
 # ────────── BUSINESS WEBSITE DISCOVERY ──────────
 
 # Suffixes to strip from business names before building domain guesses
@@ -1359,9 +1402,7 @@ async def ai_filter_photos(photo_urls: list[str], business_type: str = "tradespe
     """
     import asyncio
     import base64
-    from langchain_anthropic import ChatAnthropic
     from langchain_core.messages import HumanMessage
-    from agent.config import ANTHROPIC_API_KEY, MODEL_FAST
 
     if not photo_urls:
         return []
@@ -1441,13 +1482,7 @@ where N is the image number (1-indexed)."""
         })
 
     try:
-        llm = ChatAnthropic(
-            model=MODEL_FAST,
-            api_key=ANTHROPIC_API_KEY,
-            max_tokens=256,
-            temperature=0,
-        )
-        response = await llm.ainvoke([HumanMessage(content=content_parts)])
+        response = await _llm_vision.ainvoke([HumanMessage(content=content_parts)])
         response_text = response.content.strip()
         logger.info(f"[AI-FILTER] Response: {response_text}")
 

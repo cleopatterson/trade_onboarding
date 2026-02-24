@@ -28,6 +28,7 @@ from agent.tools import (
     discover_business_website, scrape_social_images, ai_filter_photos,
     extract_facebook_url,
     google_places_search, compute_service_gaps, compute_initial_services,
+    scrape_website_text,
 )
 
 
@@ -287,7 +288,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     # ── Handle restart request: send back to business verification ──
     if last_msg == "__RESTART_BIZ__":
         return {
-            "current_node": "service_discovery",
+            "current_node": "business_verification",
             "business_verified": False,
             "abr_results": [],
             "business_name": "",
@@ -330,30 +331,102 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             }
 
     # ── Tiered mapping on turn 1 ──
-    licence_classes = state.get("licence_classes", [])
     google_biz_name = state.get("google_business_name", "")
     google_type = state.get("google_primary_type", "")
     google_reviews = state.get("google_reviews", [])
     tiered_mode = False
+    specialist_gap_ids = state.get("_specialist_gap_ids", [])
+    pending_cluster_ids = state.get("_pending_cluster_ids", [])
 
     if svc_turn == 1 and not services:
+        website_text = state.get("website_text", "")
         initial = compute_initial_services(
             business_name, licence_classes,
             google_biz_name, google_type,
             google_reviews, web_results,
+            website_text=website_text,
         )
         if initial.get("tiered"):
             services = initial["services"]
             tiered_mode = True
+            specialist_gap_ids = [g["subcategory_id"] for g in initial["specialist_gaps"]]
             logger.info(f"[SVC] Tiered mapping: {len(services)} pre-mapped, {len(initial['specialist_gaps'])} specialist gaps")
 
     # ── Compute remaining gaps deterministically ──
     if tiered_mode:
         # Use specialist-only gaps from tiered mapping
         gaps = initial["specialist_gaps"]
+    elif specialist_gap_ids:
+        # Follow-up turn for a tiered trade: filter to specialist gaps only
+        tiered_mode = True
+        all_gaps = compute_service_gaps(services, business_name, licence_classes,
+                                        google_biz_name, google_type)
+        gaps = [g for g in all_gaps if g["subcategory_id"] in specialist_gap_ids]
     else:
         gaps = compute_service_gaps(services, business_name, licence_classes,
                                     google_biz_name, google_type)
+
+    # ── Pre-process cluster response (deterministic, before LLM) ──
+    cluster_added = []
+    if pending_cluster_ids and is_follow_up and gaps:
+        pending_set = set(pending_cluster_ids)
+        cluster_gaps = [g for g in gaps if g["subcategory_id"] in pending_set]
+
+        if last_msg == "Yes, all of these":
+            for g in cluster_gaps:
+                services.append({
+                    "input": g["subcategory_name"],
+                    "category_name": g["category_name"],
+                    "category_id": g["category_id"],
+                    "subcategory_name": g["subcategory_name"],
+                    "subcategory_id": g["subcategory_id"],
+                    "confidence": "confirmed",
+                })
+                cluster_added.append(g["subcategory_name"])
+            logger.info(f"[SVC] Pre-added {len(cluster_added)} cluster services: {cluster_added}")
+        elif last_msg == "Skip these":
+            logger.info(f"[SVC] Skipped {len(cluster_gaps)} cluster services")
+        else:
+            # Individual button selection — match by word overlap
+            msg_words = set(last_msg.lower().split())
+            best_match = None
+            best_score = 0
+            for g in cluster_gaps:
+                name_words = set(g["subcategory_name"].lower().split())
+                overlap = len(msg_words & name_words)
+                if overlap > best_score:
+                    best_score = overlap
+                    best_match = g
+            if best_match and best_score >= 1:
+                services.append({
+                    "input": best_match["subcategory_name"],
+                    "category_name": best_match["category_name"],
+                    "category_id": best_match["category_id"],
+                    "subcategory_name": best_match["subcategory_name"],
+                    "subcategory_id": best_match["subcategory_id"],
+                    "confidence": "confirmed",
+                })
+                cluster_added.append(best_match["subcategory_name"])
+            logger.info(f"[SVC] Individual selection '{last_msg}' matched: {cluster_added}")
+
+        # Remove processed cluster from gaps regardless of response
+        gaps = [g for g in gaps if g["subcategory_id"] not in pending_set]
+
+    # ── Fast-exit: no specialist gaps left in tiered mode — skip LLM ──
+    if tiered_mode and not gaps and is_follow_up:
+        count = len(services)
+        added_text = f" Added {', '.join(cluster_added)}." if cluster_added else ""
+        logger.info(f"[SVC] All specialist gaps covered ({count} services) — confirming without LLM")
+        return {
+            "current_node": "service_discovery",
+            "services": services,
+            "services_raw": last_msg or f"Inferred from: {business_name}",
+            "services_confirmed": True,
+            "_svc_turn": svc_turn + 1,
+            "_specialist_gap_ids": specialist_gap_ids,
+            "_pending_cluster_ids": [],
+            "messages": [AIMessage(content=f"All sorted — {count} services locked in!{added_text} Let's move on to your service area.")],
+        }
 
     # If gaps don't match what the user is describing (e.g. licence says Concreter
     # but user says Landscaper), clear them so the LLM uses full taxonomy
@@ -365,7 +438,10 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     gaps_text = ""
     if tiered_mode:
         gap_entries = [f"{g['subcategory_name']} (id: {g['subcategory_id']})" for g in gaps]
-        gaps_text = f"\nSPECIALIST SUBCATEGORIES TO ASK ABOUT ({len(gaps)} remaining):\n{', '.join(gap_entries)}"
+        if gap_entries:
+            gaps_text = f"\nSPECIALIST SUBCATEGORIES TO ASK ABOUT ({len(gaps)} remaining):\n{', '.join(gap_entries)}"
+        else:
+            gaps_text = "\nSPECIALIST SUBCATEGORIES: None remaining — all specialists covered!"
     elif gaps:
         gap_entries = [f"{g['subcategory_name']} (id: {g['subcategory_id']})" for g in gaps]
         gaps_text = f"\nREMAINING UNCOVERED SUBCATEGORIES ({len(gaps)} remaining):\n{', '.join(gap_entries)}"
@@ -414,13 +490,15 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             f"Then ask about ONE cluster of specialist add-ons — pick the most common/likely group "
             f"of 2-3 related services from the SPECIALIST SUBCATEGORIES list. "
             f"The full specialist list is: {', '.join(specialist_names)}. "
-            f"Buttons are SINGLE-SELECT (no multi-select), so only ask about one cluster at a time. "
-            f"Make each button a specific service or small group the tradie can add with one tap. "
-            f"For example, for an electrician with data/solar/security gaps: "
-            f"ask \"Do you also do data and cabling work?\" with buttons "
-            f"\"Yes, data & cabling\", \"No, skip that\". "
             f"Keep it to ONE simple question per turn. Remaining specialists will be asked on follow-up turns. "
-            f"Always include a skip button like \"Skip\" or \"No\"."
+            f"For example, for an electrician with Level 2/solar/energy gaps: "
+            f"ask \"Do you do Level 2 work, solar, or energy audits?\" with buttons "
+            f"\"Yes, all of these\", \"Level 2 work\", \"Solar panels\", \"Skip these\". "
+            f"ALWAYS include \"Yes, all of these\" FIRST and \"Skip these\" LAST. "
+            f"Add individual buttons in between when the services are independent specialisations "
+            f"(different certs/skills a tradie might do some but not all of). "
+            f"Only skip individual buttons when the cluster services are closely related "
+            f"(e.g. data cabling + general cabling — most tradies do both or neither)."
         )
     else:
         turn1_rule = (
@@ -448,8 +526,8 @@ GUIDELINES:
 - Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for.
 {turn1_rule}
 - Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate mapping.
-- On follow-up turns: process the tradie's answer (add services they confirmed, skip ones they declined). Then check REMAINING gaps — if there are still uncovered specialist subcategories, ask about the NEXT cluster (2-3 related services). One cluster per turn, one simple question, specific buttons. Keep it snappy — each turn should feel like a quick yes/no.
-- Buttons are SINGLE-SELECT. Each button should be a specific service or small group to add, plus a skip/done option. Never present 4+ clusters as buttons in one turn.
+- FOLLOW-UP RULE: Services from the user's previous answer have already been added to SERVICES MAPPED SO FAR (check JUST ADDED note). Your job: acknowledge what was added in one sentence, then check the SPECIALIST SUBCATEGORIES list for remaining gaps. If there are gaps, ask about the NEXT cluster (2-3 related services). One cluster per turn, one simple question, specific buttons. Your output services array MUST include ALL services from SERVICES MAPPED SO FAR plus any new ones.
+- BUTTON RULE: ALWAYS include "Yes, all of these" as the FIRST button and "Skip these" as the LAST button. In between, add individual buttons for each service in the cluster WHEN they are independent specialisations a tradie might do some but not all of (e.g. "Level 2 work", "Solar", "Energy audits" — different certs, different skills). Only skip individual buttons when the services are closely related and a tradie would typically do all or none (e.g. "Data cabling" + "General cabling"). Aim for 3-4 buttons total.
 - COMPLETION RULE: Set step_complete=true when there are no more specialist gaps to ask about, OR the tradie says they are done / wants to move on, OR you have asked about all the clusters. Do NOT drag it out — 2-3 specialist questions max, then wrap up.
 - The response text is a conversational summary. Keep it to 1-2 sentences: mention the total count and groups, not every service. No headers, no bullet points, no line breaks.
 - Don't announce what you're doing, just do it.
@@ -460,16 +538,25 @@ CRITICAL — IDs MUST be exact:
 - ALWAYS include ALL previously mapped services in the output array. Never drop services the tradie already confirmed.
 
 Return a JSON object:
-{{"response": "your conversational message", "services": [array of mapped services with input, category_name, category_id, subcategory_name, subcategory_id, confidence], "buttons": ["2-4 button options"], "step_complete": true/false}}
+{{"response": "your conversational message", "services": [array of mapped services with input, category_name, category_id, subcategory_name, subcategory_id, confidence], "buttons": ["2-4 button options"], "cluster_ids": [subcategory_ids being asked about in this turn's question], "step_complete": true/false}}
+
+cluster_ids MUST contain the exact subcategory_id integers for every service mentioned in your question, matching the IDs from the SPECIALIST/REMAINING list. This is used to process the user's next response. If step_complete=true, cluster_ids should be empty.
 
 Return ONLY the JSON object."""
+
+    # ── Build cluster processing context ──
+    cluster_context = ""
+    if cluster_added:
+        cluster_context = f"\nJUST ADDED (from user's response): {', '.join(cluster_added)}. Acknowledge these briefly."
+    elif pending_cluster_ids and last_msg == "Skip these":
+        cluster_context = "\nUser skipped the last cluster. Move on to the next one."
 
     # ── Dynamic context (changes each turn) ──
     dynamic_context = f"""BUSINESS: {business_name}
 {f'CONTACT: {contact}' if contact else ''}
 SERVICES MAPPED SO FAR: {json.dumps(services) if services else "None yet"}
 {licence_context}
-{web_context}{reviews_context}{gaps_text}
+{web_context}{reviews_context}{gaps_text}{cluster_context}
 
 CONVERSATION SO FAR:
 {conv_history}"""
@@ -502,12 +589,21 @@ CONVERSATION SO FAR:
         message = data.get("response", "What services do you offer?")
         buttons = data.get("buttons", [])
         step_complete = data.get("step_complete", False)
+        cluster_ids = data.get("cluster_ids", [])
+
+        # Ensure pre-added cluster services are included in LLM output
+        if cluster_added:
+            existing_ids = {s.get("subcategory_id") for s in new_services}
+            for s in services:
+                if s.get("subcategory_id") not in existing_ids:
+                    new_services.append(s)
+                    existing_ids.add(s.get("subcategory_id"))
 
         # Compute post-turn gaps for logging
         new_gaps = compute_service_gaps(new_services, business_name, licence_classes,
                                         google_biz_name, google_type)
 
-        logger.info(f"[SVC] user='{last_msg}' | mapped={len(new_services)} | gaps={len(new_gaps)} | complete={step_complete} | tiered={tiered_mode}")
+        logger.info(f"[SVC] user='{last_msg}' | mapped={len(new_services)} | gaps={len(new_gaps)} | complete={step_complete} | tiered={tiered_mode} | cluster_ids={cluster_ids}")
         _trace(state, "LLM: Service Discovery", llm_time,
                f"Mapped {len(new_services)} services, {len(new_gaps)} gaps remaining, complete={step_complete}, tiered={tiered_mode}",
                {"services_count": len(new_services), "gaps_remaining": len(new_gaps),
@@ -519,6 +615,8 @@ CONVERSATION SO FAR:
             "services_raw": last_msg or f"Inferred from: {business_name}",
             "services_confirmed": step_complete,
             "_svc_turn": svc_turn + 1,
+            "_specialist_gap_ids": specialist_gap_ids,
+            "_pending_cluster_ids": cluster_ids,
             "buttons": [{"label": b, "value": b} for b in buttons],
             "messages": [AIMessage(content=message)],
         }
@@ -528,6 +626,8 @@ CONVERSATION SO FAR:
             "current_node": "service_discovery",
             "services": services,
             "_svc_turn": svc_turn + 1,
+            "_specialist_gap_ids": specialist_gap_ids,
+            "_pending_cluster_ids": [],
             "messages": [AIMessage(content=f"What services does {business_name} offer? Just tell me in your own words.")],
         }
 
@@ -555,7 +655,12 @@ async def service_area_node(state: OnboardingState) -> dict:
             "messages": [AIMessage(content="Service areas confirmed!")],
         }
 
-    last_msg = _get_last_human_message(messages)
+    # When auto-chained from service confirmation, the last human message belongs
+    # to service discovery (e.g. "Skip these") — ignore it so we present a fresh area question.
+    if state.get("_auto_chained"):
+        last_msg = None
+    else:
+        last_msg = _get_last_human_message(messages)
 
     # Gather geographic context
     grouped = get_suburbs_in_radius_grouped(postcode, 20.0) if postcode else {}
@@ -1330,13 +1435,25 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                         best_match = lic
                         break
 
+    # Scrape website text for evidence keywords (runs in parallel with licence details)
+    google_website = google_place.get("website", "")
+    website_text_task = scrape_website_text(google_website) if google_website else None
+
     if best_match:
         lid = best_match.get("licence_id", "")
         if lid:
             t2 = time.time()
-            details = await nsw_licence_details(lid)
+            # Run licence details + website text scrape in parallel
+            if website_text_task:
+                details, website_text = await asyncio.gather(
+                    nsw_licence_details(lid), website_text_task,
+                )
+                website_text_task = None  # consumed
+            else:
+                details = await nsw_licence_details(lid)
+                website_text = ""
             t3 = time.time()
-            logger.info(f"[BIZ] Licence details: {t3 - t2:.1f}s")
+            logger.info(f"[BIZ] Licence details + website scrape: {t3 - t2:.1f}s (parallel)")
             if not details.get("error"):
                 licence_info = details
                 licence_classes = [
@@ -1349,6 +1466,13 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                         "status": details.get("status"),
                         "expiry": details.get("expiry_date"),
                         "classes": licence_classes})
+
+    # Await website text if it wasn't consumed in the licence parallel block
+    if website_text_task:
+        website_text = await website_text_task
+    elif not best_match:
+        website_text = await scrape_website_text(google_website) if google_website else ""
+    # website_text is now set in all paths (licence+parallel, no-licence, no-website)
 
     # Extract contact person from licence associated parties
     contact_name = ""
@@ -1387,6 +1511,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "licence_info": licence_info,
         "licence_classes": licence_classes,
         "web_results": web_results[:3] if web_results else [],
+        "website_text": website_text if website_text else "",
         "contact_name": contact_name,
         "contact_phone": contact_phone,
         "google_rating": google_rating,

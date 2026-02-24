@@ -185,7 +185,8 @@
 ## Next Up
 > Scoped, ready to pick up
 
-- [ ] **Specialist gap clustering**: Pre-define cluster groups in `service_tiers.json` so the LLM asks about related services together (e.g. "Do you do data cabling and security?" rather than asking separately). Carpenter (11 gaps) and Cleaner (14 gaps) need this most — too many specialist items to cover in 2-3 single-select turns. Consider grouping by: equipment needed, commercial vs residential, specialist accreditation.
+- [x] **Specialist gap clustering**: Deterministic cluster processing + LLM `cluster_ids` output. LLM picks clusters of 2-3 related services, system processes responses programmatically. Works for all 6 tiered trades.
+- [ ] **Pre-defined cluster groups**: Optional enhancement — define cluster groups in `service_tiers.json` so the LLM doesn't have to pick clusters itself. Most useful for Carpenter (11 gaps) and Cleaner (14 gaps). Consider grouping by: equipment, commercial vs residential, accreditation.
 - [ ] **Multi-category tradies**: Builder who also does carpentry + tiling; handyman who spans multiple trades. Current `_detect_category()` returns single category. Need to detect secondary categories and merge tier mappings.
 - [ ] **Live testing session**: Run 20+ test sessions across all 6 tiered trades + 2-3 non-tiered trades. Validate: correct pre-mapping, sensible gap questions, no invented IDs, clean completion. Log results.
 
@@ -395,3 +396,36 @@
   - Unused functions removed: `search_suburbs_by_name()`, `get_region_suburbs()`, `_get_relevant_taxonomy()`
   - Caching added: regional guides, subcategory guides, service tiers
   - Unit tests: 26 tests in `tests/test_tools.py` (ABR parsing, service gaps, suburbs, guides)
+
+### Feb 24, 2026 — Deterministic Cluster Processing, Evidence Fixes, Parallel Path Fix
+- **Deterministic Cluster Processing** (`agent/graph.py`):
+  - LLM now outputs `cluster_ids` — exact subcategory IDs being asked about in each question
+  - `_pending_cluster_ids` persisted in state across turns
+  - Pre-processor handles user responses programmatically before LLM call:
+    - "Yes, all of these" → adds ALL cluster services deterministically (no LLM guesswork)
+    - "Skip these" → marks cluster as processed, moves on
+    - Individual button → word-overlap matching to best gap subcategory
+  - Processed cluster removed from gap list — LLM only sees unasked-about gaps
+  - Fast-exit: when all specialist gaps resolved, confirms immediately without LLM call
+  - Fixes re-asking bug where LLM added wrong services (e.g. "data cabling" instead of "Level 2/Solar")
+- **Website Text Evidence** (`agent/tools.py`, `agent/graph.py`):
+  - New `scrape_website_text()` function — strips HTML, returns clean text (max 5000 chars)
+  - Runs in parallel with licence details lookup during business confirmation
+  - Website text fed into `compute_initial_services()` evidence keyword scanning
+  - Fixes missed evidence services (e.g. "emergency electrician" on website but not in reviews)
+- **Service Tiers Expanded** (`resources/service_tiers.json`):
+  - Added gas fitting evidence keywords: "gas fitting", "gas installation", "lpg", "natural gas"
+  - Added gas hot water evidence keywords: "gas hot water", "gas heater"
+  - Added "burst pipe" to Overflowing drain, "sewer" to Stormwater
+- **Parallel Auto-Chain Fix** (`server/app.py`, `agent/graph.py`):
+  - Speculative area node was interpreting service discovery user messages (e.g. "Skip these")
+  - Added `_auto_chained` flag — area node ignores stale human messages when auto-chained
+  - Sequential area auto-chain now fires correctly when services confirmed mid-turn
+- **Code Review Fixes**:
+  - `__RESTART_BIZ__` handler: `current_node` fixed to `"business_verification"` (was wrong)
+  - Session init: 8 missing fields added (google_business_name, _svc_turn, licence_info, etc.)
+  - IP-based rate limiting on session creation (5/60s per IP)
+  - `datetime.utcnow()` → `datetime.now(timezone.utc)`
+  - Module-level `_llm_vision` singleton (was creating new ChatAnthropic per photo)
+  - Removed unused LangGraph `add_messages` import from state.py
+  - Added `website_text` field to OnboardingState

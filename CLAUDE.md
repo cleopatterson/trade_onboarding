@@ -76,6 +76,9 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API, Google Pla
 - Upload endpoint: `POST /api/upload` for logo + work photos (base64, max 5MB, photos capped at 6)
 - Progressive loading with magic stars + API activity steps for key transitions
 - Service discovery: tiered mapping (core → evidence → licence) on turn 1, specialist gap questions on follow-ups, safety cap at 5 turns
+- Deterministic cluster processing: LLM outputs `cluster_ids`, system pre-adds services from "Yes, all of these" programmatically before next LLM call
+- `_pending_cluster_ids` + `_specialist_gap_ids` persisted in state; fast-exit when all specialist gaps covered (no LLM needed)
+- Website text scraped in parallel with licence details; fed into evidence keyword scanning for better service detection
 - Tiered trades: Electrician, Plumber, Painter, Carpenter, Cleaner, Gardener (full subcategory coverage)
 - Non-tiered trades fall back to full taxonomy + LLM mapping
 - LLM JSON responses: strip markdown code fences before parsing (```json ... ```)

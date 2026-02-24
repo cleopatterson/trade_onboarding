@@ -45,14 +45,16 @@
     ],
     "evidence_keywords": {
       "Emergency Plumbing": ["emergency", "after hours", "urgent", "24/7"],
-      "Overflowing drain": ["overflow", "flooding", "flood"],
+      "Overflowing drain": ["overflow", "flooding", "flood", "burst pipe"],
       "Drain Repairs": ["drain", "blocked drain", "drainage"],
-      "Stormwater Pits & Drains": ["stormwater", "storm water", "pit"],
+      "Stormwater Pits & Drains": ["stormwater", "storm water", "pit", "sewer"],
       "Solar Hot Water Systems": ["solar hot water", "solar thermal"],
       "Rain Water Tank Installation": ["rain water tank", "rainwater", "water tank"],
       "Commercial plumbing": ["commercial", "office plumbing", "restaurant", "strata"],
       "Water Recycling": ["grey water", "greywater", "recycled water", "water recycling"],
-      "Reticulation system": ["reticulation", "garden irrigation", "sprinkler system"]
+      "Reticulation system": ["reticulation", "garden irrigation", "sprinkler system"],
+      "Gas fitting": ["gas fitting", "gas installation", "lpg", "natural gas", "gas appliance"],
+      "Gas Hot Water Systems": ["gas hot water", "gas heater", "gas water heater"]
     },
     "licence_signals": {
       "Gas fitting": ["gasfitter", "gas fitter", "gas fitting"],
