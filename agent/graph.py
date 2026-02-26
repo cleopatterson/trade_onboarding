@@ -1184,26 +1184,20 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
 
     # ── Run everything in parallel: LLM + domain discovery (fallback) + scrape + social ──
     t0 = time.time()
-    parallel_tasks = [llm_task]
-    # Only run domain discovery if we don't already have a website from Google Places
     async def _noop(): return ""
-    if not google_website:
-        parallel_tasks.append(discover_business_website(business_name))
-    else:
-        parallel_tasks.append(_noop())
-    if scrape_url:
-        parallel_tasks.append(scrape_website_images(scrape_url))
-    parallel_tasks.append(scrape_social_images(social_urls))
+    async def _noop_dict(): return {"logo": "", "photos": []}
+    tasks = {
+        "llm": llm_task,
+        "discover": discover_business_website(business_name) if not google_website else _noop(),
+        "scrape": scrape_website_images(scrape_url) if scrape_url else _noop_dict(),
+        "social": scrape_social_images(social_urls),
+    }
+    results = dict(zip(tasks.keys(), await asyncio.gather(*tasks.values())))
 
-    results = await asyncio.gather(*parallel_tasks)
-    response = results[0]
-    discovered_url = results[1] if not google_website else ""
-    if scrape_url:
-        brave_scraped = results[2]
-        social_result = results[3]
-    else:
-        brave_scraped = {"logo": "", "photos": []}
-        social_result = results[2]
+    response = results["llm"]
+    discovered_url = results["discover"] if not google_website else ""
+    brave_scraped = results["scrape"]
+    social_result = results["social"]
 
     # If we have a Google website, we already scraped it directly above
     # If not, discovered domain takes priority over Brave result scrape
