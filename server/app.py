@@ -189,6 +189,19 @@ def determine_node(state: dict) -> str:
     return "complete"
 
 
+async def _auto_chain_remaining(state: dict, _merge):
+    """Run remaining auto-chain transitions: profile -> pricing -> complete."""
+    if (state.get("service_areas_confirmed")
+            and not state.get("profile_saved")
+            and not state.get("profile_description_draft")):
+        state["confirmed"] = True
+        _merge(await NODE_FUNCTIONS["profile"](state))
+    if state.get("profile_saved") and not state.get("subscription_plan"):
+        _merge(await NODE_FUNCTIONS["pricing"](state))
+    if state.get("subscription_plan") and not state.get("output_json"):
+        _merge(await NODE_FUNCTIONS["complete"](state))
+
+
 async def run_node(state: dict) -> dict:
     """Run the appropriate node and merge results into state."""
     node_name = determine_node(state)
@@ -235,14 +248,7 @@ async def run_node(state: dict) -> dict:
         if state.get("services_confirmed") and already_confirmed:
             # Services were already confirmed — this turn's message was for area
             _merge(area_result)
-            # Continue auto-chain: area confirmed → profile
-            if state.get("service_areas_confirmed") and not state.get("profile_saved") and not state.get("profile_description_draft"):
-                state["confirmed"] = True
-                _merge(await NODE_FUNCTIONS["profile"](state))
-            if state.get("profile_saved") and not state.get("subscription_plan"):
-                _merge(await NODE_FUNCTIONS["pricing"](state))
-            if state.get("subscription_plan") and not state.get("output_json"):
-                _merge(await NODE_FUNCTIONS["complete"](state))
+            await _auto_chain_remaining(state, _merge)
             return state
         # Services just confirmed THIS turn (or not confirmed yet) — discard area result,
         # fall through to sequential auto-chain which handles area with clean context
@@ -263,18 +269,7 @@ async def run_node(state: dict) -> dict:
         _merge(await NODE_FUNCTIONS["service_area"](state))
         state.pop("_auto_chained", None)
 
-    # Auto-chain: service areas confirmed → profile (skip confirmation step)
-    if state.get("service_areas_confirmed") and not state.get("profile_saved") and not state.get("profile_description_draft"):
-        state["confirmed"] = True  # Skip confirmation step
-        _merge(await NODE_FUNCTIONS["profile"](state))
-
-    # Auto-chain: profile saved → pricing
-    if state.get("profile_saved") and not state.get("subscription_plan"):
-        _merge(await NODE_FUNCTIONS["pricing"](state))
-
-    # Auto-chain: subscription done → complete
-    if state.get("subscription_plan") and not state.get("output_json"):
-        _merge(await NODE_FUNCTIONS["complete"](state))
+    await _auto_chain_remaining(state, _merge)
 
     return state
 
