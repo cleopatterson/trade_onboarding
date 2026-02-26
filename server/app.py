@@ -647,6 +647,7 @@ def _safe_state(state: dict) -> dict:
         "abn": abn,
         "business_verified": state.get("business_verified"),
         "business_postcode": state.get("business_postcode"),
+        "business_state": state.get("business_state", ""),
         "licence_classes": state.get("licence_classes", []),
         "licence_info": safe_licence,
         "services": state.get("services", []),

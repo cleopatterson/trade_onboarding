@@ -1715,8 +1715,12 @@
         && currentState.pricing_shown;
 
       if (isBusinessConfirm) {
+        const bState = currentState.business_state || '';
+        const licenceLabel = bState === 'QLD' ? 'Checking QBCC trade licences'
+          : bState === 'NSW' ? 'Checking NSW trade licences'
+          : 'Looking up trade licences';
         showProgressLoading(content, 'Setting up your services...', [
-          'Checking NSW trade licences',
+          licenceLabel,
           'Searching web for business details',
           'Mapping your services',
         ]);
