@@ -553,6 +553,17 @@ def _build_service_prompt(
     guide = find_subcategory_guide(business_name)
     taxonomy = get_category_taxonomy_text()
 
+    # ── Licence acknowledgement hint for turn 1 ──
+    licence_ack = ""
+    if licence_info and licence_info.get("licence_number"):
+        source = licence_info.get("licence_source", "nsw")
+        if source == "qbcc_csv":
+            licence_ack = "Mention briefly that you found their QBCC licence on file (e.g. \"I found your QBCC licence, so...\"). "
+        elif source == "self_reported":
+            licence_ack = "Acknowledge their ESO licence number briefly (e.g. \"Got your ESO licence noted\"). "
+        else:
+            licence_ack = "Mention briefly that you found their NSW trade licence on file. "
+
     # ── Turn 1 rule ──
     if tiered_mode:
         if cluster_groups:
@@ -560,6 +571,7 @@ def _build_service_prompt(
             first_names = [s["name"] for s in first_cluster["services"]]
             turn1_rule = (
                 f"- TURN 1 RULE (TIERED): {len(services)} core services have been pre-mapped. "
+                f"{licence_ack}"
                 f"Summarise them in one casual sentence (count + 2-3 key groups, e.g. \"I've added "
                 f"13 services covering general electrical, switchboards, safety gear and a few more\"). "
                 f"Do NOT list every service. Include the pre-mapped services array exactly as-is in your output. "
@@ -570,7 +582,8 @@ def _build_service_prompt(
         else:
             turn1_rule = (
                 f"- TURN 1 RULE (TIERED): {len(services)} core services have been pre-mapped and "
-                f"all specialist areas are covered. Summarise briefly and set step_complete=true."
+                f"all specialist areas are covered. {licence_ack}"
+                f"Summarise briefly and set step_complete=true."
             )
     else:
         turn1_rule = (
@@ -685,8 +698,12 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "messages": [AIMessage(content="All sorted — let's move on to your service area!")],
         }
 
-    # ── Non-trade business gate (turn 1 only) ──
-    if svc_turn == 1 and not services and not licence_classes:
+    # ── QLD ESO re-entry flag (set below if processing ESO licence response) ──
+    _is_eso_reentry = False
+    needs_licence = state.get("_needs_licence_number", False)
+
+    # ── Non-trade business gate (turn 1 only, skip on ESO re-entry) ──
+    if svc_turn == 1 and not services and not licence_classes and not _is_eso_reentry:
         google_type = state.get("google_primary_type", "")
         if google_type and google_type in _NON_TRADE_TYPES:
             type_label = google_type.replace("_", " ")
@@ -706,7 +723,6 @@ async def service_discovery_node(state: OnboardingState) -> dict:
 
     # ── QLD Electrician ESO licence self-report ──
     _eso_updates: dict = {}
-    needs_licence = state.get("_needs_licence_number", False)
     if needs_licence and svc_turn == 1:
         # First entry into service discovery — ask for ESO licence
         return {
@@ -725,9 +741,11 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     if needs_licence and svc_turn == 2:
         # Process the ESO licence response, then fall through to normal turn-1 flow
         _eso_updates = {"_needs_licence_number": False}
+        _is_eso_reentry = True
         if last_msg and not last_msg.lower().startswith(("skip", "i'll add")):
+            eso_num = re.sub(r'[^A-Za-z0-9\-/ ]', '', last_msg.strip())[:30]
             _eso_updates["licence_info"] = {
-                "licence_number": last_msg.strip(),
+                "licence_number": eso_num,
                 "licence_type": "Electrician",
                 "status": "Self-reported",
                 "licence_source": "self_reported",
@@ -738,7 +756,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             }
             _eso_updates["licence_classes"] = ["Electrical Work"]
             licence_classes = ["Electrical Work"]
-            logger.info(f"[SVC] QLD ESO licence self-reported: {last_msg.strip()}")
+            logger.info(f"[SVC] QLD ESO licence self-reported: {eso_num}")
         else:
             logger.info("[SVC] QLD ESO licence skipped")
         svc_turn = 1

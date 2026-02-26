@@ -122,7 +122,7 @@ async def _session_cleanup_loop():
 async def lifespan(app):
     """Startup/shutdown lifecycle: validate env, pre-warm tokens, start cleanup."""
     validate_env()
-    qbcc_load_csv()
+    await asyncio.to_thread(qbcc_load_csv)
 
     token = await _get_nsw_trades_token()
     if token:
@@ -357,6 +357,7 @@ async def create_session(req: StartRequest, request: Request):
         "_pending_cluster_ids": [],
         "_selected_plan": "",
         "_needs_trading_name": False,
+        "_needs_licence_number": False,
         "_created_at": now,
         "_last_active": now,
     }

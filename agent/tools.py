@@ -1085,8 +1085,27 @@ def qbcc_licence_lookup(abn: str, legal_name: str) -> dict | None:
     matched_rows = _qbcc_licences["abn_index"].get(abn_clean, [])
 
     if not matched_rows and legal_name:
+        # Exact match first
         name_key = legal_name.strip().upper()
         matched_rows = _qbcc_licences["name_index"].get(name_key, [])
+
+        # Normalised fallback: strip punctuation and common suffixes
+        if not matched_rows:
+            normalised = re.sub(r'[.\',]', '', name_key)
+            normalised = re.sub(r'\s+', ' ', normalised).strip()
+            if normalised != name_key:
+                matched_rows = _qbcc_licences["name_index"].get(normalised, [])
+            # Try word-overlap against index keys if still no match
+            if not matched_rows:
+                search_words = set(normalised.split()) - {"PTY", "LTD", "LIMITED", "THE", "AND", "&"}
+                if len(search_words) >= 2:
+                    for idx_key, rows in _qbcc_licences["name_index"].items():
+                        idx_words = set(idx_key.split()) - {"PTY", "LTD", "LIMITED", "THE", "AND", "&"}
+                        if idx_words and search_words:
+                            overlap = len(search_words & idx_words) / min(len(search_words), len(idx_words))
+                            if overlap >= 0.8:
+                                matched_rows = rows
+                                break
 
     if not matched_rows:
         return None
