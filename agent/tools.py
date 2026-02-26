@@ -1295,6 +1295,7 @@ async def discover_business_website(business_name: str) -> str:
 # ────────── WEBSITE IMAGE SCRAPER ──────────
 
 _scrape_cache: dict[str, dict] = {}   # domain → {"logo": ..., "photos": [...]}
+_SCRAPE_CACHE_MAX = 100
 
 # Patterns that indicate an image is a logo
 _LOGO_PATTERNS = re.compile(r'logo|brand|header-img|site-icon', re.IGNORECASE)
@@ -1469,6 +1470,8 @@ async def scrape_website_images(url: str) -> dict:
     except Exception as e:
         logger.error(f"[SCRAPE] Unexpected error fetching {url} ({type(e).__name__}): {e}")
 
+    if len(_scrape_cache) >= _SCRAPE_CACHE_MAX:
+        _scrape_cache.pop(next(iter(_scrape_cache)))
     _scrape_cache[domain] = result
     return result
 
