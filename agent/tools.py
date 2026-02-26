@@ -62,18 +62,11 @@ async def abr_lookup(search_term: str, search_type: str = "name") -> dict:
 
         return _parse_jsonp_response(resp.text, search_type)
 
-    except httpx.TimeoutException as e:
-        logger.error(f"ABR lookup timeout: {e}")
-        return _mock_abr_lookup(search_term, search_type)
-    except httpx.HTTPError as e:
-        logger.error(f"ABR lookup HTTP error: {e}")
-        return _mock_abr_lookup(search_term, search_type)
-    except (json.JSONDecodeError, KeyError, ValueError) as e:
-        logger.error(f"ABR lookup parse error: {e}")
-        return _mock_abr_lookup(search_term, search_type)
     except Exception as e:
-        logger.error(f"ABR lookup unexpected error ({type(e).__name__}): {e}")
-        return _mock_abr_lookup(search_term, search_type)
+        logger.error(f"ABR lookup error ({type(e).__name__}): {e}")
+        if not ABR_GUID:
+            return _mock_abr_lookup(search_term, search_type)
+        return {"results": [], "count": 0, "error": f"ABR lookup failed: {e}"}
 
 
 def _title_case(name: str) -> str:
