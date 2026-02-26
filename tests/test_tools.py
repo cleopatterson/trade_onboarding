@@ -11,6 +11,9 @@ from agent.tools import (
     find_subcategory_guide,
     get_regional_guide,
     search_suburbs_by_postcode,
+    qbcc_load_csv,
+    qbcc_licence_lookup,
+    _qbcc_licences,
 )
 from agent.graph import (
     _process_cluster_response,
@@ -316,3 +319,52 @@ class TestMergeLlmServices:
         assert 102 in ids  # Was missing from LLM output, now added
         assert 103 in ids
         assert len(merged) == 3  # No duplicates
+
+
+# ────────── QBCC Licence Lookup ──────────
+
+class TestQBCCLicenceLookup:
+    """Tests for QBCC CSV licence lookup (QLD)."""
+
+    @classmethod
+    def setup_class(cls):
+        """Load QBCC CSV once for all tests."""
+        if not _qbcc_licences["loaded"]:
+            qbcc_load_csv()
+
+    def test_abn_match(self):
+        """Known QLD plumbing company found by ABN."""
+        result = qbcc_licence_lookup("56051254301", "")
+        assert result is not None
+        assert result["licence_number"]
+        assert result["status"] == "Current"
+
+    def test_name_fallback(self):
+        """Company with no ABN found by legal name."""
+        result = qbcc_licence_lookup("", "PROTECH COAT PTY. LTD.")
+        assert result is not None
+        assert result["licence_number"] == "15144048"
+
+    def test_no_match(self):
+        """Non-existent ABN and name returns None."""
+        result = qbcc_licence_lookup("00000000000", "Nonexistent Corp Pty Ltd")
+        assert result is None
+
+    def test_classes_populated(self):
+        """Licence classes are extracted and deduplicated."""
+        result = qbcc_licence_lookup("56051254301", "")
+        classes = result.get("classes", [])
+        assert len(classes) >= 2
+        names = [c["name"] for c in classes]
+        assert "Plumbing and Drainage" in names
+
+    def test_licence_source_field(self):
+        """Result includes licence_source='qbcc_csv'."""
+        result = qbcc_licence_lookup("56051254301", "")
+        assert result["licence_source"] == "qbcc_csv"
+
+    def test_classes_deduped(self):
+        """Same class from multiple rows is not duplicated."""
+        result = qbcc_licence_lookup("56051254301", "")
+        names = [c["name"] for c in result["classes"]]
+        assert len(names) == len(set(names))

@@ -24,9 +24,10 @@ class OnboardingState(TypedDict):
     business_postcode: str
     business_state: str
 
-    # Licence Enrichment (from NSW Fair Trading)
+    # Licence Enrichment (from NSW Fair Trading or QBCC CSV)
     licence_info: dict
     licence_classes: list[str]
+    _needs_licence_number: bool       # QLD electrician: prompt for ESO licence
 
     # Web Enrichment (from Brave Search + website scrape)
     web_results: list[dict]

@@ -24,7 +24,7 @@ from agent.graph import (
     complete_node,
 )
 from agent.config import PORT, ALLOWED_ORIGINS, validate_env
-from agent.tools import _get_nsw_trades_token
+from agent.tools import _get_nsw_trades_token, qbcc_load_csv
 
 logging.basicConfig(
     level=logging.INFO,
@@ -122,6 +122,7 @@ async def _session_cleanup_loop():
 async def lifespan(app):
     """Startup/shutdown lifecycle: validate env, pre-warm tokens, start cleanup."""
     validate_env()
+    qbcc_load_csv()
 
     token = await _get_nsw_trades_token()
     if token:

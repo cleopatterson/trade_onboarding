@@ -29,6 +29,7 @@ from agent.tools import (
     extract_facebook_url,
     google_places_search, compute_service_gaps, compute_initial_services,
     get_filtered_cluster_groups, scrape_website_text,
+    qbcc_licence_lookup, _detect_category,
 )
 
 
@@ -523,9 +524,13 @@ def _build_service_prompt(
     # ── Enrichment context ──
     licence_context = ""
     if licence_classes:
-        licence_context = f"\nNSW FAIR TRADING LICENCE CLASSES: {', '.join(licence_classes)}"
+        source = licence_info.get("licence_source", "nsw")
+        label = "QBCC LICENCE" if source == "qbcc_csv" else "NSW FAIR TRADING LICENCE"
+        licence_context = f"\n{label} CLASSES: {', '.join(licence_classes)}"
         if licence_info.get("licence_number"):
-            licence_context += f"\nLicence #{licence_info['licence_number']} — Status: {licence_info.get('status', 'Unknown')}, Expiry: {licence_info.get('expiry_date', 'Unknown')}"
+            expiry = licence_info.get("expiry_date", "")
+            expiry_text = f", Expiry: {expiry}" if expiry else ""
+            licence_context += f"\nLicence #{licence_info['licence_number']} — Status: {licence_info.get('status', 'Unknown')}{expiry_text}"
         if licence_info.get("compliance_clean") is False:
             licence_context += "\n⚠️ Compliance issues on record"
     elif gaps:
@@ -699,6 +704,46 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                 ))],
             }
 
+    # ── QLD Electrician ESO licence self-report ──
+    _eso_updates: dict = {}
+    needs_licence = state.get("_needs_licence_number", False)
+    if needs_licence and svc_turn == 1:
+        # First entry into service discovery — ask for ESO licence
+        return {
+            "current_node": "service_discovery",
+            "_svc_turn": 2,
+            "buttons": [
+                {"label": "I'll add it later", "value": "I'll add my licence later"},
+                {"label": "Skip", "value": "Skip licence"},
+            ],
+            "messages": [AIMessage(content=(
+                f"I couldn't find a QBCC licence for {business_name} — as an electrician in QLD "
+                f"you'd be licensed through the Electrical Safety Office (ESO). "
+                f"Do you have your ESO licence number handy? You can type it in, or skip for now."
+            ))],
+        }
+    if needs_licence and svc_turn == 2:
+        # Process the ESO licence response, then fall through to normal turn-1 flow
+        _eso_updates = {"_needs_licence_number": False}
+        if last_msg and not last_msg.lower().startswith(("skip", "i'll add")):
+            _eso_updates["licence_info"] = {
+                "licence_number": last_msg.strip(),
+                "licence_type": "Electrician",
+                "status": "Self-reported",
+                "licence_source": "self_reported",
+                "classes": [{"name": "Electrical Work", "active": True}],
+                "compliance_clean": True,
+                "associated_parties": [],
+                "business_address": "",
+            }
+            _eso_updates["licence_classes"] = ["Electrical Work"]
+            licence_classes = ["Electrical Work"]
+            logger.info(f"[SVC] QLD ESO licence self-reported: {last_msg.strip()}")
+        else:
+            logger.info("[SVC] QLD ESO licence skipped")
+        svc_turn = 1
+        is_follow_up = False
+
     # ── Tiered mapping on turn 1 ──
     google_biz_name = state.get("google_business_name", "")
     google_type = state.get("google_primary_type", "")
@@ -754,6 +799,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "_specialist_gap_ids": specialist_gap_ids,
             "_pending_cluster_ids": [],
             "messages": [AIMessage(content=f"All sorted — {count} services locked in!{added_text} Let's move on to your service area.")],
+            **_eso_updates,
         }
 
     # If gaps don't match what the user is describing, clear them
@@ -829,6 +875,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "_pending_cluster_ids": cluster_ids,
             "buttons": [{"label": b, "value": b} for b in buttons],
             "messages": [AIMessage(content=message)],
+            **_eso_updates,
         }
     except Exception as e:
         logger.error(f"[SVC] {e} | raw response: {response.content[:300]}")
@@ -839,6 +886,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "_specialist_gap_ids": specialist_gap_ids,
             "_pending_cluster_ids": [],
             "messages": [AIMessage(content=f"What services does {business_name} offer? Just tell me in your own words.")],
+            **_eso_updates,
         }
 
 
@@ -1626,8 +1674,25 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     # Strip PTY LTD etc. for Facebook — pages use short names
     _fb_name = re.sub(r'\s*(PTY\.?\s*LTD\.?|LTD\.?|INC\.?|CO\.?)\s*$', '', business_name, flags=re.IGNORECASE).strip()
 
+    # Route licence lookup by state
+    async def _qbcc_as_browse():
+        """Wrap sync QBCC CSV lookup to match nsw_licence_browse return shape."""
+        result = qbcc_licence_lookup(abn, legal_name)
+        if result:
+            return {"results": [result], "count": 1}
+        return {"results": [], "count": 0}
+
     t0 = time.time()
-    licence_task = nsw_licence_browse(licence_search_name)
+    if business_state == "QLD":
+        licence_task = _qbcc_as_browse()
+    elif business_state == "NSW":
+        licence_task = nsw_licence_browse(licence_search_name)
+    else:
+        # No licence API for other states — return empty
+        async def _no_licence():
+            return {"results": [], "count": 0}
+        licence_task = _no_licence()
+
     web_task = _delayed_brave(f"{business_name} {business_state} tradesperson")
     fb_task = _delayed_brave(f'"{_fb_name}" {business_state} site:facebook.com', count=3, delay=0.15)
     google_task = google_places_search(business_name, business_state)
@@ -1637,9 +1702,9 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     t1 = time.time()
     logger.info(f"[BIZ] Licence + 2 Brave + Google Places: {t1 - t0:.1f}s (parallel)")
 
-    # If no results and name has apostrophe, retry without it
+    # NSW: if no results and name has apostrophe, retry without it
     search_name = licence_search_name
-    if not licence_results.get("results") and ("'" in search_name or "\u2019" in search_name):
+    if business_state == "NSW" and not licence_results.get("results") and ("'" in search_name or "\u2019" in search_name):
         search_name = search_name.replace("'", "").replace("\u2019", "")
         licence_results = await nsw_licence_browse(search_name)
         logger.info(f"[BIZ] Licence retry without apostrophe: {len(licence_results.get('results', []))} results")
@@ -1648,11 +1713,12 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     # Licences are registered under the legal/entity name. Searching generic trading
     # names (e.g. "Sydney Cleaning") returns other businesses' licences — false positives.
 
-    _trace(state, "NSW Licence Browse", t1 - t0,
+    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse"}.get(business_state, "Licence Lookup")
+    _trace(state, licence_source_label, t1 - t0,
            f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
            {"results": [
                {"licensee": r.get("licensee"), "status": r.get("status"),
-                "licence_number": r.get("licence_number"), "suburb": r.get("suburb")}
+                "licence_number": r.get("licence_number")}
                for r in licence_results.get("results", [])[:5]
            ]})
     _trace(state, "Brave Web Search", t1 - t0,
@@ -1691,69 +1757,82 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     licence_classes = []
     licence_matches = licence_results.get("results", [])
 
-    # Try exact match first, then partial, then word-overlap fallback
-    best_match = None
-    for lic in licence_matches:
-        if lic.get("status") != "Current":
-            continue
-        licensee = lic.get("licensee", "").lower()
-        if search_name.lower() in licensee or licensee in search_name.lower():
-            best_match = lic
-            break
-
-    # Fallback: accept first current result only if single result or word overlap >= 50%
-    if not best_match:
-        current_lics = [lic for lic in licence_matches if lic.get("status") == "Current"]
-        if len(current_lics) == 1:
-            best_match = current_lics[0]
-        elif current_lics:
-            search_words = set(search_name.lower().split())
-            for lic in current_lics:
-                lic_words = set(lic.get("licensee", "").lower().split())
-                if search_words and lic_words:
-                    overlap = len(search_words & lic_words) / min(len(search_words), len(lic_words))
-                    if overlap >= 0.5:
-                        best_match = lic
-                        break
-
     # Scrape website text for evidence keywords (runs in parallel with licence details)
     google_website = google_place.get("website", "")
     website_text_task = scrape_website_text(google_website) if google_website else None
 
-    if best_match:
-        lid = best_match.get("licence_id", "")
-        if lid:
-            t2 = time.time()
-            # Run licence details + website text scrape in parallel
-            if website_text_task:
-                details, website_text = await asyncio.gather(
-                    nsw_licence_details(lid), website_text_task,
-                )
-                website_text_task = None  # consumed
-            else:
-                details = await nsw_licence_details(lid)
-                website_text = ""
-            t3 = time.time()
-            logger.info(f"[BIZ] Licence details + website scrape: {t3 - t2:.1f}s (parallel)")
-            if not details.get("error"):
-                licence_info = details
-                licence_classes = [
-                    c["name"] for c in details.get("classes", []) if c.get("active")
-                ]
-                logger.info(f"[BIZ] Licence #{details.get('licence_number')} classes: {licence_classes}")
-                _trace(state, "NSW Licence Details", t3 - t2,
-                       f"Licence #{details.get('licence_number')} — {', '.join(licence_classes)}",
-                       {"licence_number": details.get("licence_number"),
-                        "status": details.get("status"),
-                        "expiry": details.get("expiry_date"),
-                        "classes": licence_classes})
+    if business_state == "QLD" and licence_matches:
+        # QBCC CSV lookup already returns the pre-matched result — no details call needed
+        licence_info = licence_matches[0]
+        licence_classes = [c["name"] for c in licence_info.get("classes", []) if c.get("active")]
+        logger.info(f"[BIZ] QBCC licence #{licence_info.get('licence_number')} classes: {licence_classes}")
+        _trace(state, "QBCC Licence", t1 - t0,
+               f"Licence #{licence_info.get('licence_number')} — {', '.join(licence_classes)}",
+               {"licence_number": licence_info.get("licence_number"),
+                "status": licence_info.get("status"),
+                "classes": licence_classes})
+        # Await website text if started
+        website_text = await website_text_task if website_text_task else ""
+    else:
+        # NSW (or other states with browse-style results): find best match then get details
+        best_match = None
+        for lic in licence_matches:
+            if lic.get("status") != "Current":
+                continue
+            licensee = lic.get("licensee", "").lower()
+            if search_name.lower() in licensee or licensee in search_name.lower():
+                best_match = lic
+                break
 
-    # Await website text if it wasn't consumed in the licence parallel block
-    if website_text_task:
-        website_text = await website_text_task
-    elif not best_match:
-        website_text = await scrape_website_text(google_website) if google_website else ""
-    # website_text is now set in all paths (licence+parallel, no-licence, no-website)
+        # Fallback: accept first current result only if single result or word overlap >= 50%
+        if not best_match:
+            current_lics = [lic for lic in licence_matches if lic.get("status") == "Current"]
+            if len(current_lics) == 1:
+                best_match = current_lics[0]
+            elif current_lics:
+                search_words = set(search_name.lower().split())
+                for lic in current_lics:
+                    lic_words = set(lic.get("licensee", "").lower().split())
+                    if search_words and lic_words:
+                        overlap = len(search_words & lic_words) / min(len(search_words), len(lic_words))
+                        if overlap >= 0.5:
+                            best_match = lic
+                            break
+
+        if best_match:
+            lid = best_match.get("licence_id", "")
+            if lid:
+                t2 = time.time()
+                # Run licence details + website text scrape in parallel
+                if website_text_task:
+                    details, website_text = await asyncio.gather(
+                        nsw_licence_details(lid), website_text_task,
+                    )
+                    website_text_task = None  # consumed
+                else:
+                    details = await nsw_licence_details(lid)
+                    website_text = ""
+                t3 = time.time()
+                logger.info(f"[BIZ] Licence details + website scrape: {t3 - t2:.1f}s (parallel)")
+                if not details.get("error"):
+                    licence_info = details
+                    licence_classes = [
+                        c["name"] for c in details.get("classes", []) if c.get("active")
+                    ]
+                    logger.info(f"[BIZ] Licence #{details.get('licence_number')} classes: {licence_classes}")
+                    _trace(state, "NSW Licence Details", t3 - t2,
+                           f"Licence #{details.get('licence_number')} — {', '.join(licence_classes)}",
+                           {"licence_number": details.get("licence_number"),
+                            "status": details.get("status"),
+                            "expiry": details.get("expiry_date"),
+                            "classes": licence_classes})
+
+        # Await website text if it wasn't consumed in the licence parallel block
+        if website_text_task:
+            website_text = await website_text_task
+        elif not best_match:
+            website_text = await scrape_website_text(google_website) if google_website else ""
+        # website_text is now set in all paths (licence+parallel, no-licence, no-website)
 
     # Extract contact person from licence associated parties
     contact_name = ""
@@ -1780,6 +1859,16 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     if contact_phone:
         logger.info(f"[BIZ] Contact phone: {contact_phone}")
 
+    # QLD electricians are licensed via ESO (not QBCC) — flag for self-report prompt
+    google_type = google_place.get("primary_type", "")
+    detected_category = _detect_category(business_name, licence_classes,
+                                          google_place.get("name", ""), google_type)
+    needs_licence_number = (
+        business_state == "QLD"
+        and not licence_info
+        and detected_category == "Electrician"
+    )
+
     return {
         "current_node": "business_verification",
         "business_name": business_name,
@@ -1792,6 +1881,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "business_verified": True,
         "licence_info": licence_info,
         "licence_classes": licence_classes,
+        "_needs_licence_number": needs_licence_number,
         "web_results": web_results[:3] if web_results else [],
         "website_text": website_text if website_text else "",
         "contact_name": contact_name,

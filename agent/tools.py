@@ -1029,6 +1029,94 @@ async def nsw_licence_details(licence_id: str) -> dict:
         return {"error": str(e)}
 
 
+# ────────── QBCC LICENCE CSV (QLD) ──────────
+
+_qbcc_licences: dict = {"abn_index": {}, "name_index": {}, "loaded": False}
+
+
+def qbcc_load_csv() -> None:
+    """Load QBCC licensed contractors CSV into memory indexes.
+
+    Reads resources/qbcc_licences.csv (UTF-8 with BOM), builds ABN and name indexes.
+    All rows in the published CSV are active licences ("Licence In Force").
+    Called once at server startup.
+    """
+    csv_path = RESOURCES_DIR / "qbcc_licences.csv"
+    if not csv_path.exists():
+        logger.warning("[QBCC] CSV not found at %s — QLD licence lookup disabled", csv_path)
+        return
+
+    import time as _time
+    t0 = _time.time()
+    abn_index: dict[str, list[dict]] = {}
+    name_index: dict[str, list[dict]] = {}
+    row_count = 0
+
+    with open(csv_path, encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            row_count += 1
+            abn_raw = row.get("ABN", "").strip().replace(" ", "")
+            name_raw = row.get("Licensee Name", "").strip()
+            if abn_raw:
+                abn_index.setdefault(abn_raw, []).append(row)
+            if name_raw:
+                name_key = name_raw.upper()
+                name_index.setdefault(name_key, []).append(row)
+
+    _qbcc_licences["abn_index"] = abn_index
+    _qbcc_licences["name_index"] = name_index
+    _qbcc_licences["loaded"] = True
+
+    t1 = _time.time()
+    logger.info(f"[QBCC] Loaded {row_count} active licences for {len(abn_index)} unique ABNs ({t1 - t0:.1f}s)")
+
+
+def qbcc_licence_lookup(abn: str, legal_name: str) -> dict | None:
+    """Look up a QLD licence from the pre-loaded QBCC CSV.
+
+    Primary: match by ABN. Fallback: match by normalised legal name.
+    Returns a licence_info dict matching the NSW format, or None if no match.
+    """
+    if not _qbcc_licences["loaded"]:
+        return None
+
+    abn_clean = abn.strip().replace(" ", "") if abn else ""
+    matched_rows = _qbcc_licences["abn_index"].get(abn_clean, [])
+
+    if not matched_rows and legal_name:
+        name_key = legal_name.strip().upper()
+        matched_rows = _qbcc_licences["name_index"].get(name_key, [])
+
+    if not matched_rows:
+        return None
+
+    # Aggregate all licence class types across matched rows, dedup by name
+    seen_classes = set()
+    classes = []
+    for row in matched_rows:
+        cls_name = row.get("Licence Class Type", "").strip()
+        if cls_name and cls_name not in seen_classes:
+            seen_classes.add(cls_name)
+            classes.append({"name": cls_name, "active": True})
+
+    first = matched_rows[0]
+    address = first.get("Licensee Business Address", "").strip()
+
+    return {
+        "licensee": first.get("Licensee Name", "").strip(),
+        "licence_number": first.get("Licence Number", "").strip(),
+        "licence_type": first.get("Licence Grade", "").strip(),
+        "status": "Current",
+        "expiry_date": "",
+        "classes": classes,
+        "compliance_clean": True,
+        "associated_parties": [],
+        "business_address": address,
+        "licence_source": "qbcc_csv",
+    }
+
+
 # ────────── BRAVE WEB SEARCH ──────────
 
 async def brave_web_search(query: str, count: int = 5) -> list[dict]:
