@@ -373,41 +373,12 @@ def compute_service_gaps(services: list[dict], business_name: str,
             if most_common in categories:
                 matched_cat_key = most_common
 
-    # Priority 2: match business name to category
+    # Priorities 2-5: business name, licence classes, Google name, Google type
     if not matched_cat_key:
-        name_lower = business_name.lower()
-        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-            if keyword in name_lower:
-                matched_cat_key = cat_key
-                break
-
-    # Priority 3: match licence classes (for sole traders with personal names)
-    if not matched_cat_key and licence_classes:
-        for lc in licence_classes:
-            lc_lower = lc.lower()
-            for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-                if keyword in lc_lower:
-                    matched_cat_key = cat_key
-                    break
-            if matched_cat_key:
-                break
-
-    # Priority 4: match Google Places business name (e.g. "Stacey Electrical"
-    # when ABR name is "STACEY, MATTHEW GREGORY")
-    if not matched_cat_key and google_business_name:
-        gname_lower = google_business_name.lower()
-        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-            if keyword in gname_lower:
-                matched_cat_key = cat_key
-                break
-
-    # Priority 5: match Google Places primary type (e.g. "electrician", "plumber")
-    if not matched_cat_key and google_primary_type:
-        gtype_lower = google_primary_type.lower()
-        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-            if keyword in gtype_lower:
-                matched_cat_key = cat_key
-                break
+        matched_cat_key = _detect_category(
+            business_name, licence_classes,
+            google_business_name, google_primary_type,
+        )
 
     if not matched_cat_key or matched_cat_key not in categories:
         return []
