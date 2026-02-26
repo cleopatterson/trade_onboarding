@@ -32,6 +32,17 @@ from agent.tools import (
 )
 
 
+# ────────── PROTOCOL CONSTANTS ──────────
+# Button value prefixes and magic strings shared between frontend and backend.
+# Change here → grep for the constant name to find all usages.
+
+MSG_SAVE_PROFILE = "__SAVE_PROFILE__:"
+MSG_PLAN = "__PLAN__:"
+MSG_BILLING = "__BILLING__:"
+MSG_RESTART_BIZ = "__RESTART_BIZ__"
+MSG_YES_ALL = "Yes, all of these"
+
+
 # ────────── MODELS ──────────
 
 llm_fast = ChatAnthropic(
@@ -431,7 +442,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     svc_turn = state.get("_svc_turn", 1)
 
     # ── Handle restart request: send back to business verification ──
-    if last_msg == "__RESTART_BIZ__":
+    if last_msg == MSG_RESTART_BIZ:
         return {
             "current_node": "business_verification",
             "business_verified": False,
@@ -465,7 +476,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                 "current_node": "service_discovery",
                 "services": [],
                 "buttons": [
-                    {"label": "Try a different business", "value": "__RESTART_BIZ__"},
+                    {"label": "Try a different business", "value": MSG_RESTART_BIZ},
                 ],
                 "messages": [AIMessage(content=(
                     f"It looks like {business_name} is listed as a {type_label} on Google. "
@@ -517,7 +528,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
         pending_set = set(pending_cluster_ids)
         cluster_gaps = [g for g in gaps if g["subcategory_id"] in pending_set]
 
-        if last_msg == "Yes, all of these":
+        if last_msg == MSG_YES_ALL:
             for g in cluster_gaps:
                 services.append({
                     "input": g["subcategory_name"],
@@ -1057,8 +1068,8 @@ async def profile_node(state: OnboardingState) -> dict:
     last_msg = _get_last_human_message(messages)
 
     # ── Save call: user clicked Save Profile ──
-    if last_msg and last_msg.startswith("__SAVE_PROFILE__:"):
-        payload = last_msg[len("__SAVE_PROFILE__:"):].strip()
+    if last_msg and last_msg.startswith(MSG_SAVE_PROFILE):
+        payload = last_msg[len(MSG_SAVE_PROFILE):].strip()
         result = {
             "current_node": "profile",
             "profile_saved": True,
@@ -1343,8 +1354,8 @@ async def pricing_node(state: OnboardingState) -> dict:
             label = f"{p.capitalize()} — ${info['monthly']}/mo"
             if p == rec:
                 label += " (Recommended)"
-            buttons.append({"label": label, "value": f"__PLAN__:{p}"})
-        buttons.append({"label": "Not ready yet — skip", "value": "__PLAN__:skip"})
+            buttons.append({"label": label, "value": f"{MSG_PLAN}{p}"})
+        buttons.append({"label": "Not ready yet — skip", "value": f"{MSG_PLAN}skip"})
 
         return {
             "current_node": "pricing",
@@ -1357,8 +1368,8 @@ async def pricing_node(state: OnboardingState) -> dict:
     selected_plan = state.get("_selected_plan", "")
     if selected_plan:
         billing = ""
-        if last_msg and "__BILLING__:" in last_msg:
-            billing = last_msg.split("__BILLING__:")[1].strip().lower()
+        if last_msg and MSG_BILLING in last_msg:
+            billing = last_msg.split(MSG_BILLING)[1].strip().lower()
         elif last_msg:
             lower = last_msg.lower()
             for b in ["annual", "quarterly", "monthly"]:
@@ -1386,9 +1397,9 @@ async def pricing_node(state: OnboardingState) -> dict:
         # Couldn't parse billing — re-show billing buttons
         plan = PRICING_PLANS[selected_plan]
         buttons = [
-            {"label": f"Monthly — ${plan['monthly']}/mo", "value": "__BILLING__:monthly"},
-            {"label": f"Quarterly — ${plan['quarterly']} (save 20%)", "value": "__BILLING__:quarterly"},
-            {"label": f"Annual — ${plan['annual']} (save 40%)", "value": "__BILLING__:annual"},
+            {"label": f"Monthly — ${plan['monthly']}/mo", "value": f"{MSG_BILLING}monthly"},
+            {"label": f"Quarterly — ${plan['quarterly']} (save 20%)", "value": f"{MSG_BILLING}quarterly"},
+            {"label": f"Annual — ${plan['annual']} (save 40%)", "value": f"{MSG_BILLING}annual"},
         ]
         return {
             "current_node": "pricing",
@@ -1398,8 +1409,8 @@ async def pricing_node(state: OnboardingState) -> dict:
 
     # ── Turn 2: User selected a plan ──
     selected = ""
-    if last_msg and "__PLAN__:" in last_msg:
-        selected = last_msg.split("__PLAN__:")[1].strip().lower()
+    if last_msg and MSG_PLAN in last_msg:
+        selected = last_msg.split(MSG_PLAN)[1].strip().lower()
     elif last_msg:
         lower = last_msg.lower()
         if "skip" in lower or "not ready" in lower:
@@ -1421,9 +1432,9 @@ async def pricing_node(state: OnboardingState) -> dict:
         plan = PRICING_PLANS[selected]
         label = selected.capitalize()
         buttons = [
-            {"label": f"Monthly — ${plan['monthly']}/mo", "value": "__BILLING__:monthly"},
-            {"label": f"Quarterly — ${plan['quarterly']} (save 20%)", "value": "__BILLING__:quarterly"},
-            {"label": f"Annual — ${plan['annual']} (save 40%)", "value": "__BILLING__:annual"},
+            {"label": f"Monthly — ${plan['monthly']}/mo", "value": f"{MSG_BILLING}monthly"},
+            {"label": f"Quarterly — ${plan['quarterly']} (save 20%)", "value": f"{MSG_BILLING}quarterly"},
+            {"label": f"Annual — ${plan['annual']} (save 40%)", "value": f"{MSG_BILLING}annual"},
         ]
         return {
             "current_node": "pricing",
@@ -1436,8 +1447,8 @@ async def pricing_node(state: OnboardingState) -> dict:
     buttons = []
     for p in ["standard", "plus", "pro"]:
         info = PRICING_PLANS[p]
-        buttons.append({"label": f"{p.capitalize()} — ${info['monthly']}/mo", "value": f"__PLAN__:{p}"})
-    buttons.append({"label": "Not ready yet — skip", "value": "__PLAN__:skip"})
+        buttons.append({"label": f"{p.capitalize()} — ${info['monthly']}/mo", "value": f"{MSG_PLAN}{p}"})
+    buttons.append({"label": "Not ready yet — skip", "value": f"{MSG_PLAN}skip"})
     return {
         "current_node": "pricing",
         "buttons": buttons,
