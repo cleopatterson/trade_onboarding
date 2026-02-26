@@ -1899,18 +1899,13 @@
         img.src = logoUrl;
         img.className = 'profile-logo-preview';
         img.alt = 'Logo';
+        img.onerror = function() {
+          this.remove();
+          logoLabel.insertBefore(buildLogoMonogram(businessName), logoLabel.firstChild);
+        };
         logoLabel.appendChild(img);
       } else {
-        const monogram = document.createElement('div');
-        monogram.className = 'profile-logo-monogram';
-        monogram.textContent = getInitials(businessName);
-        const hint = document.createElement('div');
-        hint.className = 'camera-hint';
-        const camIcon = document.createElement('i');
-        camIcon.className = 'fas fa-camera';
-        hint.appendChild(camIcon);
-        monogram.appendChild(hint);
-        logoLabel.appendChild(monogram);
+        logoLabel.appendChild(buildLogoMonogram(businessName));
       }
       const logoInput = document.createElement('input');
       logoInput.type = 'file';
@@ -2332,6 +2327,13 @@
         img.src = logoUrl;
         img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover;';
         img.alt = 'Business logo';
+        img.onerror = function() {
+          this.remove();
+          const mono = document.createElement('div');
+          mono.style.cssText = 'width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;background:linear-gradient(135deg,#298AE3 0%,#1a6fbd 100%);letter-spacing:1px;';
+          mono.textContent = getInitials(state?.business_name || '');
+          iconDiv.appendChild(mono);
+        };
         iconDiv.appendChild(img);
       } else {
         const mono = document.createElement('div');
@@ -2484,6 +2486,19 @@
     }
 
     // ────────── ESCAPE HTML ──────────
+    function buildLogoMonogram(name) {
+      const monogram = document.createElement('div');
+      monogram.className = 'profile-logo-monogram';
+      monogram.textContent = getInitials(name);
+      const hint = document.createElement('div');
+      hint.className = 'camera-hint';
+      const camIcon = document.createElement('i');
+      camIcon.className = 'fas fa-camera';
+      hint.appendChild(camIcon);
+      monogram.appendChild(hint);
+      return monogram;
+    }
+
     function getInitials(name) {
       if (!name) return '?';
       // Strip common suffixes

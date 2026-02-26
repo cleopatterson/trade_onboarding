@@ -592,17 +592,21 @@ def _get_buttons_for_state(state: dict) -> list:
                     location = r.get("state", "")
                     if r.get("postcode"):
                         location = f"{location} {r['postcode']}"
-                    # Show entity name when it differs (e.g. "Pty Ltd" vs "Family Trust")
+                    # Consistent format: Name (Location · disambiguator)
+                    # Disambiguator: legal name if different, otherwise ABN tail
                     legal_display = legal.title() if legal.isupper() else legal
                     if legal and legal.lower() != name.lower():
-                        suffix = f"{legal_display} · {location}" if location else legal_display
-                        label = f"{name} ({suffix})"
+                        detail = legal_display
+                    elif len(abn) >= 5:
+                        detail = f"ABN ...{abn[-5:]}"
                     else:
-                        # Same or missing — show ABN suffix for near-duplicate disambiguation
-                        abn_short = f" · ABN ...{abn[-5:]}" if len(abn) >= 5 else ""
-                        label = f"{name} ({location}{abn_short})" if location else f"{name}{abn_short}"
+                        detail = ""
+                    parts = [p for p in [location, detail] if p]
+                    label = f"{name} ({' · '.join(parts)})" if parts else name
                     if len(label) > 70:
-                        label = f"{name[:28]}... ({legal_display[:20] + ' · ' + location if legal and legal.lower() != name.lower() else location})"
+                        max_name = 30 if detail else 50
+                        parts = [p for p in [location, detail[:20]] if p]
+                        label = f"{name[:max_name]}... ({' · '.join(parts)})" if parts else f"{name[:50]}..."
                     buttons.append({"label": label, "value": f"Yes, it's {name} (ABN: {abn})"})
                 buttons.append({"label": "None of these", "value": "No, none of those are my business"})
                 return buttons
