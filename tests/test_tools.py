@@ -1,4 +1,4 @@
-"""Unit tests for core tool functions in agent/tools.py.
+"""Unit tests for core tool functions in agent/tools.py and graph.py helpers.
 
 Tests parsing logic and deterministic helpers only — no HTTP calls.
 """
@@ -11,6 +11,11 @@ from agent.tools import (
     find_subcategory_guide,
     get_regional_guide,
     search_suburbs_by_postcode,
+)
+from agent.graph import (
+    _process_cluster_response,
+    _merge_llm_services,
+    MSG_YES_ALL,
 )
 
 
@@ -241,3 +246,73 @@ class TestGetRegionalGuide:
         guide1 = get_regional_guide("QLD")
         guide2 = get_regional_guide("QLD")
         assert guide1 is guide2  # Same object = cached
+
+
+# ────────── _process_cluster_response ──────────
+
+def _make_gap(name, sub_id, cat_name="Electrician", cat_id=1):
+    return {
+        "subcategory_name": name,
+        "subcategory_id": sub_id,
+        "category_name": cat_name,
+        "category_id": cat_id,
+    }
+
+
+class TestProcessClusterResponse:
+    """Tests for deterministic cluster response processing."""
+
+    def test_yes_all_adds_all_cluster_services(self):
+        """'Yes, all of these' adds every service in the cluster."""
+        gaps = [_make_gap("Solar Panels", 101), _make_gap("EV Charging", 102), _make_gap("Data Cabling", 103)]
+        services, added, remaining = _process_cluster_response(
+            [101, 102], gaps, [], MSG_YES_ALL,
+        )
+        assert len(services) == 2
+        assert set(added) == {"Solar Panels", "EV Charging"}
+        # Only non-cluster gap remains
+        assert len(remaining) == 1
+        assert remaining[0]["subcategory_id"] == 103
+
+    def test_individual_word_overlap_match(self):
+        """Individual button selection matches by word overlap."""
+        gaps = [_make_gap("Solar Panels", 101), _make_gap("EV Charging", 102)]
+        services, added, remaining = _process_cluster_response(
+            [101, 102], gaps, [], "Just solar panels",
+        )
+        assert len(services) == 1
+        assert added == ["Solar Panels"]
+        assert len(remaining) == 0  # Both cluster IDs removed from gaps
+
+    def test_decline_skips_cluster(self):
+        """Decline (no word overlap) adds nothing but still removes cluster from gaps."""
+        gaps = [_make_gap("Solar Panels", 101), _make_gap("EV Charging", 102)]
+        services, added, remaining = _process_cluster_response(
+            [101, 102], gaps, [], "Not for us",
+        )
+        assert len(services) == 0
+        assert added == []
+        assert len(remaining) == 0  # Cluster removed regardless
+
+
+# ────────── _merge_llm_services ──────────
+
+class TestMergeLlmServices:
+    """Tests for ensuring pre-added services survive LLM output."""
+
+    def test_dedup_preserves_pre_added(self):
+        """Pre-added services not in LLM output get appended."""
+        state_services = [
+            {"subcategory_id": 101, "subcategory_name": "Solar Panels"},
+            {"subcategory_id": 102, "subcategory_name": "EV Charging"},
+        ]
+        llm_services = [
+            {"subcategory_id": 101, "subcategory_name": "Solar Panels"},
+            {"subcategory_id": 103, "subcategory_name": "Data Cabling"},
+        ]
+        merged = _merge_llm_services(state_services, llm_services)
+        ids = [s["subcategory_id"] for s in merged]
+        assert 101 in ids
+        assert 102 in ids  # Was missing from LLM output, now added
+        assert 103 in ids
+        assert len(merged) == 3  # No duplicates
