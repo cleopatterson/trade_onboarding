@@ -13,19 +13,33 @@
       "Electrical safety inspection"
     ],
     "evidence_keywords": {
-      "Emergency electrician": ["emergency", "after hours", "urgent", "24/7"],
-      "Appliance Installation": ["appliance", "install"],
-      "Appliance Repair": ["appliance", "repair"],
-      "Data Cabling": ["data", "network", "ethernet", "cat6", "structured cabling"],
-      "Cabling": ["cabling", "cable run", "audio visual"],
-      "TV Antenna Technician": ["antenna", "tv antenna", "aerial", "reception"],
-      "Security alarm systems": ["security", "alarm", "cctv", "camera", "surveillance"],
-      "Energy efficiency checks": ["energy audit", "energy efficiency", "energy rating", "power bill"]
+      "Emergency electrician": ["emergency", "after hours", "urgent", "24/7", "call out", "callout"],
+      "Appliance Installation": ["appliance", "install", "dishwasher", "oven install", "cooktop", "range hood", "stove install"],
+      "Appliance Repair": ["appliance repair", "faulty appliance", "broken appliance", "appliance not working"],
+      "Data Cabling": ["data", "network", "ethernet", "cat6", "structured cabling", "NBN", "internet", "home network"],
+      "Cabling": ["cabling", "cable run", "audio visual", "AV cable"],
+      "TV Antenna Technician": ["antenna", "tv antenna", "aerial", "reception", "digital tv", "satellite", "signal"],
+      "Security alarm systems": ["security", "alarm", "cctv", "camera", "surveillance", "intercom", "access control", "video doorbell"],
+      "Energy efficiency checks": ["energy audit", "energy efficiency", "energy rating", "power bill", "thermal imaging", "power consumption"]
     },
     "licence_signals": {
       "Level 2 electricians": ["level 2", "asp"],
       "Solar panel installation and repair": ["solar", "cec"]
-    }
+    },
+    "cluster_groups": [
+      {
+        "label": "Appliances & emergency",
+        "services": ["Appliance Installation", "Appliance Repair", "Emergency electrician"]
+      },
+      {
+        "label": "Cabling, AV & security",
+        "services": ["Data Cabling", "Cabling", "TV Antenna Technician", "Security alarm systems"]
+      },
+      {
+        "label": "Level 2, solar & energy",
+        "services": ["Level 2 electricians", "Solar panel installation and repair", "Energy efficiency checks"]
+      }
+    ]
   },
   "Plumber": {
     "core": [
@@ -44,24 +58,42 @@
       "Plumbing Installation"
     ],
     "evidence_keywords": {
-      "Emergency Plumbing": ["emergency", "after hours", "urgent", "24/7"],
-      "Overflowing drain": ["overflow", "flooding", "flood", "burst pipe"],
-      "Drain Repairs": ["drain", "blocked drain", "drainage"],
-      "Stormwater Pits & Drains": ["stormwater", "storm water", "pit", "sewer"],
-      "Solar Hot Water Systems": ["solar hot water", "solar thermal"],
-      "Rain Water Tank Installation": ["rain water tank", "rainwater", "water tank"],
-      "Commercial plumbing": ["commercial", "office plumbing", "restaurant", "strata"],
+      "Emergency Plumbing": ["emergency", "after hours", "urgent", "24/7", "call out", "callout"],
+      "Overflowing drain": ["overflow", "flooding", "flood", "burst pipe", "blocked drain"],
+      "Drain Repairs": ["drain repair", "drain relining", "drainage", "drain camera"],
+      "Stormwater Pits & Drains": ["stormwater", "storm water", "pit", "sewer", "downpipe", "gutter drain"],
+      "Solar Hot Water Systems": ["solar hot water", "solar thermal", "solar plumbing"],
+      "Rain Water Tank Installation": ["rain water tank", "rainwater", "water tank", "tank install", "water storage"],
+      "Commercial plumbing": ["commercial", "office plumbing", "restaurant", "strata", "body corporate", "maintenance contract"],
       "Water Recycling": ["grey water", "greywater", "recycled water", "water recycling"],
       "Reticulation system": ["reticulation", "garden irrigation", "sprinkler system"],
-      "Gas fitting": ["gas fitting", "gas installation", "lpg", "natural gas", "gas appliance"],
-      "Gas Hot Water Systems": ["gas hot water", "gas heater", "gas water heater"]
+      "Gas fitting": ["gas fitting", "gas installation", "lpg", "natural gas", "gas appliance", "gas line"],
+      "Gas Hot Water Systems": ["gas hot water", "gas heater", "gas water heater", "gas boiler"]
     },
     "licence_signals": {
       "Gas fitting": ["gasfitter", "gas fitter", "gas fitting"],
       "Gas Hot Water Systems": ["gasfitter", "gas fitter", "gas fitting"],
       "Drain Repairs": ["drainer", "drainage"],
       "Stormwater Pits & Drains": ["drainer", "drainage"]
-    }
+    },
+    "cluster_groups": [
+      {
+        "label": "Gas work",
+        "services": ["Gas fitting", "Gas Hot Water Systems"]
+      },
+      {
+        "label": "Drainage & stormwater",
+        "services": ["Drain Repairs", "Stormwater Pits & Drains", "Overflowing drain"]
+      },
+      {
+        "label": "Emergency & commercial",
+        "services": ["Emergency Plumbing", "Commercial plumbing"]
+      },
+      {
+        "label": "Water systems",
+        "services": ["Solar Hot Water Systems", "Rain Water Tank Installation", "Water Recycling", "Reticulation system"]
+      }
+    ]
   },
   "Painter": {
     "core": [
@@ -71,14 +103,24 @@
       "Fence Painting"
     ],
     "evidence_keywords": {
-      "Floor Painting": ["floor", "epoxy"],
-      "Concrete Painting": ["concrete", "garage floor"],
-      "Paint Removal": ["strip", "removal", "lead paint"],
-      "Roof Painting": ["roof", "colorbond", "tile roof", "roof restoration"],
-      "Wallpapering": ["wallpaper", "feature wall"],
-      "Commercial Painting": ["commercial", "office", "warehouse", "strata", "factory"]
+      "Floor Painting": ["floor paint", "epoxy", "garage floor paint", "warehouse floor"],
+      "Concrete Painting": ["concrete", "garage floor", "concrete seal"],
+      "Paint Removal": ["strip", "removal", "lead paint", "sandblast", "prep work"],
+      "Roof Painting": ["roof paint", "colorbond", "tile roof", "roof restoration", "roof coat", "roof seal"],
+      "Wallpapering": ["wallpaper", "feature wall", "wall covering", "wallpaper removal"],
+      "Commercial Painting": ["commercial", "office", "warehouse", "strata", "factory", "body corporate", "strata painting"]
     },
-    "licence_signals": {}
+    "licence_signals": {},
+    "cluster_groups": [
+      {
+        "label": "Specialist surfaces",
+        "services": ["Floor Painting", "Concrete Painting", "Paint Removal"]
+      },
+      {
+        "label": "Roof, wallpaper & commercial",
+        "services": ["Roof Painting", "Wallpapering", "Commercial Painting"]
+      }
+    ]
   },
   "Carpenter": {
     "core": [
@@ -89,26 +131,40 @@
       "Patio Building",
       "Handrails",
       "Skirting",
-      "Architraves"
+      "Architraves",
+      "Timber fencing",
+      "Wardrobes",
+      "Cabinetmaking"
     ],
     "evidence_keywords": {
-      "Staircases": ["staircase", "stairs", "stair"],
-      "Timber fencing": ["fence", "fencing", "timber fence"],
-      "Wardrobes": ["wardrobe", "built-in", "built in"],
-      "Timber Retaining Walls": ["retaining wall", "timber wall"],
-      "Internal Walls": ["internal wall", "partition", "stud wall"],
-      "Cabinetmaking": ["cabinet", "kitchen cabinet", "custom cabinet", "cabinetry"],
-      "Furniture Repair": ["furniture repair", "furniture restoration", "restore furniture"],
+      "Staircases": ["staircase", "stairs", "stair", "balustrade", "stair renovation"],
+      "Timber Retaining Walls": ["retaining wall", "timber wall", "garden wall", "timber sleeper"],
+      "Internal Walls": ["internal wall", "partition", "stud wall", "room divider", "plasterboard"],
+      "Furniture Repair": ["furniture repair", "furniture restoration", "restore furniture", "fix furniture", "restoration", "heritage", "period home"],
       "Frames & Trusses": ["truss", "roof truss", "timber frame", "roof frame"],
-      "Custom Built Furniture": ["custom furniture", "bespoke", "entertainment unit"],
-      "House Framing": ["house frame", "wall frame", "framing"],
-      "Joinery": ["joinery", "shop fit", "fitout"],
-      "Vanities": ["vanity", "bathroom vanity", "basin cabinet"],
-      "Weatherboard cladding": ["weatherboard", "cladding", "timber cladding"],
-      "Retaining wall": ["retaining wall", "block wall", "sleeper wall"],
-      "Commercial fit-outs": ["commercial fit", "shop fit-out", "office fit-out"]
+      "Custom Built Furniture": ["custom furniture", "bespoke", "entertainment unit", "bench seat", "window seat", "outdoor seating", "outdoor furniture", "custom built", "made to order"],
+      "House Framing": ["house frame", "wall frame", "framing", "new build", "house extension", "renovation", "extension"],
+      "Joinery": ["joinery", "shop fit", "fitout", "shopfitting", "commercial joinery", "door hang", "bifold"],
+      "Vanities": ["vanity", "bathroom vanity", "basin cabinet", "bathroom renovation", "ensuite"],
+      "Weatherboard cladding": ["weatherboard", "cladding", "timber cladding", "fascia", "soffit", "timber repair"],
+      "Retaining wall": ["retaining wall", "block wall", "sleeper wall", "garden bed wall"],
+      "Commercial fit-outs": ["commercial fit", "shop fit-out", "office fit-out", "retail fitout", "hospitality fitout"]
     },
-    "licence_signals": {}
+    "licence_signals": {},
+    "cluster_groups": [
+      {
+        "label": "Custom furniture & joinery",
+        "services": ["Custom Built Furniture", "Joinery", "Vanities", "Furniture Repair"]
+      },
+      {
+        "label": "Structural & framing",
+        "services": ["House Framing", "Frames & Trusses", "Internal Walls", "Staircases"]
+      },
+      {
+        "label": "Exterior & cladding",
+        "services": ["Weatherboard cladding", "Retaining wall", "Timber Retaining Walls", "Commercial fit-outs"]
+      }
+    ]
   },
   "Cleaner": {
     "core": [
@@ -122,29 +178,47 @@
       "Interior window cleaning",
       "Unit and apartment cleaning",
       "Shower cleaning",
-      "Stove clean"
+      "Stove clean",
+      "End of lease bond refund clean",
+      "Oven cleaning",
+      "Fridge clean"
     ],
     "evidence_keywords": {
-      "End of lease bond refund clean": ["end of lease", "bond clean", "bond back", "vacate"],
-      "Oven cleaning": ["oven", "oven clean"],
-      "Fridge clean": ["fridge", "refrigerator"],
-      "Garage clean": ["garage"],
-      "Tidying and Decluttering": ["declutter", "tidy", "organis"],
-      "Outdoor Cleaning": ["outdoor", "patio clean", "driveway clean"],
-      "Curtains & Blinds": ["curtain", "blind", "drape"],
-      "Upholstery & Fabric Cleaning": ["upholstery", "couch", "sofa", "fabric clean", "lounge"],
-      "High Pressure Cleaning": ["pressure clean", "pressure wash", "high pressure", "driveway"],
-      "Tile & Grout Cleaning": ["tile", "grout", "tile clean"],
-      "Grease Trap Cleaning": ["grease trap", "kitchen grease"],
-      "Swimming Pool Cleaning": ["pool clean", "swimming pool"],
-      "Mould Cleaning": ["mould", "mold", "mould removal"],
-      "Office cleaner": ["office", "commercial clean", "workplace"],
-      "Medical Cleaning": ["medical", "dental", "clinic", "surgery"],
+      "Garage clean": ["garage", "storage clean", "shed clean"],
+      "Tidying and Decluttering": ["declutter", "tidy", "organis", "spring clean", "hoarder"],
+      "Outdoor Cleaning": ["outdoor", "patio clean", "driveway clean", "balcony", "courtyard"],
+      "Curtains & Blinds": ["curtain", "blind", "drape", "venetian", "curtain clean"],
+      "Upholstery & Fabric Cleaning": ["upholstery", "couch", "sofa", "fabric clean", "lounge", "mattress clean", "leather clean"],
+      "High Pressure Cleaning": ["pressure clean", "pressure wash", "high pressure", "jet wash", "concrete clean", "path clean"],
+      "Tile & Grout Cleaning": ["tile", "grout", "tile clean", "stone clean", "floor tile"],
+      "Grease Trap Cleaning": ["grease trap", "kitchen grease", "exhaust clean"],
+      "Swimming Pool Cleaning": ["pool clean", "swimming pool", "pool maintenance", "pool service"],
+      "Mould Cleaning": ["mould", "mold", "mould removal", "mildew", "damp", "black mould"],
+      "Office cleaner": ["office", "commercial clean", "workplace", "business clean", "retail clean", "shop clean"],
+      "Medical Cleaning": ["medical", "dental", "clinic", "surgery", "healthcare", "aged care", "childcare"],
       "End of Lease Commercial Cleaning": ["commercial lease", "commercial bond", "commercial vacate"],
-      "Industrial Cleaning": ["industrial", "warehouse", "factory clean"],
-      "Post Construction Cleaning": ["construction clean", "builder clean", "renovation clean", "post build"]
+      "Industrial Cleaning": ["industrial", "warehouse", "factory clean", "workshop clean"],
+      "Post Construction Cleaning": ["construction clean", "builder clean", "renovation clean", "post build", "new build clean"]
     },
-    "licence_signals": {}
+    "licence_signals": {},
+    "cluster_groups": [
+      {
+        "label": "Common extras",
+        "services": ["Garage clean", "Outdoor Cleaning", "Tidying and Decluttering"]
+      },
+      {
+        "label": "Deep cleaning",
+        "services": ["High Pressure Cleaning", "Tile & Grout Cleaning", "Mould Cleaning", "Upholstery & Fabric Cleaning", "Curtains & Blinds"]
+      },
+      {
+        "label": "Commercial",
+        "services": ["Office cleaner", "Medical Cleaning", "Industrial Cleaning", "End of Lease Commercial Cleaning"]
+      },
+      {
+        "label": "Specialist",
+        "services": ["Swimming Pool Cleaning", "Grease Trap Cleaning", "Post Construction Cleaning"]
+      }
+    ]
   },
   "Gardener": {
     "core": [
@@ -159,15 +233,29 @@
       "Garden and green rubbish removal"
     ],
     "evidence_keywords": {
-      "Lawn restoration and repair": ["lawn repair", "lawn restoration", "turf", "reseed"],
-      "Sprinklers": ["sprinkler", "irrigation", "watering system"],
-      "Gravel": ["gravel", "pebble", "crushed rock"],
-      "Artificial Turf Installation & Repair": ["artificial turf", "synthetic grass", "fake grass", "astroturf"],
-      "Drip Irrigation Systems": ["drip irrigation", "drip system"],
+      "Lawn restoration and repair": ["lawn repair", "lawn restoration", "turf", "reseed", "top dressing", "aeration", "dethatching"],
+      "Sprinklers": ["sprinkler", "irrigation", "watering system", "pop up", "sprinkler repair", "reticulation"],
+      "Gravel": ["gravel", "pebble", "crushed rock", "decorative stone", "river rock"],
+      "Artificial Turf Installation & Repair": ["artificial turf", "synthetic grass", "fake grass", "astroturf", "synthetic lawn", "artificial grass"],
+      "Drip Irrigation Systems": ["drip irrigation", "drip system", "drip line"],
       "Grey Water Systems": ["grey water", "greywater"],
-      "Water Feature Installation": ["water feature", "fountain", "pond"],
-      "Garden irrigation systems": ["irrigation system", "garden watering", "automatic watering"]
+      "Water Feature Installation": ["water feature", "fountain", "pond", "garden pond", "waterfall"],
+      "Garden irrigation systems": ["irrigation system", "garden watering", "automatic watering", "smart irrigation", "watering timer"]
     },
-    "licence_signals": {}
+    "licence_signals": {},
+    "cluster_groups": [
+      {
+        "label": "Lawn & turf",
+        "services": ["Lawn restoration and repair", "Artificial Turf Installation & Repair"]
+      },
+      {
+        "label": "Irrigation & water",
+        "services": ["Sprinklers", "Drip Irrigation Systems", "Garden irrigation systems", "Grey Water Systems"]
+      },
+      {
+        "label": "Landscaping extras",
+        "services": ["Gravel", "Water Feature Installation"]
+      }
+    ]
   }
 }

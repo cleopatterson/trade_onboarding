@@ -24,11 +24,21 @@ class TestParseJsonpResponse:
         result = _parse_jsonp_response(jsonp, "abn")
         assert result["count"] == 1
         assert result["results"][0]["abn"] == "51824753556"
-        assert result["results"][0]["entity_name"] == "SMITH PLUMBING PTY LTD"
+        assert result["results"][0]["entity_name"] == "Smith Plumbing Pty Ltd"
+        assert result["results"][0]["legal_name"] == "SMITH PLUMBING PTY LTD"
         assert result["results"][0]["gst_registered"] is True
         assert result["results"][0]["state"] == "NSW"
         assert result["results"][0]["postcode"] == "2093"
         assert result["results"][0]["status"] == "Active"
+
+    def test_abn_lookup_with_trading_name(self):
+        """ABN lookup with both EntityName and BusinessName — trading name preferred for display."""
+        jsonp = 'c({"Abn":"51824753556","EntityName":"A GRADE CARPENTRY GROUP PTY LTD","BusinessName":["A Grade Carpentry Group"],"EntityTypeName":"Australian Private Company","Gst":"2001-07-01","AddressState":"NSW","AddressPostcode":"2088","AbnStatus":"Active"})'
+        result = _parse_jsonp_response(jsonp, "abn")
+        assert result["count"] == 1
+        r = result["results"][0]
+        assert r["entity_name"] == "A Grade Carpentry Group"  # trading name for display
+        assert r["legal_name"] == "A GRADE CARPENTRY GROUP PTY LTD"  # entity name for licence
 
     def test_abn_lookup_no_result(self):
         jsonp = 'c({"Abn":"","Message":"No matching record found"})'
@@ -41,13 +51,37 @@ class TestParseJsonpResponse:
         jsonp = 'c({"Names":[{"Abn":"11111111111","Name":"SMITH PTY LTD","NameType":"Entity Name","State":"NSW","Postcode":"2000","Score":100},{"Abn":"11111111111","Name":"Smith Plumbing","NameType":"Business Name","State":"NSW","Postcode":"2000","Score":95}]})'
         result = _parse_jsonp_response(jsonp, "name")
         assert result["count"] == 1
-        # Business Name should be preferred over Entity Name
-        assert result["results"][0]["entity_name"] == "Smith Plumbing"
+        r = result["results"][0]
+        # Business Name should be preferred over Entity Name for display
+        assert r["entity_name"] == "Smith Plumbing"
+        # Entity Name preserved as legal_name
+        assert r["legal_name"] == "SMITH PTY LTD"
+
+    def test_name_search_preserves_both_names(self):
+        """Name search with both Entity and Trading Name for same ABN — both preserved."""
+        jsonp = 'c({"Names":[{"Abn":"33333333333","Name":"A GRADE CARPENTRY GROUP PTY LTD","NameType":"Entity Name","State":"NSW","Postcode":"2088","Score":100},{"Abn":"33333333333","Name":"A Grade Carpentry Group","NameType":"Trading Name","State":"NSW","Postcode":"2088","Score":95}]})'
+        result = _parse_jsonp_response(jsonp, "name")
+        assert result["count"] == 1
+        r = result["results"][0]
+        assert r["entity_name"] == "A Grade Carpentry Group"  # trading name
+        assert r["legal_name"] == "A GRADE CARPENTRY GROUP PTY LTD"  # entity name
+
+    def test_name_search_single_type_uses_same_for_both(self):
+        """When only Entity Name exists for an ABN, legal_name equals entity_name."""
+        jsonp = 'c({"Names":[{"Abn":"44444444444","Name":"JONES ELECTRICAL PTY LTD","NameType":"Entity Name","State":"VIC","Postcode":"3000","Score":100}]})'
+        result = _parse_jsonp_response(jsonp, "name")
+        assert result["count"] == 1
+        r = result["results"][0]
+        assert r["entity_name"] == "Jones Electrical Pty Ltd"
+        assert r["legal_name"] == "JONES ELECTRICAL PTY LTD"
 
     def test_name_search_multiple_abns(self):
         jsonp = 'c({"Names":[{"Abn":"11111111111","Name":"Smith A","NameType":"Entity Name","State":"NSW","Postcode":"2000","Score":100},{"Abn":"22222222222","Name":"Smith B","NameType":"Entity Name","State":"VIC","Postcode":"3000","Score":90}]})'
         result = _parse_jsonp_response(jsonp, "name")
         assert result["count"] == 2
+        # Both should have legal_name populated
+        assert result["results"][0].get("legal_name") == "Smith A"
+        assert result["results"][1].get("legal_name") == "Smith B"
 
     def test_invalid_jsonp_returns_error(self):
         result = _parse_jsonp_response("not valid jsonp", "abn")

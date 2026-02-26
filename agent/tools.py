@@ -1,6 +1,7 @@
 """Tools for the Trade Onboarding wizard"""
 from __future__ import annotations
 
+import asyncio
 import csv
 import json
 import logging
@@ -50,7 +51,7 @@ async def abr_lookup(search_term: str, search_type: str = "name") -> dict:
             url = "https://abr.business.gov.au/json/MatchingNames.aspx"
             params = {
                 "name": search_term,
-                "maxResults": "5",
+                "maxResults": "15",
                 "callback": "c",
                 "guid": ABR_GUID,
             }
@@ -75,6 +76,21 @@ async def abr_lookup(search_term: str, search_type: str = "name") -> dict:
         return _mock_abr_lookup(search_term, search_type)
 
 
+def _title_case(name: str) -> str:
+    """Convert ALL CAPS ABR name to readable title case.
+
+    Only converts if the name is fully uppercase. Fixes Python's title()
+    apostrophe bug ("SMITH'S" → "Smith's" not "Smith'S").
+    """
+    if not name or not name.isupper():
+        return name  # Already mixed case, leave it
+    result = name.title()
+    # Fix apostrophe word boundary: "Smith'S" → "Smith's"
+    result = re.sub(r"'S\b", "'s", result)
+    result = re.sub(r"\u2019S\b", "\u2019s", result)
+    return result
+
+
 def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
     """Parse ABR JSONP response into structured dict."""
     try:
@@ -87,9 +103,11 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
 
         if search_type == "abn":
             abn = data.get("Abn", "")
-            name = data.get("EntityName", "") or data.get("BusinessName", [""])[0] if data.get("BusinessName") else ""
-            if not name:
-                name = data.get("EntityName", "Unknown")
+            raw_entity_name = data.get("EntityName", "Unknown")
+            business_names = data.get("BusinessName") or []
+            trading_name = business_names[0] if business_names else ""
+            # Display name: prefer trading/business name over entity name
+            display_name = trading_name if trading_name else raw_entity_name
             entity_type = data.get("EntityTypeName", "Unknown")
             gst = data.get("Gst", "")
             state = data.get("AddressState", "")
@@ -101,7 +119,9 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
             return {
                 "results": [{
                     "abn": abn,
-                    "entity_name": name,
+                    "entity_name": _title_case(display_name),
+                    "legal_name": raw_entity_name,
+                    "_has_registered_trading_name": bool(trading_name),
                     "entity_type": entity_type,
                     "gst_registered": bool(gst),
                     "state": state,
@@ -114,9 +134,12 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
         else:
             # Name search returns a Names array — same ABN can appear
             # multiple times (once as Entity Name, once as Business/Trading Name).
-            # Deduplicate by ABN, preferring Business/Trading Name over Entity Name.
+            # Deduplicate by ABN, preferring Business/Trading Name for display.
+            # Preserve Entity Name as legal_name for licence lookups.
             names = data.get("Names", [])
             by_abn: dict[str, dict] = {}
+            entity_names: dict[str, str] = {}  # abn → Entity Name (raw)
+            has_trading: set[str] = set()  # ABNs with Business/Trading Name
             for entry in names:
                 abn = entry.get("Abn", "")
                 if not abn:
@@ -127,9 +150,15 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
                 postcode = entry.get("Postcode", "")
                 score = entry.get("Score", 0)
 
+                # Track Entity Name separately for legal_name
+                if name_type == "Entity Name":
+                    entity_names[abn] = name
+                elif name_type in ("Business Name", "Trading Name"):
+                    has_trading.add(abn)
+
                 record = {
                     "abn": abn,
-                    "entity_name": name,
+                    "entity_name": _title_case(name),
                     "entity_type": name_type,
                     "gst_registered": False,
                     "state": state,
@@ -141,13 +170,64 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
                 if abn not in by_abn:
                     by_abn[abn] = record
                 elif name_type in ("Business Name", "Trading Name"):
+                    # Trading/Business Name wins for display
                     by_abn[abn] = record
 
-            results = list(by_abn.values())[:5]
+            # Populate legal_name and trading name flag from tracked data
+            for abn, record in by_abn.items():
+                record["legal_name"] = entity_names.get(abn, record["entity_name"])
+                record["_has_registered_trading_name"] = abn in has_trading
+
+            results = list(by_abn.values())[:8]
             return {"results": results, "count": len(results)}
 
     except (json.JSONDecodeError, KeyError) as e:
         return {"results": [], "count": 0, "error": f"Parse error: {e}"}
+
+
+async def enrich_abr_with_entity_names(results: list[dict]) -> list[dict]:
+    """Enrich ABR name search results with entity names via parallel ABN lookups.
+
+    For results where legal_name is missing or same as entity_name (meaning ABR
+    name search only returned one entry for that ABN), do a parallel ABN detail
+    lookup to fetch the EntityName.
+    """
+    if not ABR_GUID:
+        return results  # Mock mode — nothing to enrich
+
+    async def _lookup_entity_name(result: dict) -> dict:
+        """Fetch entity name for a single ABR result via ABN detail lookup."""
+        abn = result.get("abn", "").replace(" ", "")
+        if not abn:
+            return result
+        try:
+            resp = await _http_client.get(
+                "https://abr.business.gov.au/json/AbnDetails.aspx",
+                params={"abn": abn, "callback": "c", "guid": ABR_GUID},
+            )
+            if resp.status_code != 200:
+                return result
+            parsed = _parse_jsonp_response(resp.text, "abn")
+            detail = (parsed.get("results") or [{}])[0]
+            if detail.get("legal_name"):
+                result["legal_name"] = detail["legal_name"]
+            if detail.get("_has_registered_trading_name"):
+                result["_has_registered_trading_name"] = True
+        except Exception as e:
+            logger.warning(f"ABN detail lookup failed for {abn}: {e}")
+        return result
+
+    # Only enrich results where legal_name is missing or same as display name
+    # Case-insensitive: _title_case() changes entity_name casing but legal_name stays raw
+    needs_enrichment = [
+        r for r in results
+        if not r.get("legal_name") or r["legal_name"].lower() == r.get("entity_name", "").lower()
+    ]
+    if not needs_enrichment:
+        return results
+
+    await asyncio.gather(*[_lookup_entity_name(r) for r in needs_enrichment])
+    return results
 
 
 def _mock_abr_lookup(search_term: str, search_type: str) -> dict:
@@ -157,10 +237,13 @@ def _mock_abr_lookup(search_term: str, search_type: str) -> dict:
     # Simulate realistic results
     if search_type == "abn":
         clean_abn = search_term.replace(" ", "")
+        entity_name = f"Business with ABN {clean_abn}"
         return {
             "results": [{
                 "abn": clean_abn,
-                "entity_name": f"Business with ABN {clean_abn}",
+                "entity_name": entity_name,
+                "legal_name": entity_name.upper() + " PTY LTD",
+                "_has_registered_trading_name": True,
                 "entity_type": "Australian Private Company",
                 "gst_registered": True,
                 "state": "NSW",
@@ -172,10 +255,13 @@ def _mock_abr_lookup(search_term: str, search_type: str) -> dict:
 
     # Name search - generate plausible result
     name_title = search_term.strip().title()
+    display_name = name_title if "pty" in term or "ltd" in term else f"{name_title} Pty Ltd"
     return {
         "results": [{
             "abn": "51 824 753 556",
-            "entity_name": name_title if "pty" in term or "ltd" in term else f"{name_title} Pty Ltd",
+            "entity_name": display_name,
+            "legal_name": display_name.upper(),
+            "_has_registered_trading_name": False,
             "entity_type": "Australian Private Company",
             "gst_registered": True,
             "state": "NSW",
@@ -336,8 +422,9 @@ def compute_service_gaps(services: list[dict], business_name: str,
     cat_data = categories[matched_cat_key]
     all_subcats = cat_data.get("subcategories", [])
 
-    # Get IDs already mapped (coerce to int for safe comparison)
+    # Get IDs and names already mapped (coerce to int for safe comparison)
     mapped_ids = set()
+    mapped_names = set()
     for s in services:
         sid = s.get("subcategory_id")
         if sid is not None:
@@ -345,17 +432,24 @@ def compute_service_gaps(services: list[dict], business_name: str,
                 mapped_ids.add(int(sid))
             except (ValueError, TypeError):
                 pass
+        sn = s.get("subcategory_name", "")
+        if sn:
+            mapped_names.add(sn)
 
     cat_id = cat_data.get("category_id", 0)
 
-    # Return unmatched
+    # Return unmatched (deduplicate by name to handle duplicate subcategory entries
+    # e.g. Carpenter "Skirting" id:871 + id:872, Gardener "Grey Water Systems" id:1050 + id:1200)
     gaps = []
+    seen_names = set()
     for sc in all_subcats:
         sc_id = sc.get("subcategory_id")
-        if sc_id and int(sc_id) not in mapped_ids:
+        sc_name = sc.get("subcategory_name", "")
+        if sc_id and int(sc_id) not in mapped_ids and sc_name not in mapped_names and sc_name not in seen_names:
+            seen_names.add(sc_name)
             gaps.append({
                 "subcategory_id": sc_id,
-                "subcategory_name": sc.get("subcategory_name", ""),
+                "subcategory_name": sc_name,
                 "category_id": cat_id,
                 "category_name": cat_data.get("category_name", matched_cat_key),
             })
@@ -501,10 +595,22 @@ def compute_initial_services(
                     mapped_names.add(svc_name)
                 break
 
-    # 3. Licence signal services — scan licence classes for signal keywords
+    # 3. Licence signal services — scan licence classes AND evidence text for signal keywords
     for svc_name, signals in tier_def.get("licence_signals", {}).items():
         if svc_name in mapped_names:
             continue
+        # First check evidence text (website, reviews, web results)
+        for sig in signals:
+            if sig in evidence_lower:
+                svc = _resolve(svc_name)
+                if svc:
+                    svc["confidence"] = "evidence"
+                    services.append(svc)
+                    mapped_names.add(svc_name)
+                break
+        if svc_name in mapped_names:
+            continue
+        # Then check licence classes
         for lc in licence_classes:
             lc_lower = lc.lower()
             matched = False
@@ -521,12 +627,16 @@ def compute_initial_services(
                 break
 
     # 4. Specialist gaps — all subcategories NOT yet mapped
+    # Deduplicate by name (handles duplicate entries like Skirting id:871+872)
     specialist_gaps = []
+    seen_gap_names = set()
     for sc in all_subcats:
-        if sc["subcategory_name"] not in mapped_names:
+        sc_name = sc["subcategory_name"]
+        if sc_name not in mapped_names and sc_name not in seen_gap_names:
+            seen_gap_names.add(sc_name)
             specialist_gaps.append({
                 "subcategory_id": sc["subcategory_id"],
-                "subcategory_name": sc["subcategory_name"],
+                "subcategory_name": sc_name,
                 "category_id": cat_id,
                 "category_name": cat_name,
             })
@@ -542,6 +652,49 @@ def compute_initial_services(
         "category_name": cat_name,
         "tiered": True,
     }
+
+
+def get_filtered_cluster_groups(
+    gaps: list[dict],
+    business_name: str,
+    licence_classes: list[str] | None = None,
+    google_business_name: str = "",
+    google_primary_type: str = "",
+) -> list[dict]:
+    """Return pre-defined cluster groups filtered to remaining gaps.
+
+    Loads cluster_groups from service_tiers.json, removes services already
+    mapped (not in gaps), removes empty clusters. Returns list of
+    {"label": str, "services": [{"name": str, "id": int}]} dicts.
+    """
+    tiers = _load_service_tiers()
+    if not tiers:
+        return []
+
+    cat_key = _detect_category(business_name, licence_classes or [],
+                               google_business_name, google_primary_type)
+    if not cat_key or cat_key not in tiers:
+        return []
+
+    tier_def = tiers[cat_key]
+    cluster_defs = tier_def.get("cluster_groups", [])
+    if not cluster_defs:
+        return []
+
+    # Build gap name→id lookup from current gaps
+    gap_lookup = {g["subcategory_name"]: g["subcategory_id"] for g in gaps}
+
+    filtered = []
+    for cluster in cluster_defs:
+        label = cluster["label"]
+        remaining = []
+        for svc_name in cluster["services"]:
+            if svc_name in gap_lookup:
+                remaining.append({"name": svc_name, "id": gap_lookup[svc_name]})
+        if remaining:
+            filtered.append({"label": label, "services": remaining})
+
+    return filtered
 
 
 # ────────── LOCATION PARSER ──────────
@@ -1005,7 +1158,7 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             headers={
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.reviews,places.primaryType,places.types",
+                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.reviews,places.primaryType,places.types,places.photos",
             },
             json={"textQuery": query},
         )
@@ -1039,6 +1192,25 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
         primary_type = place.get("primaryType", "")
         types = place.get("types", [])
 
+        # Extract Google Business photos (real work photos uploaded by owner/customers)
+        # Resolve to actual googleusercontent.com URLs to avoid leaking API key
+        photo_names = [p.get("name", "") for p in place.get("photos", [])[:10] if p.get("name")]
+        photos = []
+        async def _resolve_photo(photo_name: str) -> str:
+            try:
+                r = await _http_client.get(
+                    f"https://places.googleapis.com/v1/{photo_name}/media",
+                    params={"maxWidthPx": 800, "key": GOOGLE_PLACES_API_KEY, "skipHttpRedirect": "true"},
+                )
+                if r.status_code == 200:
+                    return r.json().get("photoUri", "")
+            except Exception:
+                pass
+            return ""
+        if photo_names:
+            resolved = await asyncio.gather(*[_resolve_photo(n) for n in photo_names])
+            photos = [u for u in resolved if u]
+
         result = {
             "name": name,
             "rating": rating,
@@ -1049,9 +1221,10 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             "reviews": reviews[:5],
             "primary_type": primary_type,
             "types": types,
+            "photos": photos,
         }
 
-        logger.info(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}")
+        logger.info(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}, {len(photos)} photos")
         return result
 
     except httpx.TimeoutException as e:
@@ -1309,6 +1482,15 @@ async def scrape_website_images(url: str) -> dict:
                 url = m.group(1)
                 _score_and_add(url, m.group(0))
 
+        # Extract CSS background images (Divi, Elementor, many WordPress themes)
+        for m in re.finditer(r'background-image:\s*url\(["\']?([^)"\']+\.(?:jpe?g|png|webp))["\']?\)', html, re.IGNORECASE):
+            bg_url = m.group(1)
+            if not _JUNK_PATTERNS.search(bg_url):
+                full_url = _resolve_url(bg_url, base_url)
+                if full_url not in seen and (not logo or full_url != logo):
+                    seen.add(full_url)
+                    candidates.append((8, full_url))  # Score 8 — likely hero/section photos
+
         # Sort by score (highest first), take top 8 for AI filter
         candidates.sort(key=lambda x: -x[0])
         photos = [url for _, url in candidates[:8]]
@@ -1495,21 +1677,18 @@ where N is the image number (1-indexed)."""
 
         logger.info(f"[AI-FILTER] Kept {len(kept)}/{len(valid)} images as work photos")
 
-        # Fallback: if AI skipped everything, keep large JPEGs only (>=20KB)
-        # Small JPEGs (<20KB) are almost always logos/icons, not work photos
-        if not kept:
-            jpeg_fallback = [url for url, b64, mt, sz in valid
-                            if mt == "image/jpeg" and sz >= 20_000]
-            if jpeg_fallback:
-                logger.info(f"[AI-FILTER] All SKIP — falling back to {len(jpeg_fallback)} large JPEG(s)")
-                return jpeg_fallback[:4]
-
+        # Trust the AI verdict — if it says all SKIP, return empty (no work photos)
         return kept
 
     except Exception as e:
         logger.error(f"[AI-FILTER] LLM error: {e}")
-        # On failure, return all images unfiltered
-        return [url for url, b64, mt, sz in valid]
+        # On LLM failure only, fall back to large JPEGs as best guess
+        jpeg_fallback = [url for url, b64, mt, sz in valid
+                        if mt == "image/jpeg" and sz >= 20_000]
+        if jpeg_fallback:
+            logger.info(f"[AI-FILTER] LLM failed — falling back to {len(jpeg_fallback)} large JPEG(s)")
+            return jpeg_fallback[:4]
+        return []
 
 
 # ────────── SEARCH RESULT EXTRACTORS ──────────

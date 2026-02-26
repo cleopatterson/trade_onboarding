@@ -16,6 +16,7 @@ class OnboardingState(TypedDict):
     abn_input: str
     abr_results: list[dict]
     business_name: str
+    legal_name: str
     abn: str
     entity_type: str
     gst_registered: bool

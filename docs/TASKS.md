@@ -205,6 +205,7 @@
 - [ ] Referral tracking
 - [ ] Progressive profiling (capture more details over first week)
 - [ ] Use Brave Search to auto-populate business description from website
+- [ ] Personal licence fallback: if company licence search returns 0, ask "Do you hold a personal trade licence?" and search under their name (common case: individual holds licence, company operates under it)
 
 ---
 

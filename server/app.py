@@ -220,6 +220,7 @@ async def run_node(state: dict) -> dict:
     # If services get confirmed THIS turn, discard the speculative area result
     # entirely and fall through to the normal sequential auto-chain below, which
     # runs area with the AI response already in state (so area sees the right context).
+    parallel_handled = False
     already_confirmed = state.get("services_confirmed", False)
     if (node_name == "service_discovery"
             and state.get("services")  # turn 2 — services already mapped
@@ -230,6 +231,7 @@ async def run_node(state: dict) -> dict:
             NODE_FUNCTIONS["service_area"](state),
         )
         _raw_merge(svc_result)
+        parallel_handled = True
         if state.get("services_confirmed") and already_confirmed:
             # Services were already confirmed — this turn's message was for area
             _merge(area_result)
@@ -245,9 +247,10 @@ async def run_node(state: dict) -> dict:
         # Services just confirmed THIS turn (or not confirmed yet) — discard area result,
         # fall through to sequential auto-chain which handles area with clean context
 
-    # ── Normal sequential path ──
-    result = await node_fn(state)
-    _raw_merge(result)
+    # ── Normal sequential path (skip if parallel path already ran the node) ──
+    if not parallel_handled:
+        result = await node_fn(state)
+        _raw_merge(result)
 
     # Auto-chain: business verified → immediately run service discovery
     if state.get("business_verified") and not state.get("services") and not state.get("services_confirmed"):
@@ -315,6 +318,7 @@ async def create_session(req: StartRequest, request: Request):
         "abn_input": "",
         "abr_results": [],
         "business_name": "",
+        "legal_name": "",
         "abn": "",
         "entity_type": "",
         "gst_registered": False,
@@ -356,6 +360,7 @@ async def create_session(req: StartRequest, request: Request):
         "_specialist_gap_ids": [],
         "_pending_cluster_ids": [],
         "_selected_plan": "",
+        "_needs_trading_name": False,
         "_created_at": now,
         "_last_active": now,
     }
@@ -585,17 +590,24 @@ def _get_buttons_for_state(state: dict) -> list:
                 ]
             else:
                 buttons = []
-                for r in abr_results[:5]:
+                for r in abr_results[:8]:
                     name = r.get("entity_name", "Unknown")
+                    legal = r.get("legal_name", "")
                     abn = r.get("abn", "")
                     location = r.get("state", "")
                     if r.get("postcode"):
                         location = f"{location} {r['postcode']}"
-                    # Show ABN suffix so tradies can distinguish near-duplicates
-                    abn_short = f" · ABN ...{abn[-5:]}" if len(abn) >= 5 else ""
-                    label = f"{name} ({location}{abn_short})" if location else f"{name}{abn_short}"
-                    if len(label) > 60:
-                        label = f"{name[:28]}... ({location}{abn_short})"
+                    # Show entity name when it differs (e.g. "Pty Ltd" vs "Family Trust")
+                    legal_display = legal.title() if legal.isupper() else legal
+                    if legal and legal.lower() != name.lower():
+                        suffix = f"{legal_display} · {location}" if location else legal_display
+                        label = f"{name} ({suffix})"
+                    else:
+                        # Same or missing — show ABN suffix for near-duplicate disambiguation
+                        abn_short = f" · ABN ...{abn[-5:]}" if len(abn) >= 5 else ""
+                        label = f"{name} ({location}{abn_short})" if location else f"{name}{abn_short}"
+                    if len(label) > 70:
+                        label = f"{name[:28]}... ({legal_display[:20] + ' · ' + location if legal and legal.lower() != name.lower() else location})"
                     buttons.append({"label": label, "value": f"Yes, it's {name} (ABN: {abn})"})
                 buttons.append({"label": "None of these", "value": "No, none of those are my business"})
                 return buttons
