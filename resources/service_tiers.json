@@ -257,5 +257,48 @@
         "services": ["Gravel", "Water Feature Installation"]
       }
     ]
+  },
+  "Builder": {
+    "core": [
+      "General Building",
+      "Home renovations",
+      "Kitchen Renovations",
+      "Fixtures & Fittings",
+      "Walls & Cladding",
+      "Garages, sheds and carports",
+      "Verandahs"
+    ],
+    "evidence_keywords": {
+      "New Home Builders": ["new home", "new build", "custom home", "house and land", "house build", "dream home", "build your home"],
+      "Home extensions": ["extension", "second storey", "2nd storey", "add a room", "house extension", "home addition"],
+      "Granny Flat": ["granny flat", "secondary dwelling", "backyard dwelling", "ancillary dwelling", "DPU"],
+      "Stumps": ["restump", "reblock", "stump", "subfloor", "underpinning", "pier replacement"],
+      "Drainage & Sewers": ["drainage", "stormwater", "sewer connection", "site drainage", "civil drainage"],
+      "Cool Rooms & Cellars": ["cool room", "wine cellar", "cold room", "temperature controlled"],
+      "Building Supplies": ["building supplies", "materials supply", "supply only"],
+      "Project Management": ["project management", "owner builder", "supervise", "coordination", "build management"],
+      "Building Designs": ["building design", "design and build", "design & build", "house plans", "drafting"],
+      "Cost planning and estimation": ["cost estimate", "quantity survey", "budget", "cost plan", "quotation service"],
+      "Soil Testing": ["soil test", "geotechnical", "soil report", "foundation test"]
+    },
+    "licence_signals": {
+      "New Home Builders": ["building", "builder", "open builder", "unlimited builder"],
+      "Home extensions": ["building", "builder"],
+      "Granny Flat": ["building", "builder"]
+    },
+    "cluster_groups": [
+      {
+        "label": "New builds & extensions",
+        "services": ["New Home Builders", "Home extensions", "Granny Flat"]
+      },
+      {
+        "label": "Specialist & structural",
+        "services": ["Stumps", "Drainage & Sewers", "Cool Rooms & Cellars"]
+      },
+      {
+        "label": "Design, planning & management",
+        "services": ["Building Designs", "Cost planning and estimation", "Project Management", "Building Supplies", "Soil Testing"]
+      }
+    ]
   }
 }

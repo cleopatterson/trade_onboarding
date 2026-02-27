@@ -924,7 +924,7 @@ def find_subcategory_guide(business_name: str) -> str:
         "clean": ["cleaner-subcategory-guide.md"],
         "garden": ["gardener-subcategory-guide.md"],
         "carpent": ["carpentry_subcategories.md"],
-        "build": ["carpentry_subcategories.md"],
+        "build": ["builder-subcategory-guide.md"],
     }
 
     for keyword, files in trade_guides.items():
