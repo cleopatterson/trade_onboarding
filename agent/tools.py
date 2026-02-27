@@ -344,6 +344,125 @@ _TRADE_CATEGORY_MAP = {
 }
 
 
+# ────────── VIC LICENCE CONFIG ──────────
+
+_VIC_LICENCE_CONFIG = {
+    "Electrician": {
+        "regulator": "Electrical Safety Office (ESV)",
+        "label": "REC or ESV licence number",
+        "patterns": [r"REC\s?\d{4,6}", r"ESV\s?\d{4,6}"],
+        "context_keywords": None,  # no context guard needed
+        "optional": False,
+        "default_classes": ["Electrical Work"],
+    },
+    "Plumber": {
+        "regulator": "Victorian Building Authority (VBA)",
+        "label": "VBA registration number",
+        "patterns": [r"LIC\s*(?:No\.?|#)\s*\d{5,8}", r"VBA\s*\d{5,8}", r"\d{5,8}"],
+        "context_keywords": ["vba", "plumb", "registered plumber", "plumbing registration", "lic"],
+        "optional": False,
+        "default_classes": ["Plumbing and Drainage"],
+    },
+    "Builder": {
+        "regulator": "Building Practitioners Board (BPC)",
+        "label": "BPC registration number",
+        "patterns": [r"DB-U\s?\d{3,6}", r"CDB\s?\d{3,6}", r"CB\s?\d{3,6}", r"DB-L\s?\d{3,6}"],
+        "context_keywords": None,
+        "optional": False,
+        "default_classes": ["Building Work"],
+    },
+    "Painter": {
+        "regulator": "Building Practitioners Board (BPC)",
+        "label": "BPC registration number",
+        "patterns": [r"DB-L\s?\d{3,6}"],
+        "context_keywords": None,
+        "optional": True,
+        "default_classes": ["Painting"],
+    },
+    "Carpenter": {
+        "regulator": "Building Practitioners Board (BPC)",
+        "label": "BPC registration number",
+        "patterns": [r"DB-L\s?\d{3,6}"],
+        "context_keywords": None,
+        "optional": True,
+        "default_classes": ["Carpentry"],
+    },
+}
+
+
+def extract_licence_from_text(text: str, trade: str) -> dict | None:
+    """Extract a VIC licence number from combined website/Brave text.
+
+    Scans text for patterns matching the trade's regulator format.
+    Plumber patterns require context keywords to avoid false positives on random numbers.
+    Returns licence_info dict with licence_source='web_extracted', or None.
+    """
+    if not text or not trade:
+        return None
+
+    config = _VIC_LICENCE_CONFIG.get(trade)
+    if not config:
+        return None
+
+    text_lower = text.lower()
+
+    # Plumber has generic digit patterns — require context keywords
+    if config.get("context_keywords"):
+        has_context = any(kw in text_lower for kw in config["context_keywords"])
+        if not has_context:
+            return None
+
+    # Scan for patterns
+    for pattern in config["patterns"]:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            raw = match.group(0).strip()
+            # Extract just the number portion (strip LIC No., VBA, etc. prefixes)
+            num_match = re.search(r'\d[\d\s-]*\d|\d+', raw)
+            licence_number = num_match.group(0).strip() if num_match else raw
+            return {
+                "licence_number": licence_number,
+                "licence_type": trade,
+                "status": "Web-extracted",
+                "licence_source": "web_extracted",
+                "classes": [{"name": c, "active": True} for c in config["default_classes"]],
+                "compliance_clean": True,
+                "associated_parties": [],
+                "business_address": "",
+            }
+
+    return None
+
+
+async def scan_website_for_licence(url: str, trade: str) -> dict | None:
+    """Fetch a website and scan the FULL text for VIC licence patterns.
+
+    Unlike scrape_website_text (capped at 5000 chars for evidence keywords),
+    this scans ALL extracted text — licence numbers often appear deep in footers,
+    buried under reviews and other content.
+    Returns licence_info dict or None.
+    """
+    if not url or not trade or trade not in _VIC_LICENCE_CONFIG:
+        return None
+    try:
+        resp = await _http_client.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+            follow_redirects=True,
+            timeout=8.0,
+        )
+        if resp.status_code != 200:
+            return None
+        html = resp.text
+        html = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', html)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return extract_licence_from_text(text, trade)
+    except Exception as e:
+        logger.error(f"[LICENCE-SCAN] {url}: {type(e).__name__}: {e}")
+        return None
+
+
 def compute_service_gaps(services: list[dict], business_name: str,
                          licence_classes: list[str] | None = None,
                          google_business_name: str = "",

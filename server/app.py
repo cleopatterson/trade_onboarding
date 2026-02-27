@@ -358,6 +358,7 @@ async def create_session(req: StartRequest, request: Request):
         "_selected_plan": "",
         "_needs_trading_name": False,
         "_needs_licence_number": False,
+        "_licence_self_report": {},
         "_created_at": now,
         "_last_active": now,
     }

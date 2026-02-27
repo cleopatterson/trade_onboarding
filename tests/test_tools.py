@@ -14,6 +14,7 @@ from agent.tools import (
     qbcc_load_csv,
     qbcc_licence_lookup,
     _qbcc_licences,
+    extract_licence_from_text,
 )
 from agent.graph import (
     _process_cluster_response,
@@ -368,3 +369,92 @@ class TestQBCCLicenceLookup:
         result = qbcc_licence_lookup("56051254301", "")
         names = [c["name"] for c in result["classes"]]
         assert len(names) == len(set(names))
+
+
+# ────────── VIC Licence Extraction ──────────
+
+class TestExtractLicenceFromText:
+    """Tests for VIC licence number extraction from web text."""
+
+    def test_rec_number_electrician(self):
+        """REC number extracted for electricians."""
+        result = extract_licence_from_text("Licensed electrician REC 12345 serving Melbourne", "Electrician")
+        assert result is not None
+        assert result["licence_number"] == "12345"
+        assert result["licence_source"] == "web_extracted"
+
+    def test_esv_number_electrician(self):
+        """ESV number extracted for electricians."""
+        result = extract_licence_from_text("ESV 987654 registered electrical contractor", "Electrician")
+        assert result is not None
+        assert result["licence_number"] == "987654"
+
+    def test_dbu_number_builder(self):
+        """DB-U number extracted for builders."""
+        result = extract_licence_from_text("Registered builder DB-U 12345 in Victoria", "Builder")
+        assert result is not None
+        assert result["licence_number"] == "12345"
+
+    def test_cdb_number_builder(self):
+        """CDB number extracted for builders."""
+        result = extract_licence_from_text("Commercial builder CDB 54321", "Builder")
+        assert result is not None
+        assert result["licence_number"] == "54321"
+
+    def test_dbl_number_painter(self):
+        """DB-L number extracted for painters."""
+        result = extract_licence_from_text("Painting contractor DB-L 99999", "Painter")
+        assert result is not None
+        assert result["licence_number"] == "99999"
+
+    def test_dbl_number_carpenter(self):
+        """DB-L number extracted for carpenters."""
+        result = extract_licence_from_text("Carpentry services DB-L 88888", "Carpenter")
+        assert result is not None
+        assert result["licence_number"] == "88888"
+
+    def test_plumber_with_context(self):
+        """Plumber number extracted when context keywords present."""
+        result = extract_licence_from_text("VBA registered plumber licence 12345678", "Plumber")
+        assert result is not None
+        assert result["licence_number"] == "12345678"
+        assert result["classes"][0]["name"] == "Plumbing and Drainage"
+
+    def test_plumber_no_context_rejected(self):
+        """Plumber number NOT extracted without context keywords (avoids false positives)."""
+        result = extract_licence_from_text("We serve 12345678 customers in Melbourne", "Plumber")
+        assert result is None
+
+    def test_cleaner_returns_none(self):
+        """Cleaners have no VIC licence config — returns None."""
+        result = extract_licence_from_text("Professional cleaning service licence 12345", "Cleaner")
+        assert result is None
+
+    def test_gardener_returns_none(self):
+        """Gardeners have no VIC licence config — returns None."""
+        result = extract_licence_from_text("Gardening and landscaping REC 12345", "Gardener")
+        assert result is None
+
+    def test_empty_text_returns_none(self):
+        """Empty text returns None."""
+        result = extract_licence_from_text("", "Electrician")
+        assert result is None
+
+    def test_unknown_trade_returns_none(self):
+        """Unknown trade returns None."""
+        result = extract_licence_from_text("REC 12345", "Roofer")
+        assert result is None
+
+    def test_lic_no_format_plumber(self):
+        """LIC No. format extracted for plumbers (common VIC website format)."""
+        result = extract_licence_from_text("Melbourne Plumbing Co LIC No. 110636 Privacy Policy", "Plumber")
+        assert result is not None
+        assert result["licence_number"] == "110636"
+
+    def test_classes_populated(self):
+        """Extracted licence has correct classes."""
+        result = extract_licence_from_text("REC 12345 electrician", "Electrician")
+        assert result is not None
+        assert len(result["classes"]) == 1
+        assert result["classes"][0]["name"] == "Electrical Work"
+        assert result["classes"][0]["active"] is True

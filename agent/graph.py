@@ -30,6 +30,7 @@ from agent.tools import (
     google_places_search, compute_service_gaps, compute_initial_services,
     get_filtered_cluster_groups, scrape_website_text,
     qbcc_licence_lookup, _detect_category,
+    extract_licence_from_text, scan_website_for_licence, _VIC_LICENCE_CONFIG,
 )
 
 
@@ -525,7 +526,11 @@ def _build_service_prompt(
     licence_context = ""
     if licence_classes:
         source = licence_info.get("licence_source", "nsw")
-        label = "QBCC LICENCE" if source == "qbcc_csv" else "NSW FAIR TRADING LICENCE"
+        label = {
+            "qbcc_csv": "QBCC LICENCE",
+            "web_extracted": "LICENCE NUMBER (FROM WEBSITE — UNVERIFIED)",
+            "self_reported": "LICENCE NUMBER (SELF-REPORTED — UNVERIFIED)",
+        }.get(source, "NSW FAIR TRADING LICENCE")
         licence_context = f"\n{label} CLASSES: {', '.join(licence_classes)}"
         if licence_info.get("licence_number"):
             expiry = licence_info.get("expiry_date", "")
@@ -559,8 +564,10 @@ def _build_service_prompt(
         source = licence_info.get("licence_source", "nsw")
         if source == "qbcc_csv":
             licence_ack = "Mention briefly that you found their QBCC licence on file (e.g. \"I found your QBCC licence, so...\"). "
+        elif source == "web_extracted":
+            licence_ack = "Mention you spotted a licence number on their website and have noted it down — do NOT say it has been verified. "
         elif source == "self_reported":
-            licence_ack = "Acknowledge their ESO licence number briefly (e.g. \"Got your ESO licence noted\"). "
+            licence_ack = "Acknowledge you've noted their licence number — do NOT say it has been verified or confirmed. "
         else:
             licence_ack = "Mention briefly that you found their NSW trade licence on file. "
 
@@ -721,10 +728,28 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                 ))],
             }
 
-    # ── QLD Electrician ESO licence self-report ──
+    # ── Licence self-report (QLD ESO, VIC regulated trades) ──
     _eso_updates: dict = {}
+    self_report = state.get("_licence_self_report", {})
     if needs_licence and svc_turn == 1:
-        # First entry into service discovery — ask for ESO licence
+        # First entry into service discovery — ask for licence number
+        sr_trade = self_report.get("trade", "tradesperson")
+        sr_state = self_report.get("state", "")
+        sr_regulator = self_report.get("regulator", "the relevant authority")
+        sr_label = self_report.get("label", "licence number")
+        sr_optional = self_report.get("optional", False)
+
+        if sr_optional:
+            prompt_msg = (
+                f"In {sr_state}, {sr_trade.lower()}s can optionally register through {sr_regulator}. "
+                f"If you have a {sr_label}, type it in — otherwise just skip."
+            )
+        else:
+            prompt_msg = (
+                f"I couldn't find a trade licence for {business_name} — as a {sr_trade.lower()} in {sr_state} "
+                f"you'd be registered through {sr_regulator}. "
+                f"Do you have your {sr_label} handy? You can type it in, or skip for now."
+            )
         return {
             "current_node": "service_discovery",
             "_svc_turn": 2,
@@ -732,33 +757,31 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                 {"label": "I'll add it later", "value": "I'll add my licence later"},
                 {"label": "Skip", "value": "Skip licence"},
             ],
-            "messages": [AIMessage(content=(
-                f"I couldn't find a QBCC licence for {business_name} — as an electrician in QLD "
-                f"you'd be licensed through the Electrical Safety Office (ESO). "
-                f"Do you have your ESO licence number handy? You can type it in, or skip for now."
-            ))],
+            "messages": [AIMessage(content=prompt_msg)],
         }
     if needs_licence and svc_turn == 2:
-        # Process the ESO licence response, then fall through to normal turn-1 flow
-        _eso_updates = {"_needs_licence_number": False}
+        # Process the licence response, then fall through to normal turn-1 flow
+        _eso_updates = {"_needs_licence_number": False, "_licence_self_report": {}}
         _is_eso_reentry = True
+        sr_trade = self_report.get("trade", "Unknown")
+        sr_default_classes = self_report.get("default_classes", [])
         if last_msg and not last_msg.lower().startswith(("skip", "i'll add")):
-            eso_num = re.sub(r'[^A-Za-z0-9\-/ ]', '', last_msg.strip())[:30]
+            lic_num = re.sub(r'[^A-Za-z0-9\-/ ]', '', last_msg.strip())[:30]
             _eso_updates["licence_info"] = {
-                "licence_number": eso_num,
-                "licence_type": "Electrician",
+                "licence_number": lic_num,
+                "licence_type": sr_trade,
                 "status": "Self-reported",
                 "licence_source": "self_reported",
-                "classes": [{"name": "Electrical Work", "active": True}],
+                "classes": [{"name": c, "active": True} for c in sr_default_classes],
                 "compliance_clean": True,
                 "associated_parties": [],
                 "business_address": "",
             }
-            _eso_updates["licence_classes"] = ["Electrical Work"]
-            licence_classes = ["Electrical Work"]
-            logger.info(f"[SVC] QLD ESO licence self-reported: {eso_num}")
+            _eso_updates["licence_classes"] = sr_default_classes
+            licence_classes = sr_default_classes
+            logger.info(f"[SVC] {sr_trade} licence self-reported: {lic_num}")
         else:
-            logger.info("[SVC] QLD ESO licence skipped")
+            logger.info(f"[SVC] {sr_trade} licence skipped")
         svc_turn = 1
         is_follow_up = False
 
@@ -1731,14 +1754,15 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     # Licences are registered under the legal/entity name. Searching generic trading
     # names (e.g. "Sydney Cleaning") returns other businesses' licences — false positives.
 
-    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse"}.get(business_state, "Licence Lookup")
-    _trace(state, licence_source_label, t1 - t0,
-           f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
-           {"results": [
-               {"licensee": r.get("licensee"), "status": r.get("status"),
-                "licence_number": r.get("licence_number")}
-               for r in licence_results.get("results", [])[:5]
-           ]})
+    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse"}.get(business_state, "")
+    if licence_source_label:
+        _trace(state, licence_source_label, t1 - t0,
+               f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
+               {"results": [
+                   {"licensee": r.get("licensee"), "status": r.get("status"),
+                    "licence_number": r.get("licence_number")}
+                   for r in licence_results.get("results", [])[:5]
+               ]})
     _trace(state, "Brave Web Search", t1 - t0,
            f"{len(web_results) if web_results else 0} web results",
            {"results": [
@@ -1877,15 +1901,58 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     if contact_phone:
         logger.info(f"[BIZ] Contact phone: {contact_phone}")
 
-    # QLD electricians are licensed via ESO (not QBCC) — flag for self-report prompt
+    # Detect trade category for licence routing
     google_type = google_place.get("primary_type", "")
     detected_category = _detect_category(business_name, licence_classes,
                                           google_place.get("name", ""), google_type)
-    needs_licence_number = (
-        business_state == "QLD"
-        and not licence_info
-        and detected_category == "Electrician"
-    )
+
+    # VIC: try to extract licence from Brave descriptions, then full website scan
+    if business_state == "VIC" and not licence_info and detected_category:
+        # Quick check: Brave search descriptions (already fetched, no extra HTTP call)
+        brave_text = " ".join(r.get("description", "") for r in (web_results or [])[:3])
+        vic_licence = extract_licence_from_text(brave_text, detected_category)
+        # Full website scan: licence numbers often buried deep in footers past the 5k text limit
+        if not vic_licence and google_website:
+            t_scan = time.time()
+            vic_licence = await scan_website_for_licence(google_website, detected_category)
+            scan_time = time.time() - t_scan
+            if vic_licence:
+                logger.info(f"[BIZ] VIC licence found via full website scan: #{vic_licence['licence_number']} ({scan_time:.1f}s)")
+        if vic_licence:
+            licence_info = vic_licence
+            licence_classes = [c["name"] for c in vic_licence.get("classes", []) if c.get("active")]
+            logger.info(f"[BIZ] VIC licence extracted: #{vic_licence['licence_number']} ({detected_category})")
+            _trace(state, "VIC Web Extraction", 0,
+                   f"Extracted {detected_category} licence #{vic_licence['licence_number']} from website/Brave text",
+                   {"licence_number": vic_licence["licence_number"], "trade": detected_category})
+
+    # Self-report routing: QLD ESO or VIC regulated trades without licence
+    needs_licence_number = False
+    licence_self_report = {}
+
+    if not licence_info and detected_category:
+        if business_state == "QLD" and detected_category == "Electrician":
+            # QLD electricians are licensed via ESO (not QBCC)
+            needs_licence_number = True
+            licence_self_report = {
+                "regulator": "Electrical Safety Office (ESO)",
+                "label": "ESO licence number",
+                "trade": "Electrician",
+                "state": "QLD",
+                "optional": False,
+                "default_classes": ["Electrical Work"],
+            }
+        elif business_state == "VIC" and detected_category in _VIC_LICENCE_CONFIG:
+            vic_config = _VIC_LICENCE_CONFIG[detected_category]
+            needs_licence_number = True
+            licence_self_report = {
+                "regulator": vic_config["regulator"],
+                "label": vic_config["label"],
+                "trade": detected_category,
+                "state": "VIC",
+                "optional": vic_config["optional"],
+                "default_classes": vic_config["default_classes"],
+            }
 
     return {
         "current_node": "business_verification",
@@ -1900,6 +1967,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "licence_info": licence_info,
         "licence_classes": licence_classes,
         "_needs_licence_number": needs_licence_number,
+        "_licence_self_report": licence_self_report,
         "web_results": web_results[:3] if web_results else [],
         "website_text": website_text if website_text else "",
         "contact_name": contact_name,
