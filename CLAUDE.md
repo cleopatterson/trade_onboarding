@@ -21,7 +21,7 @@ open http://localhost:8001
 ## Architecture
 - **Server:** FastAPI (`server/app.py`) — endpoints, auto-chaining, session management
 - **Agent:** LangGraph-inspired state machine (`agent/graph.py`) — 6 nodes, prompts inline, no-scripting principle
-- **Tools:** ABR, NSW Fair Trading, Brave Search, Google Places, geo helpers, tiered service mapping (`agent/tools.py`)
+- **Tools:** ABR, NSW Fair Trading, WA DMIRS, Brave Search, Google Places, geo helpers, tiered service mapping, multi-state licence extraction (`agent/tools.py`)
 - **Frontend:** Single-file HTML/JS/CSS (`web/landing.html`) — landing page + wizard modal
 - **Models:** Claude Haiku 4.5 (all nodes + classifiers) — Sonnet removed for speed
 
@@ -30,7 +30,7 @@ open http://localhost:8001
 |------|---------|
 | `server/app.py` | FastAPI server, auto-chaining, session state, button logic, logging |
 | `agent/graph.py` | State machine nodes: welcome, business_verification, service_discovery, service_area, profile, pricing, complete (confirmation bypassed) |
-| `agent/tools.py` | ABR lookup, NSW licence browse/details, Brave search, Google Places, suburb grouping, website scraping, AI image filter, tiered service mapping |
+| `agent/tools.py` | ABR lookup, NSW licence browse/details, WA DMIRS scraper, multi-state licence extraction, Brave search, Google Places, suburb grouping, website scraping, AI image filter, tiered service mapping |
 | `agent/config.py` | Environment config, model IDs, API keys, CORS origins, env validation |
 | `agent/state.py` | OnboardingState TypedDict |
 | `web/landing.html` | Landing page + wizard modal (all-in-one) |
@@ -58,7 +58,7 @@ WELCOME → BUSINESS_VERIFICATION → SERVICE_DISCOVERY → SERVICE_AREA → PRO
 - Pricing node: data-driven (no LLM), recommends plan based on region count, 3-turn flow (plan → billing → done) or skip
 
 ## External APIs
-ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API, Google Places API (Text Search). See `docs/PRD.md` Section 4 for details, `.env.example` for required keys.
+ABR JSON API, NSW Fair Trading Trades API (OAuth2), WA DMIRS PrimeFaces (scrape), Brave Search API, Google Places API (Text Search). See `docs/PRD.md` Section 4 for details, `.env.example` for required keys.
 
 ## Development Notes
 - Server runs on port **8001** (Concierge uses 8000)
@@ -85,6 +85,10 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API, Google Pla
 - Parallel auto-chain: service_discovery turn 2 + service_area turn 1 via asyncio.gather
 - Server hardened: session TTL (30min), rate limiting (15/60s), CORS whitelist, PII redaction in logs
 - Non-trade business gate: Google Places type check rejects restaurants, shops, etc.
+- Multi-state licence support: NSW (API), QLD (CSV), WA (DMIRS scrape), VIC/SA/TAS/ACT/NT (web extraction + self-report)
+- `_STATE_LICENCE_CONFIG` keyed by state → trade with regex patterns, regulators, default classes
+- WA DMIRS: PrimeFaces scrape (ViewState + cookies), covers EC/PL/GF trades only
+- SA/TAS/ACT/NT: scan Brave + website text for licence patterns, fallback to self-report
 - Deployed on Railway: https://trade-onboarding.up.railway.app
 
 ## Docs

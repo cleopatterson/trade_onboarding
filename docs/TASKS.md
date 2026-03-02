@@ -159,7 +159,7 @@
 - [ ] Streaming SSE implementation (currently JSON responses)
 - [x] Edge cases: non-trade businesses (Google Places type gate), short input guard, NOABN intent
 - [ ] Edge cases: very long service lists
-- [ ] Handle non-NSW businesses gracefully (no licence data, inform user)
+- [x] ~~Handle non-NSW businesses gracefully~~ (done: all states have licence enrichment path)
 - [ ] LangSmith tracing integration
 - [ ] Conversation quality review (20+ test sessions)
 
@@ -195,7 +195,7 @@
 ## Future Ideas
 > Not scoped, revisit later
 
-- [ ] Licence verification for other states (VIC, QLD, WA, SA — need separate APIs)
+- [x] ~~Licence verification for other states~~ (done: WA DMIRS scraper + VIC/SA/TAS/ACT/NT web extraction + self-report)
 - [x] ~~Photo upload for business logo~~ (done in profile builder)
 - [ ] Insurance details capture
 - [x] ~~Portfolio/previous work links~~ (gallery upload in profile builder)
@@ -430,3 +430,30 @@
   - Module-level `_llm_vision` singleton (was creating new ChatAnthropic per photo)
   - Removed unused LangGraph `add_messages` import from state.py
   - Added `website_text` field to OnboardingState
+
+### Mar 2, 2026 — Multi-State Licence Lookups
+- **WA DMIRS Scraper** (`agent/tools.py`):
+  - PrimeFaces form scraping: GET page for ViewState + cookies → POST AJAX → parse HTML results
+  - Covers electricians (EC), plumbers (PL), gas fitters (GF) — builders/painters not on DMIRS
+  - Per-call `httpx.AsyncClient` for cookie persistence across GET→POST
+  - Best-match by name: substring → word overlap → single current result
+  - No details endpoint — search results ARE the full detail, uses `default_classes` from config
+- **Multi-State Licence Config** (`agent/tools.py`):
+  - Replaced `_VIC_LICENCE_CONFIG` with `_STATE_LICENCE_CONFIG[state][trade]`
+  - 6 states covered: VIC, WA, SA, TAS, ACT, NT — each with trade-specific patterns and regulators
+  - `get_licence_config(state, trade)` helper for config lookup
+  - `extract_licence_from_text()` and `scan_website_for_licence()` accept `state` param (default VIC for backward compat)
+  - Backward-compatible alias: `_VIC_LICENCE_CONFIG = _STATE_LICENCE_CONFIG["VIC"]`
+- **Generalized Web Extraction** (`agent/graph.py`):
+  - VIC-only block expanded to all states with config: VIC, WA, SA, TAS, ACT, NT
+  - Scans Brave search descriptions + full website text for state-specific licence patterns
+  - SA: PGE/PGP/PGG/BLD patterns; TAS: EL/PL/CC/CB; ACT: EL/PL/BL; NT: C-prefix with context keywords
+- **Generalized Self-Report Fallback** (`agent/graph.py`):
+  - VIC-only `elif` replaced with `get_licence_config()` lookup for any state/trade
+  - QLD ESO special case preserved (electricians licensed separately from QBCC)
+- **Licence Routing** (`agent/graph.py`):
+  - WA branch added: pre-detects category from business name, runs DMIRS lookup in parallel with other APIs
+  - WA result handling: same pattern as QBCC (search IS the detail, no separate details endpoint)
+  - `wa_dmirs` source label + acknowledgement hint in service discovery prompt
+- **Frontend** (`web/landing.html`): WA-specific + generic state loading text
+- **Tests**: 26 new tests (78 total) — DMIRS ViewState/parsing, state config validation, multi-state extraction patterns
