@@ -1719,6 +1719,8 @@
         const licenceLabel = bState === 'QLD' ? 'Checking QBCC trade licences'
           : bState === 'NSW' ? 'Checking NSW trade licences'
           : bState === 'VIC' ? 'Scanning for VIC trade registration'
+          : bState === 'WA' ? 'Checking WA DMIRS trade licences'
+          : ['SA','TAS','ACT','NT'].includes(bState) ? `Scanning for ${bState} trade registration`
           : 'Looking up trade licences';
         showProgressLoading(content, 'Setting up your services...', [
           licenceLabel,

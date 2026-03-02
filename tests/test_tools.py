@@ -15,6 +15,11 @@ from agent.tools import (
     qbcc_licence_lookup,
     _qbcc_licences,
     extract_licence_from_text,
+    get_licence_config,
+    _STATE_LICENCE_CONFIG,
+    _VIC_LICENCE_CONFIG,
+    _wa_dmirs_extract_viewstate,
+    _wa_dmirs_parse_results,
 )
 from agent.graph import (
     _process_cluster_response,
@@ -458,3 +463,163 @@ class TestExtractLicenceFromText:
         assert len(result["classes"]) == 1
         assert result["classes"][0]["name"] == "Electrical Work"
         assert result["classes"][0]["active"] is True
+
+
+# ────────── WA DMIRS ViewState Extraction ──────────
+
+class TestWaDmirsViewState:
+    """Tests for DMIRS PrimeFaces ViewState extraction."""
+
+    def test_standard_viewstate(self):
+        html = '<input type="hidden" name="javax.faces.ViewState" value="abc123xyz" />'
+        assert _wa_dmirs_extract_viewstate(html) == "abc123xyz"
+
+    def test_value_before_name_order(self):
+        html = '<input type="hidden" value="xyz789" name="javax.faces.ViewState" />'
+        assert _wa_dmirs_extract_viewstate(html) == "xyz789"
+
+    def test_missing_field_returns_none(self):
+        html = '<input type="hidden" name="other_field" value="abc" />'
+        assert _wa_dmirs_extract_viewstate(html) is None
+
+    def test_empty_html_returns_none(self):
+        assert _wa_dmirs_extract_viewstate("") is None
+
+    def test_none_html_returns_none(self):
+        assert _wa_dmirs_extract_viewstate(None) is None
+
+
+# ────────── WA DMIRS Parse Results ──────────
+
+class TestWaDmirsParseResults:
+    """Tests for DMIRS search result HTML parsing."""
+
+    def test_single_result(self):
+        html = '''
+        <a class="licenceElementTitle">John Smith Electrical</a>
+        <a class="licenceElementTitle">EC012345</a>
+        <span class="licenceStatus">Current</span>
+        '''
+        results = _wa_dmirs_parse_results(html)
+        assert len(results) == 1
+        assert results[0]["licensee"] == "John Smith Electrical"
+        assert results[0]["licence_number"] == "EC012345"
+        assert results[0]["status"] == "Current"
+
+    def test_multiple_results(self):
+        html = '''
+        <a class="licenceElementTitle">Smith Electrical</a>
+        <a class="licenceElementTitle">EC001111</a>
+        <span class="licenceStatus">Current</span>
+        <a class="licenceElementTitle">Jones Electrical</a>
+        <a class="licenceElementTitle">EC002222</a>
+        <span class="licenceStatus">Expired</span>
+        '''
+        results = _wa_dmirs_parse_results(html)
+        assert len(results) == 2
+        assert results[0]["licence_number"] == "EC001111"
+        assert results[0]["status"] == "Current"
+        assert results[1]["licence_number"] == "EC002222"
+        assert results[1]["status"] == "Expired"
+
+    def test_empty_results(self):
+        html = '<div class="noResults">No matching records found</div>'
+        results = _wa_dmirs_parse_results(html)
+        assert results == []
+
+    def test_empty_html(self):
+        assert _wa_dmirs_parse_results("") == []
+
+    def test_none_html(self):
+        assert _wa_dmirs_parse_results(None) == []
+
+
+# ────────── State Licence Config ──────────
+
+class TestStateLicenceConfig:
+    """Tests for multi-state licence configuration."""
+
+    def test_all_states_present(self):
+        expected = {"VIC", "WA", "SA", "TAS", "ACT", "NT"}
+        assert expected.issubset(set(_STATE_LICENCE_CONFIG.keys()))
+
+    def test_required_keys(self):
+        for state, trades in _STATE_LICENCE_CONFIG.items():
+            for trade, config in trades.items():
+                assert "regulator" in config, f"{state}/{trade} missing regulator"
+                assert "label" in config, f"{state}/{trade} missing label"
+                assert "patterns" in config, f"{state}/{trade} missing patterns"
+                assert "default_classes" in config, f"{state}/{trade} missing default_classes"
+                assert isinstance(config["patterns"], list), f"{state}/{trade} patterns not a list"
+
+    def test_wa_dmirs_codes(self):
+        wa = _STATE_LICENCE_CONFIG["WA"]
+        assert wa["Electrician"]["dmirs_search_code"] == "EC"
+        assert wa["Plumber"]["dmirs_search_code"] == "PL"
+        assert wa["Gas Fitter"]["dmirs_search_code"] == "GF"
+
+    def test_vic_backward_compat(self):
+        assert _VIC_LICENCE_CONFIG is _STATE_LICENCE_CONFIG["VIC"]
+        assert "Electrician" in _VIC_LICENCE_CONFIG
+        assert "Plumber" in _VIC_LICENCE_CONFIG
+
+    def test_get_licence_config_found(self):
+        config = get_licence_config("VIC", "Electrician")
+        assert config is not None
+        assert config["regulator"] == "Electrical Safety Office (ESV)"
+
+    def test_get_licence_config_not_found(self):
+        assert get_licence_config("VIC", "Roofer") is None
+        assert get_licence_config("XX", "Electrician") is None
+
+
+# ────────── Multi-State Extraction ──────────
+
+class TestMultiStateExtraction:
+    """Tests for licence extraction across different states."""
+
+    def test_wa_ec_pattern(self):
+        result = extract_licence_from_text("Licensed EC 12345 electrician", "Electrician", "WA")
+        assert result is not None
+        assert result["licence_number"] == "12345"
+        assert result["licence_source"] == "web_extracted"
+
+    def test_wa_pl_pattern(self):
+        result = extract_licence_from_text("Registered plumbing PL 98765", "Plumber", "WA")
+        assert result is not None
+        assert result["licence_number"] == "98765"
+
+    def test_sa_pge_pattern(self):
+        result = extract_licence_from_text("Licence PGE 54321 electrical contractor", "Electrician", "SA")
+        assert result is not None
+        assert result["licence_number"] == "54321"
+
+    def test_sa_bld_pattern(self):
+        result = extract_licence_from_text("BLD 99999 registered builder", "Builder", "SA")
+        assert result is not None
+        assert result["licence_number"] == "99999"
+
+    def test_nt_c_prefix_electrician(self):
+        result = extract_licence_from_text("Electrical contractor licence C12345", "Electrician", "NT")
+        assert result is not None
+        assert result["licence_number"] == "12345"
+
+    def test_unknown_state_returns_none(self):
+        result = extract_licence_from_text("REC 12345", "Electrician", "XX")
+        assert result is None
+
+    def test_vic_default_param_regression(self):
+        """VIC is the default state param — existing calls without state still work."""
+        result = extract_licence_from_text("REC 12345 electrician", "Electrician")
+        assert result is not None
+        assert result["licence_number"] == "12345"
+
+    def test_tas_electrician(self):
+        result = extract_licence_from_text("EL 5678 licensed electrician", "Electrician", "TAS")
+        assert result is not None
+        assert result["licence_number"] == "5678"
+
+    def test_act_builder(self):
+        result = extract_licence_from_text("BL 12345 registered builder", "Builder", "ACT")
+        assert result is not None
+        assert result["licence_number"] == "12345"

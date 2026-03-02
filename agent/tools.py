@@ -344,54 +344,210 @@ _TRADE_CATEGORY_MAP = {
 }
 
 
-# ────────── VIC LICENCE CONFIG ──────────
+# ────────── STATE LICENCE CONFIG ──────────
+# Keyed by state → trade. Each entry has: regulator, label, patterns (regex),
+# context_keywords, optional, default_classes. WA DMIRS trades get extra dmirs_search_code.
 
-_VIC_LICENCE_CONFIG = {
-    "Electrician": {
-        "regulator": "Electrical Safety Office (ESV)",
-        "label": "REC or ESV licence number",
-        "patterns": [r"REC\s?\d{4,6}", r"ESV\s?\d{4,6}"],
-        "context_keywords": None,  # no context guard needed
-        "optional": False,
-        "default_classes": ["Electrical Work"],
+_STATE_LICENCE_CONFIG = {
+    "VIC": {
+        "Electrician": {
+            "regulator": "Electrical Safety Office (ESV)",
+            "label": "REC or ESV licence number",
+            "patterns": [r"REC\s?\d{4,6}", r"ESV\s?\d{4,6}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Electrical Work"],
+        },
+        "Plumber": {
+            "regulator": "Victorian Building Authority (VBA)",
+            "label": "VBA registration number",
+            "patterns": [r"LIC\s*(?:No\.?|#)\s*\d{5,8}", r"VBA\s*\d{5,8}", r"\d{5,8}"],
+            "context_keywords": ["vba", "plumb", "registered plumber", "plumbing registration", "lic"],
+            "optional": False,
+            "default_classes": ["Plumbing and Drainage"],
+        },
+        "Builder": {
+            "regulator": "Building Practitioners Board (BPC)",
+            "label": "BPC registration number",
+            "patterns": [r"DB-U\s?\d{3,6}", r"CDB\s?\d{3,6}", r"CB\s?\d{3,6}", r"DB-L\s?\d{3,6}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Building Work"],
+        },
+        "Painter": {
+            "regulator": "Building Practitioners Board (BPC)",
+            "label": "BPC registration number",
+            "patterns": [r"DB-L\s?\d{3,6}"],
+            "context_keywords": None,
+            "optional": True,
+            "default_classes": ["Painting"],
+        },
+        "Carpenter": {
+            "regulator": "Building Practitioners Board (BPC)",
+            "label": "BPC registration number",
+            "patterns": [r"DB-L\s?\d{3,6}"],
+            "context_keywords": None,
+            "optional": True,
+            "default_classes": ["Carpentry"],
+        },
     },
-    "Plumber": {
-        "regulator": "Victorian Building Authority (VBA)",
-        "label": "VBA registration number",
-        "patterns": [r"LIC\s*(?:No\.?|#)\s*\d{5,8}", r"VBA\s*\d{5,8}", r"\d{5,8}"],
-        "context_keywords": ["vba", "plumb", "registered plumber", "plumbing registration", "lic"],
-        "optional": False,
-        "default_classes": ["Plumbing and Drainage"],
+    "WA": {
+        "Electrician": {
+            "regulator": "WA Department of Mines, Industry Regulation and Safety (DMIRS)",
+            "label": "EC licence number",
+            "patterns": [r"EC\s?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Electrical Work"],
+            "dmirs_search_code": "EC",
+        },
+        "Plumber": {
+            "regulator": "WA Department of Mines, Industry Regulation and Safety (DMIRS)",
+            "label": "PL or TL licence number",
+            "patterns": [r"(?:PL|TL)\s?\d{4,8}"],
+            "context_keywords": ["plumb", "registered plumber", "plumbing"],
+            "optional": False,
+            "default_classes": ["Plumbing and Drainage"],
+            "dmirs_search_code": "PL",
+        },
+        "Gas Fitter": {
+            "regulator": "WA Department of Mines, Industry Regulation and Safety (DMIRS)",
+            "label": "GF licence number",
+            "patterns": [r"GF\s?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Gas Fitting"],
+            "dmirs_search_code": "GF",
+        },
     },
-    "Builder": {
-        "regulator": "Building Practitioners Board (BPC)",
-        "label": "BPC registration number",
-        "patterns": [r"DB-U\s?\d{3,6}", r"CDB\s?\d{3,6}", r"CB\s?\d{3,6}", r"DB-L\s?\d{3,6}"],
-        "context_keywords": None,
-        "optional": False,
-        "default_classes": ["Building Work"],
+    "SA": {
+        "Electrician": {
+            "regulator": "SA Office of the Technical Regulator (OTR)",
+            "label": "PGE licence number",
+            "patterns": [r"PGE\s?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Electrical Work"],
+        },
+        "Plumber": {
+            "regulator": "SA Office of the Technical Regulator (OTR)",
+            "label": "plumber licence number",
+            "patterns": [r"PGP\s?\d{4,8}"],
+            "context_keywords": ["plumb", "registered plumber"],
+            "optional": False,
+            "default_classes": ["Plumbing and Drainage"],
+        },
+        "Gas Fitter": {
+            "regulator": "SA Office of the Technical Regulator (OTR)",
+            "label": "gas fitter licence number",
+            "patterns": [r"PGG\s?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Gas Fitting"],
+        },
+        "Builder": {
+            "regulator": "SA Consumer and Business Services (CBS)",
+            "label": "BLD licence number",
+            "patterns": [r"BLD\s?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Building Work"],
+        },
     },
-    "Painter": {
-        "regulator": "Building Practitioners Board (BPC)",
-        "label": "BPC registration number",
-        "patterns": [r"DB-L\s?\d{3,6}"],
-        "context_keywords": None,
-        "optional": True,
-        "default_classes": ["Painting"],
+    "TAS": {
+        "Electrician": {
+            "regulator": "TAS Consumer, Building and Occupational Services (CBOS)",
+            "label": "electrical licence number",
+            "patterns": [r"EL\s?\d{4,6}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Electrical Work"],
+        },
+        "Plumber": {
+            "regulator": "TAS Consumer, Building and Occupational Services (CBOS)",
+            "label": "plumber licence number",
+            "patterns": [r"PL\s?\d{4,6}"],
+            "context_keywords": ["plumb"],
+            "optional": False,
+            "default_classes": ["Plumbing and Drainage"],
+        },
+        "Builder": {
+            "regulator": "TAS Consumer, Building and Occupational Services (CBOS)",
+            "label": "builder accreditation number",
+            "patterns": [r"(?:CC|CB)\s?\d{4,6}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Building Work"],
+        },
     },
-    "Carpenter": {
-        "regulator": "Building Practitioners Board (BPC)",
-        "label": "BPC registration number",
-        "patterns": [r"DB-L\s?\d{3,6}"],
-        "context_keywords": None,
-        "optional": True,
-        "default_classes": ["Carpentry"],
+    "ACT": {
+        "Electrician": {
+            "regulator": "ACT Access Canberra",
+            "label": "electrician licence number",
+            "patterns": [r"EL\s?\d{4,8}", r"E\d{5,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Electrical Work"],
+        },
+        "Plumber": {
+            "regulator": "ACT Access Canberra",
+            "label": "plumber licence number",
+            "patterns": [r"PL\s?\d{4,8}"],
+            "context_keywords": ["plumb"],
+            "optional": False,
+            "default_classes": ["Plumbing and Drainage"],
+        },
+        "Builder": {
+            "regulator": "ACT Access Canberra",
+            "label": "builder licence number",
+            "patterns": [r"BL\s?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Building Work"],
+        },
+    },
+    "NT": {
+        "Electrician": {
+            "regulator": "NT Licensing Commission",
+            "label": "electrician licence number",
+            "patterns": [r"C\d{4,8}"],
+            "context_keywords": ["electric", "electrical contractor"],
+            "optional": False,
+            "default_classes": ["Electrical Work"],
+        },
+        "Plumber": {
+            "regulator": "NT Licensing Commission",
+            "label": "plumber licence number",
+            "patterns": [r"C\d{4,8}"],
+            "context_keywords": ["plumb"],
+            "optional": False,
+            "default_classes": ["Plumbing and Drainage"],
+        },
+        "Builder": {
+            "regulator": "NT Building Practitioners Board",
+            "label": "builder registration number",
+            "patterns": [r"BR?\d{4,8}"],
+            "context_keywords": None,
+            "optional": False,
+            "default_classes": ["Building Work"],
+        },
     },
 }
 
+# Backward-compatible alias
+_VIC_LICENCE_CONFIG = _STATE_LICENCE_CONFIG["VIC"]
 
-def extract_licence_from_text(text: str, trade: str) -> dict | None:
-    """Extract a VIC licence number from combined website/Brave text.
+
+def get_licence_config(state: str, trade: str) -> dict | None:
+    """Look up licence config for a state + trade combination."""
+    state_cfg = _STATE_LICENCE_CONFIG.get(state)
+    if not state_cfg:
+        return None
+    return state_cfg.get(trade)
+
+
+def extract_licence_from_text(text: str, trade: str, state: str = "VIC") -> dict | None:
+    """Extract a licence number from combined website/Brave text for any state.
 
     Scans text for patterns matching the trade's regulator format.
     Plumber patterns require context keywords to avoid false positives on random numbers.
@@ -400,7 +556,7 @@ def extract_licence_from_text(text: str, trade: str) -> dict | None:
     if not text or not trade:
         return None
 
-    config = _VIC_LICENCE_CONFIG.get(trade)
+    config = get_licence_config(state, trade)
     if not config:
         return None
 
@@ -434,15 +590,15 @@ def extract_licence_from_text(text: str, trade: str) -> dict | None:
     return None
 
 
-async def scan_website_for_licence(url: str, trade: str) -> dict | None:
-    """Fetch a website and scan the FULL text for VIC licence patterns.
+async def scan_website_for_licence(url: str, trade: str, state: str = "VIC") -> dict | None:
+    """Fetch a website and scan the FULL text for licence patterns (any state).
 
     Unlike scrape_website_text (capped at 5000 chars for evidence keywords),
     this scans ALL extracted text — licence numbers often appear deep in footers,
     buried under reviews and other content.
     Returns licence_info dict or None.
     """
-    if not url or not trade or trade not in _VIC_LICENCE_CONFIG:
+    if not url or not trade or not get_licence_config(state, trade):
         return None
     try:
         resp = await _http_client.get(
@@ -457,9 +613,187 @@ async def scan_website_for_licence(url: str, trade: str) -> dict | None:
         html = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r'<[^>]+>', ' ', html)
         text = re.sub(r'\s+', ' ', text).strip()
-        return extract_licence_from_text(text, trade)
+        return extract_licence_from_text(text, trade, state)
     except Exception as e:
         logger.error(f"[LICENCE-SCAN] {url}: {type(e).__name__}: {e}")
+        return None
+
+
+# ────────── WA DMIRS LICENCE LOOKUP ──────────
+
+_WA_DMIRS_URL = "https://occupationallicensing.dmirs.wa.gov.au/onlinelicencesearch/licenceSearch.jspx"
+_WA_DMIRS_PARAMS = {"BranchGroupCode": "WS"}
+
+
+def _wa_dmirs_extract_viewstate(html: str) -> str | None:
+    """Extract javax.faces.ViewState value from DMIRS search page HTML."""
+    if not html:
+        return None
+    m = re.search(
+        r'<input[^>]*name=["\']javax\.faces\.ViewState["\'][^>]*value=["\']([^"\']+)["\']',
+        html, re.IGNORECASE,
+    )
+    if m:
+        return m.group(1)
+    # Try value-before-name order
+    m = re.search(
+        r'<input[^>]*value=["\']([^"\']+)["\'][^>]*name=["\']javax\.faces\.ViewState["\']',
+        html, re.IGNORECASE,
+    )
+    return m.group(1) if m else None
+
+
+def _wa_dmirs_parse_results(html: str) -> list[dict]:
+    """Parse DMIRS search results HTML into licence dicts.
+
+    Results table uses licenceElementTitle links (alternating name, licence_no)
+    and licenceStatus spans for status.
+    """
+    if not html:
+        return []
+
+    results = []
+
+    # Find all result blocks — each has a title link + status span
+    # Pattern: licenceElementTitle links come in pairs [name, licence_no]
+    title_pattern = re.compile(
+        r'class="licenceElementTitle"[^>]*>([^<]+)<', re.IGNORECASE,
+    )
+    status_pattern = re.compile(
+        r'class="licenceStatus"[^>]*>([^<]+)<', re.IGNORECASE,
+    )
+
+    titles = title_pattern.findall(html)
+    statuses = status_pattern.findall(html)
+
+    # Titles alternate: [name, licence_no, name, licence_no, ...]
+    for i in range(0, len(titles) - 1, 2):
+        name = titles[i].strip()
+        licence_no = titles[i + 1].strip()
+        status_idx = i // 2
+        status = statuses[status_idx].strip() if status_idx < len(statuses) else "Unknown"
+        results.append({
+            "licensee": name,
+            "licence_number": licence_no,
+            "status": status,
+        })
+
+    return results
+
+
+async def wa_dmirs_lookup(search_name: str, trade: str) -> dict | None:
+    """Look up a WA trade licence via the DMIRS online search.
+
+    1. GET search page → extract ViewState + cookies
+    2. POST PrimeFaces AJAX with search name
+    3. Parse results, best-match by name
+    4. Returns standard licence_info dict or None.
+    """
+    config = get_licence_config("WA", trade)
+    if not config or "dmirs_search_code" not in config:
+        return None
+
+    try:
+        import httpx
+        # Per-call client for cookie persistence across GET→POST
+        async with httpx.AsyncClient(
+            timeout=12.0,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ServiceSeeking/1.0)"},
+            follow_redirects=True,
+        ) as client:
+            # Step 1: GET search page
+            resp = await client.get(_WA_DMIRS_URL, params=_WA_DMIRS_PARAMS)
+            if resp.status_code != 200:
+                logger.error(f"[WA-DMIRS] GET failed: {resp.status_code}")
+                return None
+
+            viewstate = _wa_dmirs_extract_viewstate(resp.text)
+            if not viewstate:
+                logger.error("[WA-DMIRS] Could not extract ViewState")
+                return None
+
+            # Step 2: POST PrimeFaces AJAX search
+            # Find the form ID and search input from the page
+            form_id_match = re.search(r'<form[^>]*id="([^"]+)"', resp.text)
+            form_id = form_id_match.group(1) if form_id_match else "mainForm"
+
+            post_data = {
+                "javax.faces.partial.ajax": "true",
+                "javax.faces.source": f"{form_id}:searchButton",
+                "javax.faces.partial.execute": f"{form_id}",
+                "javax.faces.partial.render": f"{form_id}:resultsPanel",
+                f"{form_id}:searchButton": f"{form_id}:searchButton",
+                f"{form_id}:nameInput": search_name,
+                "javax.faces.ViewState": viewstate,
+            }
+
+            resp2 = await client.post(
+                _WA_DMIRS_URL,
+                data=post_data,
+                params=_WA_DMIRS_PARAMS,
+                headers={"Faces-Request": "partial/ajax"},
+            )
+            if resp2.status_code != 200:
+                logger.error(f"[WA-DMIRS] POST failed: {resp2.status_code}")
+                return None
+
+            # Step 3: Parse results
+            results = _wa_dmirs_parse_results(resp2.text)
+            if not results:
+                logger.info(f"[WA-DMIRS] No results for '{search_name}' ({trade})")
+                return None
+
+            # Step 4: Best match — prefer current, substring match on name
+            search_lower = search_name.lower()
+            # Strip common suffixes for matching
+            clean_search = re.sub(
+                r'\s*(PTY\.?\s*LTD\.?|LTD\.?|INC\.?)\s*$', '',
+                search_lower, flags=re.IGNORECASE,
+            ).strip()
+
+            best = None
+            for r in results:
+                if r.get("status", "").lower() != "current":
+                    continue
+                lic_name = r.get("licensee", "").lower()
+                if clean_search in lic_name or lic_name in clean_search:
+                    best = r
+                    break
+
+            # Fallback: word overlap >= 50%
+            if not best:
+                current = [r for r in results if r.get("status", "").lower() == "current"]
+                if len(current) == 1:
+                    best = current[0]
+                elif current:
+                    search_words = set(clean_search.split())
+                    for r in current:
+                        lic_words = set(r.get("licensee", "").lower().split())
+                        if search_words and lic_words:
+                            overlap = len(search_words & lic_words) / min(len(search_words), len(lic_words))
+                            if overlap >= 0.5:
+                                best = r
+                                break
+
+            if not best:
+                logger.info(f"[WA-DMIRS] No matching current licence for '{search_name}'")
+                return None
+
+            logger.info(f"[WA-DMIRS] Found: {best['licensee']} — {best['licence_number']} ({best['status']})")
+            return {
+                "licence_number": best["licence_number"],
+                "licensee": best["licensee"],
+                "licence_type": trade,
+                "status": best["status"],
+                "licence_source": "wa_dmirs",
+                "classes": [{"name": c, "active": True} for c in config["default_classes"]],
+                "compliance_clean": True,
+                "associated_parties": [],
+                "business_address": "",
+            }
+
+    except Exception as e:
+        logger.error(f"[WA-DMIRS] {type(e).__name__}: {e}")
         return None
 
 

@@ -31,6 +31,7 @@ from agent.tools import (
     get_filtered_cluster_groups, scrape_website_text,
     qbcc_licence_lookup, _detect_category,
     extract_licence_from_text, scan_website_for_licence, _VIC_LICENCE_CONFIG,
+    get_licence_config, wa_dmirs_lookup,
 )
 
 
@@ -528,6 +529,7 @@ def _build_service_prompt(
         source = licence_info.get("licence_source", "nsw")
         label = {
             "qbcc_csv": "QBCC LICENCE",
+            "wa_dmirs": "WA DMIRS LICENCE",
             "web_extracted": "LICENCE NUMBER (FROM WEBSITE — UNVERIFIED)",
             "self_reported": "LICENCE NUMBER (SELF-REPORTED — UNVERIFIED)",
         }.get(source, "NSW FAIR TRADING LICENCE")
@@ -564,6 +566,8 @@ def _build_service_prompt(
         source = licence_info.get("licence_source", "nsw")
         if source == "qbcc_csv":
             licence_ack = "Mention briefly that you found their QBCC licence on file (e.g. \"I found your QBCC licence, so...\"). "
+        elif source == "wa_dmirs":
+            licence_ack = "Mention briefly that you found their WA trade licence on file. "
         elif source == "web_extracted":
             licence_ack = "Mention you spotted a licence number on their website and have noted it down — do NOT say it has been verified. "
         elif source == "self_reported":
@@ -1723,11 +1727,25 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
             return {"results": [result], "count": 1}
         return {"results": [], "count": 0}
 
+    # Pre-detect category for WA (from business name only — Google Places runs in parallel)
+    wa_detected_category = _detect_category(business_name, [], "", "") if business_state == "WA" else None
+
+    async def _wa_dmirs_as_browse():
+        """Wrap WA DMIRS lookup to match browse return shape."""
+        if not wa_detected_category:
+            return {"results": [], "count": 0}
+        result = await wa_dmirs_lookup(legal_name, wa_detected_category)
+        if result:
+            return {"results": [result], "count": 1}
+        return {"results": [], "count": 0}
+
     t0 = time.time()
     if business_state == "QLD":
         licence_task = _qbcc_as_browse()
     elif business_state == "NSW":
         licence_task = nsw_licence_browse(licence_search_name)
+    elif business_state == "WA":
+        licence_task = _wa_dmirs_as_browse()
     else:
         # No licence API for other states — return empty
         async def _no_licence():
@@ -1754,7 +1772,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     # Licences are registered under the legal/entity name. Searching generic trading
     # names (e.g. "Sydney Cleaning") returns other businesses' licences — false positives.
 
-    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse"}.get(business_state, "")
+    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse", "WA": "WA DMIRS"}.get(business_state, "")
     if licence_source_label:
         _trace(state, licence_source_label, t1 - t0,
                f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
@@ -1814,6 +1832,17 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                 "status": licence_info.get("status"),
                 "classes": licence_classes})
         # Await website text if started
+        website_text = await website_text_task if website_text_task else ""
+    elif business_state == "WA" and licence_matches:
+        # WA DMIRS search IS the detail — no separate details endpoint
+        licence_info = licence_matches[0]
+        licence_classes = [c["name"] for c in licence_info.get("classes", []) if c.get("active")]
+        logger.info(f"[BIZ] WA DMIRS licence #{licence_info.get('licence_number')} classes: {licence_classes}")
+        _trace(state, "WA DMIRS Licence", t1 - t0,
+               f"Licence #{licence_info.get('licence_number')} — {', '.join(licence_classes)}",
+               {"licence_number": licence_info.get("licence_number"),
+                "status": licence_info.get("status"),
+                "classes": licence_classes})
         website_text = await website_text_task if website_text_task else ""
     else:
         # NSW (or other states with browse-style results): find best match then get details
@@ -1906,27 +1935,30 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     detected_category = _detect_category(business_name, licence_classes,
                                           google_place.get("name", ""), google_type)
 
-    # VIC: try to extract licence from Brave descriptions, then full website scan
-    if business_state == "VIC" and not licence_info and detected_category:
-        # Quick check: Brave search descriptions (already fetched, no extra HTTP call)
-        brave_text = " ".join(r.get("description", "") for r in (web_results or [])[:3])
-        vic_licence = extract_licence_from_text(brave_text, detected_category)
-        # Full website scan: licence numbers often buried deep in footers past the 5k text limit
-        if not vic_licence and google_website:
-            t_scan = time.time()
-            vic_licence = await scan_website_for_licence(google_website, detected_category)
-            scan_time = time.time() - t_scan
-            if vic_licence:
-                logger.info(f"[BIZ] VIC licence found via full website scan: #{vic_licence['licence_number']} ({scan_time:.1f}s)")
-        if vic_licence:
-            licence_info = vic_licence
-            licence_classes = [c["name"] for c in vic_licence.get("classes", []) if c.get("active")]
-            logger.info(f"[BIZ] VIC licence extracted: #{vic_licence['licence_number']} ({detected_category})")
-            _trace(state, "VIC Web Extraction", 0,
-                   f"Extracted {detected_category} licence #{vic_licence['licence_number']} from website/Brave text",
-                   {"licence_number": vic_licence["licence_number"], "trade": detected_category})
+    # Web extraction: try to extract licence from Brave descriptions, then full website scan
+    # Applies to VIC, WA, SA, TAS, ACT, NT — any state with patterns in _STATE_LICENCE_CONFIG
+    if business_state in {"VIC", "WA", "SA", "TAS", "ACT", "NT"} and not licence_info and detected_category:
+        state_config = get_licence_config(business_state, detected_category)
+        if state_config:
+            # Quick check: Brave search descriptions (already fetched, no extra HTTP call)
+            brave_text = " ".join(r.get("description", "") for r in (web_results or [])[:3])
+            web_licence = extract_licence_from_text(brave_text, detected_category, business_state)
+            # Full website scan: licence numbers often buried deep in footers past the 5k text limit
+            if not web_licence and google_website:
+                t_scan = time.time()
+                web_licence = await scan_website_for_licence(google_website, detected_category, business_state)
+                scan_time = time.time() - t_scan
+                if web_licence:
+                    logger.info(f"[BIZ] {business_state} licence found via full website scan: #{web_licence['licence_number']} ({scan_time:.1f}s)")
+            if web_licence:
+                licence_info = web_licence
+                licence_classes = [c["name"] for c in web_licence.get("classes", []) if c.get("active")]
+                logger.info(f"[BIZ] {business_state} licence extracted: #{web_licence['licence_number']} ({detected_category})")
+                _trace(state, f"{business_state} Web Extraction", 0,
+                       f"Extracted {detected_category} licence #{web_licence['licence_number']} from website/Brave text",
+                       {"licence_number": web_licence["licence_number"], "trade": detected_category})
 
-    # Self-report routing: QLD ESO or VIC regulated trades without licence
+    # Self-report routing: QLD ESO or any state with regulated trades without licence
     needs_licence_number = False
     licence_self_report = {}
 
@@ -1942,17 +1974,18 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                 "optional": False,
                 "default_classes": ["Electrical Work"],
             }
-        elif business_state == "VIC" and detected_category in _VIC_LICENCE_CONFIG:
-            vic_config = _VIC_LICENCE_CONFIG[detected_category]
-            needs_licence_number = True
-            licence_self_report = {
-                "regulator": vic_config["regulator"],
-                "label": vic_config["label"],
-                "trade": detected_category,
-                "state": "VIC",
-                "optional": vic_config["optional"],
-                "default_classes": vic_config["default_classes"],
-            }
+        else:
+            config = get_licence_config(business_state, detected_category)
+            if config:
+                needs_licence_number = True
+                licence_self_report = {
+                    "regulator": config["regulator"],
+                    "label": config["label"],
+                    "trade": detected_category,
+                    "state": business_state,
+                    "optional": config.get("optional", False),
+                    "default_classes": config["default_classes"],
+                }
 
     return {
         "current_node": "business_verification",

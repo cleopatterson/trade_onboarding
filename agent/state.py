@@ -24,7 +24,7 @@ class OnboardingState(TypedDict):
     business_postcode: str
     business_state: str
 
-    # Licence Enrichment (from NSW Fair Trading or QBCC CSV)
+    # Licence Enrichment (from NSW Fair Trading, QBCC CSV, WA DMIRS, or web extraction)
     licence_info: dict
     licence_classes: list[str]
     _needs_licence_number: bool       # QLD/VIC: prompt for licence self-report
@@ -81,5 +81,6 @@ class OnboardingState(TypedDict):
     subscription_price: str       # e.g. "$79/mo"
     _selected_plan: str           # guard for pricing node turn 2 vs turn 3
 
-    # UI
+    # UI / Auto-chain
     buttons: list[dict]           # node-generated button options
+    _auto_chained: bool           # suppress stale user messages during auto-chain
