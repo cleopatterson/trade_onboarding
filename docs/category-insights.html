@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Category Insights — Service Seeking Onboarding</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #1a1a2e; line-height: 1.6; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
+  .subtitle { font-size: 17px; color: #666; margin-bottom: 48px; }
+
+  /* Hero stat */
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 48px; }
+  .stat-card { background: white; border-radius: 16px; padding: 32px; border: 1px solid #e8ecf0; }
+  .stat-card.highlight { background: linear-gradient(135deg, #0066cc 0%, #298AE3 100%); color: white; border: none; }
+  .stat-number { font-size: 56px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; }
+  .stat-card.highlight .stat-number { color: white; }
+  .stat-label { font-size: 15px; color: #666; margin-top: 4px; font-weight: 500; }
+  .stat-card.highlight .stat-label { color: rgba(255,255,255,0.8); }
+  .stat-sub { font-size: 13px; color: #999; margin-top: 8px; }
+  .stat-card.highlight .stat-sub { color: rgba(255,255,255,0.6); }
+
+  /* Distribution chart */
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .section-desc { font-size: 15px; color: #666; margin-bottom: 24px; }
+
+  .dist-chart { background: white; border-radius: 16px; padding: 32px; border: 1px solid #e8ecf0; }
+  .dist-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .dist-label { width: 120px; font-size: 13px; font-weight: 600; color: #444; text-align: right; flex-shrink: 0; }
+  .dist-bar-wrap { flex: 1; height: 32px; background: #f0f2f5; border-radius: 8px; overflow: hidden; position: relative; }
+  .dist-bar { height: 100%; border-radius: 8px; display: flex; align-items: center; padding-left: 12px; min-width: 40px; transition: width 0.6s ease; }
+  .dist-bar span { font-size: 12px; font-weight: 700; color: white; white-space: nowrap; }
+  .dist-pct { width: 50px; font-size: 13px; font-weight: 600; color: #666; }
+
+  /* Top categories */
+  .top-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .cat-card { background: white; border-radius: 14px; padding: 20px 24px; border: 1px solid #e8ecf0; display: flex; align-items: center; gap: 16px; }
+  .cat-rank { font-size: 24px; font-weight: 800; color: #ddd; width: 36px; text-align: center; flex-shrink: 0; }
+  .cat-rank.top3 { color: #0066cc; }
+  .cat-info { flex: 1; }
+  .cat-name { font-size: 16px; font-weight: 600; }
+  .cat-count { font-size: 13px; color: #888; }
+  .cat-bar-mini { height: 4px; background: #f0f2f5; border-radius: 2px; margin-top: 6px; }
+  .cat-bar-fill { height: 4px; background: linear-gradient(90deg, #0066cc, #298AE3); border-radius: 2px; }
+
+  /* Suggestion network */
+  .network-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  .network-card { background: white; border-radius: 16px; padding: 28px; border: 1px solid #e8ecf0; }
+  .network-trade { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .network-count { font-size: 13px; color: #888; margin-bottom: 16px; }
+  .suggestion-list { display: flex; flex-wrap: wrap; gap: 10px; }
+  .suggestion-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #f0f6ff; border: 1px solid #d0e2ff; border-radius: 20px; font-size: 14px; font-weight: 500; color: #0066cc; }
+  .suggestion-pct { font-size: 12px; font-weight: 700; background: #0066cc; color: white; padding: 2px 7px; border-radius: 10px; }
+  .suggestion-chip.low { background: #f8f8f8; border-color: #e0e0e0; color: #666; }
+  .suggestion-chip.low .suggestion-pct { background: #aaa; }
+
+  /* How it works */
+  .how-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .how-step { background: white; border-radius: 14px; padding: 24px; border: 1px solid #e8ecf0; text-align: center; }
+  .how-num { font-size: 32px; font-weight: 800; color: #0066cc; margin-bottom: 8px; }
+  .how-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .how-desc { font-size: 13px; color: #666; line-height: 1.5; }
+
+  /* Why section */
+  .why-card { background: white; border-radius: 16px; padding: 32px; border: 1px solid #e8ecf0; }
+  .why-point { display: flex; gap: 16px; margin-bottom: 20px; }
+  .why-point:last-child { margin-bottom: 0; }
+  .why-icon { width: 40px; height: 40px; background: #f0f6ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .why-text h4 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .why-text p { font-size: 14px; color: #666; }
+
+  @media (max-width: 768px) {
+    .hero-stats, .top-cats, .how-steps { grid-template-columns: 1fr; }
+    .stat-number { font-size: 42px; }
+    .dist-label { width: 80px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Category Insights</h1>
+  <p class="subtitle">How Service Seeking businesses list across categories — and how the onboarding wizard uses this to suggest extra leads.</p>
+
+  <!-- Hero stats -->
+  <div class="hero-stats">
+    <div class="stat-card highlight">
+      <div class="stat-number">49.7%</div>
+      <div class="stat-label">of businesses list in 2+ categories</div>
+      <div class="stat-sub">130,304 of 262,019 businesses with industry data</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:#0066cc">3.8</div>
+      <div class="stat-label">average categories per multi-industry business</div>
+      <div class="stat-sub">Sweet spot is 2-8 categories (42% of all businesses)</div>
+    </div>
+  </div>
+
+  <!-- Distribution -->
+  <div class="section">
+    <h2 class="section-title">How many categories do businesses list?</h2>
+    <p class="section-desc">Half of businesses list a single category. The other half spread across 2-8+, suggesting significant cross-sell opportunity during onboarding.</p>
+    <div class="dist-chart">
+      <div class="dist-row">
+        <div class="dist-label">1 category</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:100%; background:#94a3b8;"><span>131,715</span></div></div>
+        <div class="dist-pct">50.3%</div>
+      </div>
+      <div class="dist-row">
+        <div class="dist-label">2 categories</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:30.6%; background:#0066cc;"><span>40,269</span></div></div>
+        <div class="dist-pct">15.4%</div>
+      </div>
+      <div class="dist-row">
+        <div class="dist-label">3 categories</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:18.6%; background:#0077dd;"><span>24,543</span></div></div>
+        <div class="dist-pct">9.4%</div>
+      </div>
+      <div class="dist-row">
+        <div class="dist-label">4 categories</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:12.1%; background:#1188ee;"><span>15,901</span></div></div>
+        <div class="dist-pct">6.1%</div>
+      </div>
+      <div class="dist-row">
+        <div class="dist-label">5 categories</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:5.8%; background:#298AE3;"><span>7,625</span></div></div>
+        <div class="dist-pct">2.9%</div>
+      </div>
+      <div class="dist-row">
+        <div class="dist-label">6-8 categories</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:14.5%; background:#4da6ff;"><span>19,083</span></div></div>
+        <div class="dist-pct">7.3%</div>
+      </div>
+      <div class="dist-row">
+        <div class="dist-label">9+ categories</div>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:17.6%; background:#7fbfff;"><span>22,883</span></div></div>
+        <div class="dist-pct">8.7%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top categories -->
+  <div class="section">
+    <h2 class="section-title">Top 12 categories by business count</h2>
+    <p class="section-desc">Cleaner and Handyman dominate — both are common secondary listings for tradies branching out.</p>
+    <div class="top-cats">
+      <div class="cat-card"><div class="cat-rank top3">1</div><div class="cat-info"><div class="cat-name">Cleaner</div><div class="cat-count">57,055 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:100%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank top3">2</div><div class="cat-info"><div class="cat-name">Handyman</div><div class="cat-count">38,650 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:67.7%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank top3">3</div><div class="cat-info"><div class="cat-name">Carpenter</div><div class="cat-count">38,465 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:67.4%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">4</div><div class="cat-info"><div class="cat-name">Builder</div><div class="cat-count">30,102 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:52.8%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">5</div><div class="cat-info"><div class="cat-name">Concreter</div><div class="cat-count">29,342 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:51.4%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">6</div><div class="cat-info"><div class="cat-name">Bathroom Reno</div><div class="cat-count">28,807 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:50.5%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">7</div><div class="cat-info"><div class="cat-name">Gardener</div><div class="cat-count">26,504 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:46.5%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">8</div><div class="cat-info"><div class="cat-name">Electrician</div><div class="cat-count">24,810 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:43.5%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">9</div><div class="cat-info"><div class="cat-name">Upholsterer</div><div class="cat-count">23,429 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:41.1%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">10</div><div class="cat-info"><div class="cat-name">Painter</div><div class="cat-count">23,427 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:41.1%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">11</div><div class="cat-info"><div class="cat-name">Kitchen Reno</div><div class="cat-count">22,706 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:39.8%"></div></div></div></div>
+      <div class="cat-card"><div class="cat-rank">12</div><div class="cat-info"><div class="cat-name">Plumber</div><div class="cat-count">21,539 businesses</div><div class="cat-bar-mini"><div class="cat-bar-fill" style="width:37.8%"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- What we suggest and why -->
+  <div class="section">
+    <h2 class="section-title">What we suggest — and why</h2>
+    <p class="section-desc">During onboarding, the wizard suggests related categories based on real co-occurrence patterns. The percentage shows how many businesses of that trade also list under the suggested category. Only suggestions above 15% are shown.</p>
+
+    <div class="network-grid">
+      <div class="network-card">
+        <div class="network-trade">Plumber</div>
+        <div class="network-count">21,539 businesses — strong overlap with building trades</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip"><span>Handyman</span><span class="suggestion-pct">83%</span></div>
+          <div class="suggestion-chip"><span>Builder</span><span class="suggestion-pct">69%</span></div>
+          <div class="suggestion-chip"><span>Bathroom Renovation</span><span class="suggestion-pct">62%</span></div>
+          <div class="suggestion-chip"><span>Carpenter</span><span class="suggestion-pct">62%</span></div>
+          <div class="suggestion-chip"><span>Roofer</span><span class="suggestion-pct">62%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Electrician</div>
+        <div class="network-count">24,810 businesses — more specialised, lower cross-listing</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip"><span>Handyman</span><span class="suggestion-pct">36%</span></div>
+          <div class="suggestion-chip"><span>Upholsterer</span><span class="suggestion-pct">34%</span></div>
+          <div class="suggestion-chip"><span>Lighting Installation</span><span class="suggestion-pct">31%</span></div>
+          <div class="suggestion-chip"><span>Home Theatre</span><span class="suggestion-pct">29%</span></div>
+          <div class="suggestion-chip low"><span>Solar Company</span><span class="suggestion-pct">27%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Carpenter</div>
+        <div class="network-count">38,465 businesses — heavy overlap with handyman and building</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip"><span>Handyman</span><span class="suggestion-pct">57%</span></div>
+          <div class="suggestion-chip"><span>Builder</span><span class="suggestion-pct">50%</span></div>
+          <div class="suggestion-chip"><span>Concreter</span><span class="suggestion-pct">48%</span></div>
+          <div class="suggestion-chip"><span>Bathroom Renovation</span><span class="suggestion-pct">44%</span></div>
+          <div class="suggestion-chip"><span>Kitchen Renovation</span><span class="suggestion-pct">42%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Builder</div>
+        <div class="network-count">30,102 businesses — the most connected trade category</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip"><span>Carpenter</span><span class="suggestion-pct">63%</span></div>
+          <div class="suggestion-chip"><span>Handyman</span><span class="suggestion-pct">62%</span></div>
+          <div class="suggestion-chip"><span>Bathroom Renovation</span><span class="suggestion-pct">57%</span></div>
+          <div class="suggestion-chip"><span>Kitchen Renovation</span><span class="suggestion-pct">55%</span></div>
+          <div class="suggestion-chip"><span>Plumber</span><span class="suggestion-pct">50%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Cleaner</div>
+        <div class="network-count">57,055 businesses — clusters with specialist cleaning</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip low"><span>Carpet Cleaner</span><span class="suggestion-pct">24%</span></div>
+          <div class="suggestion-chip low"><span>Window Cleaner</span><span class="suggestion-pct">24%</span></div>
+          <div class="suggestion-chip low"><span>High Pressure Cleaning</span><span class="suggestion-pct">23%</span></div>
+          <div class="suggestion-chip low"><span>Aircon &amp; Heating</span><span class="suggestion-pct">22%</span></div>
+          <div class="suggestion-chip low"><span>Housekeeper</span><span class="suggestion-pct">16%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Gardener</div>
+        <div class="network-count">26,504 businesses — tight cluster with outdoor trades</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip"><span>Landscaper</span><span class="suggestion-pct">50%</span></div>
+          <div class="suggestion-chip"><span>Arborist</span><span class="suggestion-pct">46%</span></div>
+          <div class="suggestion-chip"><span>Earthworks</span><span class="suggestion-pct">39%</span></div>
+          <div class="suggestion-chip low"><span>Handyman</span><span class="suggestion-pct">31%</span></div>
+          <div class="suggestion-chip low"><span>Carpenter</span><span class="suggestion-pct">23%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Painter</div>
+        <div class="network-count">23,427 businesses — lower cross-listing rates, more focused</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip low"><span>Handyman</span><span class="suggestion-pct">23%</span></div>
+          <div class="suggestion-chip low"><span>Carpenter</span><span class="suggestion-pct">20%</span></div>
+          <div class="suggestion-chip low"><span>Roofer</span><span class="suggestion-pct">18%</span></div>
+          <div class="suggestion-chip low"><span>Bathroom Renovation</span><span class="suggestion-pct">16%</span></div>
+          <div class="suggestion-chip low"><span>Builder</span><span class="suggestion-pct">15%</span></div>
+        </div>
+      </div>
+
+      <div class="network-card">
+        <div class="network-trade">Landscaper</div>
+        <div class="network-count">16,377 businesses — mirror of gardener cluster</div>
+        <div class="suggestion-list">
+          <div class="suggestion-chip"><span>Gardener</span><span class="suggestion-pct">81%</span></div>
+          <div class="suggestion-chip"><span>Earthworks</span><span class="suggestion-pct">65%</span></div>
+          <div class="suggestion-chip"><span>Arborist</span><span class="suggestion-pct">57%</span></div>
+          <div class="suggestion-chip"><span>Handyman</span><span class="suggestion-pct">40%</span></div>
+          <div class="suggestion-chip low"><span>Carpenter</span><span class="suggestion-pct">35%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section">
+    <h2 class="section-title">How it works</h2>
+    <p class="section-desc">Three-step pipeline: analyse real data, suggest at onboarding, map services.</p>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-num">1</div>
+        <div class="how-title">Analyse co-occurrence</div>
+        <div class="how-desc">Script processes 262k real SS business profiles. For each category, counts what % of those businesses also list under other categories. Filters: min 10 businesses, min 15% co-occurrence, max 5 suggestions.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">2</div>
+        <div class="how-title">Suggest during onboarding</div>
+        <div class="how-desc">After detecting "Plumber" from ABN/licence, shows: "Most plumbers also list under Handyman, Builder, Bathroom Reno." User toggles which apply — multi-select buttons, no typing needed.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">3</div>
+        <div class="how-title">Map extra services</div>
+        <div class="how-desc">Accepted categories get the same tiered service mapping as the primary trade — core services auto-added, specialist gaps asked about. Non-tiered categories go through LLM mapping.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Why -->
+  <div class="section">
+    <h2 class="section-title">Why this matters</h2>
+    <div class="why-card">
+      <div class="why-point">
+        <div class="why-icon">📈</div>
+        <div class="why-text">
+          <h4>More leads for tradies</h4>
+          <p>A plumber who also lists under Handyman and Bathroom Renovation sees 3x the lead volume. 83% of plumbers on the platform already do this — the wizard helps new signups catch up instantly.</p>
+        </div>
+      </div>
+      <div class="why-point">
+        <div class="why-icon">🎯</div>
+        <div class="why-text">
+          <h4>Data-driven, not guesswork</h4>
+          <p>Suggestions come from what 262k real businesses actually do — not what we think they should do. A 83% co-occurrence means "this is nearly universal for this trade".</p>
+        </div>
+      </div>
+      <div class="why-point">
+        <div class="why-icon">⚡</div>
+        <div class="why-text">
+          <h4>Zero friction to accept</h4>
+          <p>One tap on "Yes, all of these" or toggle individual categories. No typing, no searching through a dropdown of 200+ categories. The data picks the right 3-5 suggestions.</p>
+        </div>
+      </div>
+      <div class="why-point">
+        <div class="why-icon">🔄</div>
+        <div class="why-text">
+          <h4>Regeneratable</h4>
+          <p>As the business mix on SS changes, re-run the analysis script on a fresh export. New co-occurrence patterns automatically flow into onboarding suggestions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align:center; color:#999; font-size:13px; margin-top:40px;">Data source: Service Seeking business export (262,019 businesses) · Analysis: <code>scripts/analyse_categories.py</code> · Output: <code>resources/related_categories.json</code></p>
+
+</div>
+</body>
+</html>

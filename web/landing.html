@@ -569,6 +569,54 @@
       background: #e8f0fe;
     }
 
+    .wizard-button-multi {
+      padding: 14px 20px;
+      background: white;
+      border: 2px solid #EDEDED;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #202020;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      line-height: 100%;
+      letter-spacing: -0.018em;
+    }
+    .wizard-button-multi:hover {
+      border-color: #167DD5;
+      background: #f8faff;
+    }
+    .wizard-button-multi .multi-check {
+      width: 22px; height: 22px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .wizard-button-multi .multi-check i {
+      font-size: 12px; color: white; opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .wizard-button-multi:hover .multi-check {
+      border-color: #167DD5;
+    }
+    .wizard-button-multi.selected {
+      border-color: #0066cc;
+      background: #f0f6ff;
+    }
+    .wizard-button-multi.selected .multi-check {
+      background: #0066cc; border-color: #0066cc;
+    }
+    .wizard-button-multi.selected .multi-check i {
+      opacity: 1;
+    }
+
     /* Editable confirmation chips */
     .edit-section {
       margin: 16px 0;
@@ -1173,6 +1221,7 @@
       .wizard-question-text { font-size: 16px; }
       .wizard-button { padding: 12px 16px; }
       .wizard-button:hover { transform: none; }
+      .wizard-button-multi { padding: 12px 16px; }
       .wizard-input-row { gap: 0.4rem; }
       .wizard-text-input { height: 48px; font-size: 16px; }
       .wizard-submit-btn { width: 48px; height: 48px; }
@@ -1501,6 +1550,7 @@
 
       const text = response?.text || '';
       const buttons = response?.buttons || [];
+      const isMultiSelect = response?._multiselect === true;
 
       // Format text - handle bullet lists
       const formattedText = formatText(text);
@@ -1516,29 +1566,43 @@
         const isEditMode = buttons.some(b => b.label.startsWith('\u2715'));
         html += `<div class="wizard-buttons-container${isEditMode ? ' wizard-buttons-wrap' : ''}">`;
         buttons.forEach((btn, i) => {
-          const isConfirm = btn.label.toLowerCase().includes('confirm');
-          const isDone = btn.label.toLowerCase().includes('done');
-          const isRemove = btn.label.startsWith('\u2715');
-          const cls = isConfirm ? 'wizard-button wizard-button-confirm'
-            : isRemove ? 'wizard-button wizard-button-remove'
-            : isDone ? 'wizard-button wizard-button-done'
-            : 'wizard-button';
-          html += `
-            <button class="${cls}" id="wizardBtn${i}" data-value="${escapeHtml(btn.value)}">
-              <span>${escapeHtml(btn.label)}</span>
-              ${isRemove ? '' : '<i class="fas fa-arrow-right"></i>'}
-            </button>
-          `;
+          const isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these';
+          if (isMultiSelect && !isActionBtn) {
+            // Multi-select toggle button with checkbox on right
+            html += `
+              <button class="wizard-button-multi" id="wizardBtn${i}" data-value="${escapeHtml(btn.value)}">
+                <span>${escapeHtml(btn.label)}</span>
+                <span class="multi-check"><i class="fas fa-check"></i></span>
+              </button>
+            `;
+          } else {
+            const isConfirm = btn.label.toLowerCase().includes('confirm');
+            const isDone = btn.label.toLowerCase().includes('done');
+            const isRemove = btn.label.startsWith('\u2715');
+            const cls = isConfirm ? 'wizard-button wizard-button-confirm'
+              : isRemove ? 'wizard-button wizard-button-remove'
+              : isDone ? 'wizard-button wizard-button-done'
+              : 'wizard-button';
+            html += `
+              <button class="${cls}" id="wizardBtn${i}" data-value="${escapeHtml(btn.value)}">
+                <span>${escapeHtml(btn.label)}</span>
+                ${isRemove ? '' : '<i class="fas fa-arrow-right"></i>'}
+              </button>
+            `;
+          }
         });
         html += '</div>';
         html += '<div class="wizard-divider"><span>or type below</span></div>';
       }
 
-      // Input row
+      // Input row — always visible
+      const placeholder = node === 'welcome'
+        ? 'e.g. Smith Plumbing or 51 824 753 556'
+        : 'Type your answer...';
       html += `
         <div class="wizard-input-row">
           <input type="text" class="wizard-text-input" id="wizardInput"
-                 placeholder="Type your answer..." maxlength="500"
+                 placeholder="${placeholder}" maxlength="500"
                  onkeypress="if(event.key==='Enter')submitInput()">
           <button class="wizard-submit-btn" onclick="submitInput()">
             <i class="fas fa-paper-plane"></i>
@@ -1554,7 +1618,24 @@
       buttons.forEach((btn, i) => {
         const el = document.getElementById(`wizardBtn${i}`);
         if (!el) return;
-        if (isEditMode && btn.label.startsWith('\u2715')) {
+        const isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these';
+        if (isMultiSelect && !isActionBtn) {
+          // Multi-select toggle: tap to select/deselect, populate input field
+          el.addEventListener('click', () => {
+            el.classList.toggle('selected');
+            const selected = [];
+            buttons.forEach((b, j) => {
+              const bel = document.getElementById(`wizardBtn${j}`);
+              if (bel && bel.classList.contains('selected')) selected.push(b.label);
+            });
+            const input = document.getElementById('wizardInput');
+            const submitBtn = document.querySelector('.wizard-submit-btn');
+            if (input) {
+              input.value = selected.join(', ');
+              if (submitBtn) submitBtn.classList.toggle('active', selected.length > 0);
+            }
+          });
+        } else if (isEditMode && btn.label.startsWith('\u2715')) {
           // Toggle mode: tap to cross off / restore
           el.addEventListener('click', () => {
             el.classList.toggle('toggled-off');

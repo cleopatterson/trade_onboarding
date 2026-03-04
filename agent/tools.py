@@ -797,51 +797,75 @@ async def wa_dmirs_lookup(search_name: str, trade: str) -> dict | None:
         return None
 
 
+def _gaps_for_category(cat_key: str, cat_data: dict, mapped_ids: set[int],
+                       mapped_names: set[str], seen_names: set[str]) -> list[dict]:
+    """Compute gaps for a single category. Mutates seen_names for cross-category dedup."""
+    cat_id = cat_data.get("category_id", 0)
+    cat_name = cat_data.get("category_name", cat_key)
+    gaps = []
+    for sc in cat_data.get("subcategories", []):
+        sc_id = sc.get("subcategory_id")
+        sc_name = sc.get("subcategory_name", "")
+        if sc_id and int(sc_id) not in mapped_ids and sc_name not in mapped_names and sc_name not in seen_names:
+            seen_names.add(sc_name)
+            gaps.append({
+                "subcategory_id": sc_id,
+                "subcategory_name": sc_name,
+                "category_id": cat_id,
+                "category_name": cat_name,
+            })
+    return gaps
+
+
 def compute_service_gaps(services: list[dict], business_name: str,
                          licence_classes: list[str] | None = None,
                          google_business_name: str = "",
                          google_primary_type: str = "") -> list[dict]:
     """Compute which subcategories are NOT yet mapped for this trade.
 
-    Loads the full subcategory list for the matched category, diffs against
-    subcategory_ids already in the services list.
-    Returns list of {"subcategory_id": ..., "subcategory_name": ...} dicts.
+    Supports multi-category: collects ALL distinct category_name values from
+    existing services + _detect_categories(), computes gaps for each.
+    Returns merged flat list of {"subcategory_id": ..., "subcategory_name": ...} dicts.
     """
     categories = _load_categories()
     if not categories:
         return []
 
-    # Priority 1: if services are already mapped, detect category from them
-    # (avoids mismatch for multi-trade businesses, e.g. licence says Electrician
-    #  but mapped services are all Plumber)
-    matched_cat_key = None
+    # Collect all category keys from existing services
+    matched_cat_keys: list[str] = []
+    seen_keys: set[str] = set()
     if services:
-        cat_counts: dict[str, int] = {}
         for s in services:
             cn = s.get("category_name", "")
-            if cn:
-                cat_counts[cn] = cat_counts.get(cn, 0) + 1
-        if cat_counts:
-            most_common = max(cat_counts, key=cat_counts.get)
-            if most_common in categories:
-                matched_cat_key = most_common
+            if cn and cn in categories and cn not in seen_keys:
+                seen_keys.add(cn)
+                matched_cat_keys.append(cn)
 
-    # Priorities 2-5: business name, licence classes, Google name, Google type
-    if not matched_cat_key:
-        matched_cat_key = _detect_category(
+    # Also detect categories from business signals (catches categories not yet serviced)
+    detected = _detect_categories(
+        business_name, licence_classes or [],
+        google_business_name, google_primary_type,
+    )
+    for dk in detected:
+        if dk in categories and dk not in seen_keys:
+            seen_keys.add(dk)
+            matched_cat_keys.append(dk)
+
+    # Fallback: single detect (backward compat for edge cases)
+    if not matched_cat_keys:
+        single = _detect_category(
             business_name, licence_classes,
             google_business_name, google_primary_type,
         )
+        if single and single in categories:
+            matched_cat_keys = [single]
 
-    if not matched_cat_key or matched_cat_key not in categories:
+    if not matched_cat_keys:
         return []
 
-    cat_data = categories[matched_cat_key]
-    all_subcats = cat_data.get("subcategories", [])
-
     # Get IDs and names already mapped (coerce to int for safe comparison)
-    mapped_ids = set()
-    mapped_names = set()
+    mapped_ids: set[int] = set()
+    mapped_names: set[str] = set()
     for s in services:
         sid = s.get("subcategory_id")
         if sid is not None:
@@ -853,25 +877,15 @@ def compute_service_gaps(services: list[dict], business_name: str,
         if sn:
             mapped_names.add(sn)
 
-    cat_id = cat_data.get("category_id", 0)
+    # Compute gaps for each category (deduplicate by name across categories)
+    all_gaps: list[dict] = []
+    seen_gap_names: set[str] = set()
+    for cat_key in matched_cat_keys:
+        cat_data = categories[cat_key]
+        gaps = _gaps_for_category(cat_key, cat_data, mapped_ids, mapped_names, seen_gap_names)
+        all_gaps.extend(gaps)
 
-    # Return unmatched (deduplicate by name to handle duplicate subcategory entries
-    # e.g. Carpenter "Skirting" id:871 + id:872, Gardener "Grey Water Systems" id:1050 + id:1200)
-    gaps = []
-    seen_names = set()
-    for sc in all_subcats:
-        sc_id = sc.get("subcategory_id")
-        sc_name = sc.get("subcategory_name", "")
-        if sc_id and int(sc_id) not in mapped_ids and sc_name not in mapped_names and sc_name not in seen_names:
-            seen_names.add(sc_name)
-            gaps.append({
-                "subcategory_id": sc_id,
-                "subcategory_name": sc_name,
-                "category_id": cat_id,
-                "category_name": cat_data.get("category_name", matched_cat_key),
-            })
-
-    return gaps
+    return all_gaps
 
 
 # ────────── TIERED SERVICE MAPPING ──────────
@@ -891,6 +905,129 @@ def _load_service_tiers() -> dict:
         return _tiers_cache
     _tiers_cache = {}
     return _tiers_cache
+
+
+# ────────── RELATED CATEGORIES (CO-OCCURRENCE DATA) ──────────
+
+_related_categories_cache = None
+
+def _load_related_categories() -> dict:
+    """Load related_categories.json. Cached on first read."""
+    global _related_categories_cache
+    if _related_categories_cache is not None:
+        return _related_categories_cache
+
+    rc_file = RESOURCES_DIR / "related_categories.json"
+    if rc_file.exists():
+        with open(rc_file) as f:
+            _related_categories_cache = json.load(f)
+        return _related_categories_cache
+    _related_categories_cache = {}
+    return _related_categories_cache
+
+
+def suggest_related_categories(
+    detected_categories: list[str],
+    min_pct: int = 15,
+    max_suggestions: int = 4,
+) -> list[dict]:
+    """Return related categories not already detected.
+
+    Uses co-occurrence data from related_categories.json.
+    Returns [{"category": "Handyman", "pct": 42}, ...] sorted by pct desc.
+    """
+    related = _load_related_categories()
+    if not related or not detected_categories:
+        return []
+
+    detected_set = set(detected_categories)
+    # Gather suggestions from all detected categories, deduplicate
+    seen: set[str] = set()
+    candidates: list[dict] = []
+
+    for cat in detected_categories:
+        for entry in related.get(cat, []):
+            name = entry["category"]
+            pct = entry["pct"]
+            if name in detected_set or name in seen or pct < min_pct:
+                continue
+            seen.add(name)
+            candidates.append({"category": name, "pct": pct})
+
+    candidates.sort(key=lambda x: x["pct"], reverse=True)
+    return candidates[:max_suggestions]
+
+
+def map_extra_categories(
+    category_names: list[str],
+    existing_services: list[dict],
+    existing_mapped_names: set[str],
+    evidence_lower: str,
+    licence_classes: list[str],
+) -> tuple[list[dict], list[dict], set[str]]:
+    """Map services + gaps for additional accepted categories.
+
+    For tiered categories: runs _map_single_tier() to get core/evidence/licence services.
+    For non-tiered categories: loads all subcategories as gaps for LLM.
+    Returns (new_services, new_gaps, updated_mapped_names).
+    """
+    tiers = _load_service_tiers()
+    categories = _load_categories()
+    if not categories:
+        return [], [], set(existing_mapped_names)
+
+    all_new_services: list[dict] = []
+    all_new_gaps: list[dict] = []
+    mapped_names = set(existing_mapped_names)
+
+    # Also exclude names already in existing_services
+    for svc in existing_services:
+        mapped_names.add(svc.get("subcategory_name", ""))
+
+    for cat_name in category_names:
+        cat_data = categories.get(cat_name)
+        if not cat_data:
+            continue
+
+        tier_def = tiers.get(cat_name)
+        if tier_def and cat_data:
+            # Tiered: map core/evidence/licence services
+            new_svcs, mapped_names = _map_single_tier(
+                tier_def, cat_data, evidence_lower, licence_classes, mapped_names,
+            )
+            all_new_services.extend(new_svcs)
+
+            # Specialist gaps for this category (unmapped subcategories)
+            cat_id = cat_data.get("category_id", 0)
+            cat_display = cat_data.get("category_name", cat_name)
+            for sc in cat_data.get("subcategories", []):
+                sc_name = sc["subcategory_name"]
+                if sc_name not in mapped_names:
+                    all_new_gaps.append({
+                        "subcategory_id": sc["subcategory_id"],
+                        "subcategory_name": sc_name,
+                        "category_id": cat_id,
+                        "category_name": cat_display,
+                    })
+                    mapped_names.add(sc_name)
+        else:
+            # Non-tiered: all subcategories become gaps for LLM
+            cat_id = cat_data.get("category_id", 0)
+            cat_display = cat_data.get("category_name", cat_name)
+            for sc in cat_data.get("subcategories", []):
+                sc_name = sc["subcategory_name"]
+                if sc_name not in mapped_names:
+                    all_new_gaps.append({
+                        "subcategory_id": sc["subcategory_id"],
+                        "subcategory_name": sc_name,
+                        "category_id": cat_id,
+                        "category_name": cat_display,
+                    })
+                    mapped_names.add(sc_name)
+
+    logger.info(f"[EXTRA-CAT] Mapped {len(all_new_services)} services + {len(all_new_gaps)} gaps "
+                f"from extra categories: {category_names}")
+    return all_new_services, all_new_gaps, mapped_names
 
 
 def _detect_category(business_name: str, licence_classes: list[str] | None,
@@ -931,44 +1068,73 @@ def _detect_category(business_name: str, licence_classes: list[str] | None,
     return None
 
 
-def compute_initial_services(
-    business_name: str,
-    licence_classes: list[str],
-    google_business_name: str,
-    google_primary_type: str,
-    google_reviews: list[dict],
-    web_results: list[dict],
-    website_text: str = "",
-) -> dict:
-    """Build initial service list using tiered mapping from guides.
+def _detect_categories(business_name: str, licence_classes: list[str] | None,
+                       google_business_name: str, google_primary_type: str,
+                       max_categories: int = 2) -> list[str]:
+    """Detect ALL matching trade categories (up to max_categories) using the priority chain.
 
-    Returns:
-      {"services": [...], "specialist_gaps": [...], "category_name": str, "tiered": True}
-      or {"tiered": False} if no tier definition exists for this trade.
+    Unlike _detect_category() which returns on first hit, this scans ALL keywords
+    across all 4 priority levels and collects unique matches. Capped at max_categories.
+    Returns [] if no match.
     """
-    tiers = _load_service_tiers()
-    categories = _load_categories()
-    if not tiers or not categories:
-        return {"tiered": False}
+    seen: set[str] = set()
+    results: list[str] = []
 
-    # Detect category
-    cat_key = _detect_category(business_name, licence_classes,
-                               google_business_name, google_primary_type)
-    if not cat_key or cat_key not in tiers or cat_key not in categories:
-        return {"tiered": False}
+    def _add(cat_key: str):
+        if cat_key not in seen and len(results) < max_categories:
+            seen.add(cat_key)
+            results.append(cat_key)
 
-    tier_def = tiers[cat_key]
-    cat_data = categories[cat_key]
+    # Priority 1: business name
+    name_lower = business_name.lower()
+    for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+        if keyword in name_lower:
+            _add(cat_key)
+
+    # Priority 2: licence classes
+    if licence_classes:
+        for lc in licence_classes:
+            lc_lower = lc.lower()
+            for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+                if keyword in lc_lower:
+                    _add(cat_key)
+
+    # Priority 3: Google Places business name
+    if google_business_name:
+        gname_lower = google_business_name.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in gname_lower:
+                _add(cat_key)
+
+    # Priority 4: Google Places primary type
+    if google_primary_type:
+        gtype_lower = google_primary_type.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in gtype_lower:
+                _add(cat_key)
+
+    return results
+
+
+def _map_single_tier(
+    tier_def: dict, cat_data: dict, evidence_lower: str,
+    licence_classes: list[str], already_mapped_names: set[str],
+) -> tuple[list[dict], set[str]]:
+    """Map services for one category using core/evidence/licence tiers.
+
+    Returns (new_services, new_mapped_names) for this category.
+    Skips any service name already in already_mapped_names.
+    """
     cat_id = cat_data.get("category_id", 0)
-    cat_name = cat_data.get("category_name", cat_key)
+    cat_name = cat_data.get("category_name", "")
     all_subcats = cat_data.get("subcategories", [])
 
-    # Build name→subcat lookup for resolving tier names to full objects
+    # Build name→subcat lookup
     subcat_by_name: dict[str, dict] = {}
     for sc in all_subcats:
         subcat_by_name[sc["subcategory_name"]] = sc
 
-    def _resolve(name: str) -> dict | None:
+    def _resolve(name: str, confidence: str = "high") -> dict | None:
         sc = subcat_by_name.get(name)
         if not sc:
             return None
@@ -978,50 +1144,42 @@ def compute_initial_services(
             "category_id": cat_id,
             "subcategory_name": sc["subcategory_name"],
             "subcategory_id": sc["subcategory_id"],
-            "confidence": "high",
+            "confidence": confidence,
         }
 
+    services: list[dict] = []
+    mapped_names: set[str] = set(already_mapped_names)
+
     # 1. Core services — always mapped
-    services = []
-    mapped_names: set[str] = set()
     for name in tier_def.get("core", []):
+        if name in mapped_names:
+            continue
         svc = _resolve(name)
         if svc:
             services.append(svc)
             mapped_names.add(name)
 
-    # 2. Evidence-based services — scan reviews + web results + website text for keywords
-    evidence_text = ""
-    for rev in google_reviews:
-        evidence_text += " " + rev.get("text", "")
-    for wr in web_results:
-        evidence_text += " " + wr.get("title", "") + " " + wr.get("description", "")
-    if website_text:
-        evidence_text += " " + website_text
-    evidence_lower = evidence_text.lower()
-
+    # 2. Evidence-based services
     for svc_name, keywords in tier_def.get("evidence_keywords", {}).items():
         if svc_name in mapped_names:
             continue
         for kw in keywords:
             if kw in evidence_lower:
-                svc = _resolve(svc_name)
+                svc = _resolve(svc_name, "evidence")
                 if svc:
-                    svc["confidence"] = "evidence"
                     services.append(svc)
                     mapped_names.add(svc_name)
                 break
 
-    # 3. Licence signal services — scan licence classes AND evidence text for signal keywords
+    # 3. Licence signal services
     for svc_name, signals in tier_def.get("licence_signals", {}).items():
         if svc_name in mapped_names:
             continue
-        # First check evidence text (website, reviews, web results)
+        # First check evidence text
         for sig in signals:
             if sig in evidence_lower:
-                svc = _resolve(svc_name)
+                svc = _resolve(svc_name, "evidence")
                 if svc:
-                    svc["confidence"] = "evidence"
                     services.append(svc)
                     mapped_names.add(svc_name)
                 break
@@ -1033,9 +1191,8 @@ def compute_initial_services(
             matched = False
             for sig in signals:
                 if sig in lc_lower:
-                    svc = _resolve(svc_name)
+                    svc = _resolve(svc_name, "licence")
                     if svc:
-                        svc["confidence"] = "licence"
                         services.append(svc)
                         mapped_names.add(svc_name)
                     matched = True
@@ -1043,30 +1200,95 @@ def compute_initial_services(
             if matched:
                 break
 
-    # 4. Specialist gaps — all subcategories NOT yet mapped
-    # Deduplicate by name (handles duplicate entries like Skirting id:871+872)
-    specialist_gaps = []
-    seen_gap_names = set()
-    for sc in all_subcats:
-        sc_name = sc["subcategory_name"]
-        if sc_name not in mapped_names and sc_name not in seen_gap_names:
-            seen_gap_names.add(sc_name)
-            specialist_gaps.append({
-                "subcategory_id": sc["subcategory_id"],
-                "subcategory_name": sc_name,
-                "category_id": cat_id,
-                "category_name": cat_name,
-            })
+    return services, mapped_names
 
-    logger.info(f"[TIERS] {cat_key}: {len(services)} pre-mapped (core={len(tier_def.get('core', []))}, "
-                f"evidence={sum(1 for s in services if s.get('confidence') == 'evidence')}, "
-                f"licence={sum(1 for s in services if s.get('confidence') == 'licence')}), "
-                f"{len(specialist_gaps)} specialist gaps")
+
+def compute_initial_services(
+    business_name: str,
+    licence_classes: list[str],
+    google_business_name: str,
+    google_primary_type: str,
+    google_reviews: list[dict],
+    web_results: list[dict],
+    website_text: str = "",
+) -> dict:
+    """Build initial service list using tiered mapping from guides.
+
+    Supports multi-category businesses (e.g. "Smith Building & Carpentry").
+    Returns:
+      {"services": [...], "specialist_gaps": [...], "category_name": str,
+       "category_names": [str, ...], "tiered": True}
+      or {"tiered": False} if no tier definition exists for any detected trade.
+    """
+    tiers = _load_service_tiers()
+    categories = _load_categories()
+    if not tiers or not categories:
+        return {"tiered": False}
+
+    # Detect categories (multi-category)
+    cat_keys = _detect_categories(business_name, licence_classes,
+                                  google_business_name, google_primary_type)
+    # Filter to categories that have both a tier definition and category data
+    tiered_keys = [k for k in cat_keys if k in tiers and k in categories]
+    if not tiered_keys:
+        return {"tiered": False}
+
+    # Build evidence text once (shared across all categories)
+    evidence_text = ""
+    for rev in google_reviews:
+        evidence_text += " " + rev.get("text", "")
+    for wr in web_results:
+        evidence_text += " " + wr.get("title", "") + " " + wr.get("description", "")
+    if website_text:
+        evidence_text += " " + website_text
+    evidence_lower = evidence_text.lower()
+
+    # Map services for each tiered category
+    all_services: list[dict] = []
+    all_mapped_names: set[str] = set()
+    cat_names: list[str] = []
+
+    for cat_key in tiered_keys:
+        tier_def = tiers[cat_key]
+        cat_data = categories[cat_key]
+        cat_names.append(cat_data.get("category_name", cat_key))
+
+        new_services, all_mapped_names = _map_single_tier(
+            tier_def, cat_data, evidence_lower, licence_classes, all_mapped_names,
+        )
+        all_services.extend(new_services)
+
+        logger.info(f"[TIERS] {cat_key}: {len(new_services)} pre-mapped "
+                    f"(core={sum(1 for s in new_services if s.get('confidence') == 'high')}, "
+                    f"evidence={sum(1 for s in new_services if s.get('confidence') == 'evidence')}, "
+                    f"licence={sum(1 for s in new_services if s.get('confidence') == 'licence')})")
+
+    # Specialist gaps — all subcategories NOT yet mapped across ALL tiered categories
+    specialist_gaps = []
+    seen_gap_names: set[str] = set()
+    for cat_key in tiered_keys:
+        cat_data = categories[cat_key]
+        cat_id = cat_data.get("category_id", 0)
+        cat_name = cat_data.get("category_name", cat_key)
+        for sc in cat_data.get("subcategories", []):
+            sc_name = sc["subcategory_name"]
+            if sc_name not in all_mapped_names and sc_name not in seen_gap_names:
+                seen_gap_names.add(sc_name)
+                specialist_gaps.append({
+                    "subcategory_id": sc["subcategory_id"],
+                    "subcategory_name": sc_name,
+                    "category_id": cat_id,
+                    "category_name": cat_name,
+                })
+
+    logger.info(f"[TIERS] Total: {len(all_services)} pre-mapped, "
+                f"{len(specialist_gaps)} specialist gaps across {cat_names}")
 
     return {
-        "services": services,
+        "services": all_services,
         "specialist_gaps": specialist_gaps,
-        "category_name": cat_name,
+        "category_name": cat_names[0],  # backward-compat: primary category
+        "category_names": cat_names,
         "tiered": True,
     }
 
@@ -1080,36 +1302,35 @@ def get_filtered_cluster_groups(
 ) -> list[dict]:
     """Return pre-defined cluster groups filtered to remaining gaps.
 
-    Loads cluster_groups from service_tiers.json, removes services already
-    mapped (not in gaps), removes empty clusters. Returns list of
-    {"label": str, "services": [{"name": str, "id": int}]} dicts.
+    Supports multi-category: loads cluster_groups for each detected tiered
+    category, concatenates (primary first, secondary appended).
+    Returns list of {"label": str, "services": [{"name": str, "id": int}]} dicts.
     """
     tiers = _load_service_tiers()
     if not tiers:
         return []
 
-    cat_key = _detect_category(business_name, licence_classes or [],
-                               google_business_name, google_primary_type)
-    if not cat_key or cat_key not in tiers:
-        return []
-
-    tier_def = tiers[cat_key]
-    cluster_defs = tier_def.get("cluster_groups", [])
-    if not cluster_defs:
+    cat_keys = _detect_categories(business_name, licence_classes or [],
+                                  google_business_name, google_primary_type)
+    tiered_keys = [k for k in cat_keys if k in tiers]
+    if not tiered_keys:
         return []
 
     # Build gap name→id lookup from current gaps
     gap_lookup = {g["subcategory_name"]: g["subcategory_id"] for g in gaps}
 
     filtered = []
-    for cluster in cluster_defs:
-        label = cluster["label"]
-        remaining = []
-        for svc_name in cluster["services"]:
-            if svc_name in gap_lookup:
-                remaining.append({"name": svc_name, "id": gap_lookup[svc_name]})
-        if remaining:
-            filtered.append({"label": label, "services": remaining})
+    for cat_key in tiered_keys:
+        tier_def = tiers[cat_key]
+        cluster_defs = tier_def.get("cluster_groups", [])
+        for cluster in cluster_defs:
+            label = cluster["label"]
+            remaining = []
+            for svc_name in cluster["services"]:
+                if svc_name in gap_lookup:
+                    remaining.append({"name": svc_name, "id": gap_lookup[svc_name]})
+            if remaining:
+                filtered.append({"label": label, "services": remaining})
 
     return filtered
 
@@ -1247,7 +1468,12 @@ _guide_cache: dict[str, str] = {}
 
 
 def find_subcategory_guide(business_name: str) -> str:
-    """Find the relevant subcategory guide based on business name trade type. Cached on first read."""
+    """Find relevant subcategory guides based on business name trade type.
+
+    Multi-category: scans ALL matching keywords and concatenates guides.
+    Deduplicates by filename (a keyword may map to the same file).
+    Cached on first read.
+    """
     name_lower = business_name.lower()
 
     # Map trade keywords to guide files
@@ -1261,18 +1487,25 @@ def find_subcategory_guide(business_name: str) -> str:
         "build": ["builder-subcategory-guide.md"],
     }
 
+    parts: list[str] = []
+    loaded_files: set[str] = set()
+
     for keyword, files in trade_guides.items():
         if keyword in name_lower:
             for fname in files:
+                if fname in loaded_files:
+                    continue
+                loaded_files.add(fname)
                 if fname in _guide_cache:
-                    return _guide_cache[fname]
-                fpath = RESOURCES_DIR / fname
-                if fpath.exists():
-                    content = fpath.read_text()
-                    _guide_cache[fname] = content
-                    return content
+                    parts.append(_guide_cache[fname])
+                else:
+                    fpath = RESOURCES_DIR / fname
+                    if fpath.exists():
+                        content = fpath.read_text()
+                        _guide_cache[fname] = content
+                        parts.append(content)
 
-    return ""
+    return "\n\n---\n\n".join(parts) if parts else ""
 
 
 # ────────── NSW FAIR TRADING LICENCE LOOKUP ──────────

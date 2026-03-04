@@ -7,19 +7,26 @@ import pytest
 from agent.tools import (
     _parse_jsonp_response,
     compute_service_gaps,
+    compute_initial_services,
     get_suburbs_in_radius_grouped,
     find_subcategory_guide,
     get_regional_guide,
+    get_filtered_cluster_groups,
     search_suburbs_by_postcode,
     qbcc_load_csv,
     qbcc_licence_lookup,
     _qbcc_licences,
+    _detect_category,
+    _detect_categories,
     extract_licence_from_text,
     get_licence_config,
     _STATE_LICENCE_CONFIG,
     _VIC_LICENCE_CONFIG,
     _wa_dmirs_extract_viewstate,
     _wa_dmirs_parse_results,
+    suggest_related_categories,
+    map_extra_categories,
+    _load_related_categories,
 )
 from agent.graph import (
     _process_cluster_response,
@@ -623,3 +630,261 @@ class TestMultiStateExtraction:
         result = extract_licence_from_text("BL 12345 registered builder", "Builder", "ACT")
         assert result is not None
         assert result["licence_number"] == "12345"
+
+
+# ────────── _detect_categories (multi-category) ──────────
+
+class TestDetectCategories:
+    """Tests for multi-category detection."""
+
+    def test_single_category(self):
+        result = _detect_categories("Smith Electrical", [], "", "")
+        assert result == ["Electrician"]
+
+    def test_dual_category_from_name(self):
+        result = _detect_categories("Smith Building & Carpentry", [], "", "")
+        assert "Builder" in result
+        assert "Carpenter" in result
+        assert len(result) == 2
+
+    def test_cap_at_2(self):
+        result = _detect_categories("Building Carpentry Tiling Services", [], "", "")
+        assert len(result) == 2
+
+    def test_licence_adds_secondary(self):
+        result = _detect_categories("Smith Plumbing", ["Gas Fitter Licence"], "", "")
+        assert result[0] == "Plumber"
+        assert "Gas Fitter" in result
+
+    def test_no_match_returns_empty(self):
+        result = _detect_categories("XYZ Corp", [], "", "")
+        assert result == []
+
+    def test_dedup_same_source(self):
+        """'build' in name AND Google name → one Builder."""
+        result = _detect_categories("Smith Building", [], "Smith Building Co", "")
+        assert result.count("Builder") == 1
+
+    def test_google_type_secondary(self):
+        result = _detect_categories("Smith Plumbing", [], "", "electrician")
+        assert result[0] == "Plumber"
+        assert "Electrician" in result
+
+    def test_backward_compat_with_single(self):
+        """_detect_categories and _detect_category agree on single-category cases."""
+        for name in ["Dan's Plumbing", "Smith Electrical", "Aussie Painters"]:
+            single = _detect_category(name, [], "", "")
+            multi = _detect_categories(name, [], "", "")
+            assert multi[0] == single
+
+
+# ────────── Multi-category initial services ──────────
+
+class TestMultiCategoryInitialServices:
+    """Tests for compute_initial_services with multi-category."""
+
+    def test_builder_and_carpenter(self):
+        result = compute_initial_services(
+            "Smith Building & Carpentry", [], "", "", [], [],
+        )
+        assert result["tiered"] is True
+        cat_names = {s["category_name"] for s in result["services"]}
+        assert len(cat_names) >= 2
+        assert "category_names" in result
+        assert len(result["category_names"]) == 2
+        # Gaps should span both categories
+        gap_cats = {g["category_name"] for g in result["specialist_gaps"]}
+        assert len(gap_cats) >= 2
+
+    def test_single_category_unchanged(self):
+        result = compute_initial_services(
+            "Dan's Plumbing", [], "", "", [], [],
+        )
+        assert result["tiered"] is True
+        assert result["category_name"] == "Plumber"
+        assert result["category_names"] == ["Plumber"]
+        # All services should be Plumber
+        for s in result["services"]:
+            assert s["category_name"] == "Plumber"
+
+    def test_non_tiered_unchanged(self):
+        result = compute_initial_services(
+            "XYZ Locksmith", [], "", "", [], [],
+        )
+        assert result["tiered"] is False
+
+
+# ────────── Multi-category gaps ──────────
+
+class TestMultiCategoryGaps:
+    """Tests for compute_service_gaps with multi-category."""
+
+    def test_gaps_from_two_categories(self):
+        """Services from 2 categories → gaps for both."""
+        services = [
+            {"subcategory_name": "General Electrical", "subcategory_id": 850,
+             "category_name": "Electrician"},
+            {"subcategory_name": "General Carpentry", "subcategory_id": 870,
+             "category_name": "Carpenter"},
+        ]
+        gaps = compute_service_gaps(services, "Smith Electrical & Carpentry")
+        gap_cats = {g["category_name"] for g in gaps}
+        assert "Electrician" in gap_cats
+        assert "Carpenter" in gap_cats
+
+    def test_single_category_gaps_unchanged(self):
+        services = [
+            {"subcategory_name": "General Plumbing", "subcategory_id": 100,
+             "category_name": "Plumber"},
+        ]
+        gaps = compute_service_gaps(services, "Dan's Plumbing")
+        gap_cats = {g["category_name"] for g in gaps}
+        assert gap_cats == {"Plumber"}
+
+
+# ────────── Multi-category cluster groups ──────────
+
+class TestMultiCategoryClusterGroups:
+    """Tests for get_filtered_cluster_groups with multi-category."""
+
+    def test_combined_clusters(self):
+        """Combined gaps → clusters from both tiered categories."""
+        # Build gaps spanning two categories
+        result = compute_initial_services(
+            "Smith Building & Carpentry", [], "", "", [], [],
+        )
+        if not result.get("tiered"):
+            pytest.skip("Tier definitions not available")
+        gaps = result["specialist_gaps"]
+        clusters = get_filtered_cluster_groups(
+            gaps, "Smith Building & Carpentry",
+        )
+        # Should have clusters from at least one (possibly both) categories
+        assert len(clusters) > 0
+        # Cluster labels should include labels from both if both have cluster_groups
+        cluster_labels = [c["label"] for c in clusters]
+        assert len(cluster_labels) > 0
+
+
+# ────────── Multi-category guide ──────────
+
+class TestMultiGuide:
+    """Tests for find_subcategory_guide with multi-category."""
+
+    def test_single_keyword_guide(self):
+        """A trade with only one guide file should return non-empty content."""
+        guide = find_subcategory_guide("Aussie Painters")
+        assert guide != ""
+
+    def test_multi_guide_longer_than_single(self):
+        """Multi-category guide should contain content from both trades."""
+        single = find_subcategory_guide("Smith Carpentry")
+        multi = find_subcategory_guide("Smith Building & Carpentry")
+        assert multi != ""
+        assert single != ""
+        # Multi-guide should be strictly longer (has content from both)
+        assert len(multi) > len(single)
+
+
+# ────────── Related category suggestions ──────────
+
+class TestSuggestRelatedCategories:
+    """Tests for suggest_related_categories()."""
+
+    def test_plumber_gets_suggestions(self):
+        """Plumber should get common related categories like Handyman."""
+        result = suggest_related_categories(["Plumber"])
+        assert len(result) > 0
+        names = [r["category"] for r in result]
+        assert "Handyman" in names
+
+    def test_excludes_detected(self):
+        """Already-detected categories should be filtered out."""
+        result = suggest_related_categories(["Plumber", "Handyman"])
+        names = [r["category"] for r in result]
+        assert "Plumber" not in names
+        assert "Handyman" not in names
+
+    def test_respects_threshold(self):
+        """Categories below threshold should be excluded."""
+        # Use a very high threshold to filter everything
+        result = suggest_related_categories(["Plumber"], min_pct=99)
+        assert result == []
+
+    def test_respects_cap(self):
+        """Should not return more than max_suggestions."""
+        result = suggest_related_categories(["Plumber"], max_suggestions=2)
+        assert len(result) <= 2
+
+    def test_sorted_by_pct_desc(self):
+        """Results should be sorted by pct descending."""
+        result = suggest_related_categories(["Plumber"])
+        if len(result) >= 2:
+            for i in range(len(result) - 1):
+                assert result[i]["pct"] >= result[i + 1]["pct"]
+
+    def test_empty_when_no_data(self):
+        """Graceful when category has no related data."""
+        result = suggest_related_categories(["NonexistentTrade123"])
+        assert result == []
+
+    def test_empty_for_empty_input(self):
+        """Returns empty for empty detected list."""
+        result = suggest_related_categories([])
+        assert result == []
+
+    def test_data_file_loads(self):
+        """related_categories.json loads and has content."""
+        data = _load_related_categories()
+        assert isinstance(data, dict)
+        assert len(data) > 0
+
+
+class TestMapExtraCategories:
+    """Tests for map_extra_categories()."""
+
+    def test_tiered_category_adds_services(self):
+        """A tiered extra category (e.g. Handyman) should add core services."""
+        new_svcs, new_gaps, mapped = map_extra_categories(
+            ["Handyman"], [], set(), "", [],
+        )
+        # Handyman is tiered in service_tiers.json — should get core services
+        assert len(new_svcs) > 0
+        # All returned services should be from Handyman category
+        for s in new_svcs:
+            assert s["category_name"] == "Handyman"
+
+    def test_non_tiered_category_adds_gaps(self):
+        """A non-tiered extra category should add all subcategories as gaps."""
+        new_svcs, new_gaps, mapped = map_extra_categories(
+            ["Locksmith"], [], set(), "", [],
+        )
+        # Locksmith is not tiered — no services, but gaps
+        assert len(new_svcs) == 0
+        assert len(new_gaps) > 0
+
+    def test_no_duplicate_services(self):
+        """Services already mapped should not be added again."""
+        existing = {"Home Handiwork", "Odd Jobs"}
+        new_svcs, new_gaps, mapped = map_extra_categories(
+            ["Handyman"], [], existing, "", [],
+        )
+        new_names = {s["subcategory_name"] for s in new_svcs}
+        assert "Home Handiwork" not in new_names
+        assert "Odd Jobs" not in new_names
+
+    def test_unknown_category_returns_empty(self):
+        """Unknown category name should return empty results."""
+        new_svcs, new_gaps, mapped = map_extra_categories(
+            ["TotallyFakeCategory"], [], set(), "", [],
+        )
+        assert new_svcs == []
+        assert new_gaps == []
+
+    def test_multiple_categories(self):
+        """Multiple extra categories should all be mapped."""
+        new_svcs, new_gaps, mapped = map_extra_categories(
+            ["Handyman", "Locksmith"], [], set(), "", [],
+        )
+        # Should have services from Handyman + gaps from Locksmith
+        assert len(new_svcs) > 0 or len(new_gaps) > 0

@@ -186,8 +186,8 @@
 > Scoped, ready to pick up
 
 - [x] **Specialist gap clustering**: Deterministic cluster processing + LLM `cluster_ids` output. LLM picks clusters of 2-3 related services, system processes responses programmatically. Works for all 6 tiered trades.
-- [ ] **Pre-defined cluster groups**: Optional enhancement — define cluster groups in `service_tiers.json` so the LLM doesn't have to pick clusters itself. Most useful for Carpenter (11 gaps) and Cleaner (14 gaps). Consider grouping by: equipment, commercial vs residential, accreditation.
-- [ ] **Multi-category tradies**: Builder who also does carpentry + tiling; handyman who spans multiple trades. Current `_detect_category()` returns single category. Need to detect secondary categories and merge tier mappings.
+- [x] **Pre-defined cluster groups**: All 7 tiered trades have `cluster_groups` in `service_tiers.json`. `get_filtered_cluster_groups()` filters by remaining gaps. LLM asks clusters in order instead of picking its own.
+- [x] **Multi-category tradies**: `_detect_categories()` scans all keyword sources, returns up to 2 matches. `compute_initial_services()`, `compute_service_gaps()`, `get_filtered_cluster_groups()`, `find_subcategory_guide()` all loop over detected categories. Licence routing in `_confirm_business()` tries each category. 16 new tests, 94 total passing.
 - [ ] **Live testing session**: Run 20+ test sessions across all 6 tiered trades + 2-3 non-tiered trades. Validate: correct pre-mapping, sensible gap questions, no invented IDs, clean completion. Log results.
 
 ---
@@ -457,3 +457,37 @@
   - `wa_dmirs` source label + acknowledgement hint in service discovery prompt
 - **Frontend** (`web/landing.html`): WA-specific + generic state loading text
 - **Tests**: 26 new tests (78 total) — DMIRS ViewState/parsing, state config validation, multi-state extraction patterns
+
+### Mar 3, 2026 — Multi-Category Tradies + Cluster Groups Cleanup
+- **`_detect_categories()`** (`agent/tools.py`): New multi-category detection function. Scans all 4 priority levels (business name, licence, Google name, Google type), collects unique matches, capped at 2. `_detect_category()` unchanged for backward compat.
+- **`_map_single_tier()`** (`agent/tools.py`): Extracted core/evidence/licence mapping loop into reusable helper. Takes tier definition + category data, returns (services, mapped_names).
+- **`compute_initial_services()`** (`agent/tools.py`): Uses `_detect_categories()` to find all tiered categories. Calls `_map_single_tier()` per category, merges services + gaps. Returns `category_names: list[str]` (backward-compat `category_name` stays as primary).
+- **`compute_service_gaps()`** (`agent/tools.py`): Collects all `category_name` values from services + `_detect_categories()`. Computes gaps per category via `_gaps_for_category()` helper, returns merged flat list.
+- **`get_filtered_cluster_groups()`** (`agent/tools.py`): Loops over detected tiered categories, concatenates cluster groups (primary first).
+- **`find_subcategory_guide()`** (`agent/tools.py`): Scans all matching keywords, concatenates guides with `\n\n---\n\n` separator. Deduplicates by filename.
+- **`_build_service_prompt()`** (`agent/graph.py`): Multi-category note in TURN 1 RULE when services span 2+ categories.
+- **`_confirm_business()`** (`agent/graph.py`): WA DMIRS + web extraction + self-report all loop over `_detect_categories()` results, trying each until one yields a licence.
+- **Cluster groups marked done**: All 7 tiered trades already had `cluster_groups` in `service_tiers.json` + `get_filtered_cluster_groups()` wired up.
+- **Tests**: 16 new tests (94 total) — `_detect_categories`, multi-category initial services, gaps, cluster groups, multi-guide
+
+### Mar 4, 2026 — Category Suggestion Step (Data-Driven Related Categories)
+- **Analysis script** (`scripts/analyse_categories.py`): New CSV co-occurrence analysis script
+  - Takes SS business export CSV, parses `industry` column (auto-detects delimiter)
+  - Computes co-occurrence percentages: for each category, what % of its businesses also list another category
+  - Filters by threshold (default 15%), caps per category (default 5), skips rare categories (<10 businesses)
+  - Outputs `resources/related_categories.json` + prints summary stats
+  - `argparse` for CSV path, `--threshold`, `--cap`, `--output`, `--column` args
+- **Related categories data** (`resources/related_categories.json`): Placeholder data committed (26 categories)
+  - Based on realistic SS co-occurrence patterns (Plumber↔Handyman 42%, Electrician↔Solar 28%, etc.)
+  - Will be regenerated from actual 256k business export when CSV is provided
+- **Helper functions** (`agent/tools.py`):
+  - `_load_related_categories()` — cached loader for related_categories.json
+  - `suggest_related_categories(detected, min_pct, max_suggestions)` — filters out already-detected, sorts by pct desc, caps at 4
+  - `map_extra_categories(names, services, mapped, evidence, licence)` — maps tiered categories via `_map_single_tier()`, non-tiered as gaps
+- **Suggestion turn** (`agent/graph.py`): Inserted into `service_discovery_node()` after `compute_initial_services()`
+  - Turn 1 gate: shows related category suggestions as buttons (Yes all + individual + Skip)
+  - Response processing: parses `__CAT_ALL__`, `__CAT__:Name`, `__CAT_SKIP__` button values + free text
+  - Accepted categories get mapped (tiered → services + gaps, non-tiered → gaps only)
+  - Then falls through to normal turn-1 LLM flow (cluster groups, prompt, etc.)
+  - State: `_category_suggestions_shown`, `_category_suggestions` (auto-excluded from frontend by `_safe_state`)
+- **Tests**: 13 new tests (107 total) — suggest filtering/threshold/cap/sort, map tiered/non-tiered/dedup/unknown/multi

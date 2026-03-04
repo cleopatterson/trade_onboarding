@@ -300,5 +300,40 @@
         "services": ["Building Designs", "Cost planning and estimation", "Project Management", "Building Supplies", "Soil Testing"]
       }
     ]
+  },
+  "Handyman": {
+    "core": [
+      "Home Handiwork",
+      "Odd Jobs",
+      "Property Maintenance",
+      "Flat Pack Assembly",
+      "Furniture Assembly",
+      "Mounting Shelves",
+      "TV Mounting",
+      "Patching Holes",
+      "Door Repair",
+      "Picture Hanging & Art Installation",
+      "Picture & Mirror Hanging"
+    ],
+    "evidence_keywords": {
+      "Curtain Repair": ["curtain", "blind", "roller blind", "curtain rod", "curtain rail"],
+      "Lock Repair": ["lock", "deadbolt", "door lock", "locksmith", "rekey"],
+      "Tap repair and replacement": ["tap repair", "leaking tap", "faucet", "tap replacement", "mixer tap"],
+      "Gutter cleaning": ["gutter clean", "gutter", "leaf guard", "downpipe"],
+      "IKEA kitchen installation": ["ikea", "flatpack kitchen", "kitchen install", "kitchen assembly"],
+      "Shade Sail Installation": ["shade sail", "sail", "sun shade", "outdoor shade"],
+      "Mailbox and letterboxes": ["mailbox", "letterbox", "post box"]
+    },
+    "licence_signals": {},
+    "cluster_groups": [
+      {
+        "label": "Bathroom & plumbing fixes",
+        "services": ["Shower Door Installation", "Shower Base Repair", "Broken sink repair and replacement"]
+      },
+      {
+        "label": "Specialist items",
+        "services": ["Pool Table Repair", "Picture Framing"]
+      }
+    ]
   }
 }

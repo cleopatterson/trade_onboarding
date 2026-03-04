@@ -436,6 +436,7 @@ async def chat(req: MessageRequest):
     # Buttons come from: node-generated (LLM) or ABR results (data-driven)
     # None = no buttons set by node, fall back to data-driven; [] = explicitly no buttons
     buttons = state.pop("buttons", None)
+    multiselect = state.pop("_multiselect", False)
     if buttons is None:
         buttons = _get_buttons_for_state(state)
 
@@ -460,14 +461,18 @@ async def chat(req: MessageRequest):
 
     api_trace = state.pop("_api_trace", [])
 
+    resp = {
+        "text": response_text,
+        "buttons": buttons,
+        "node": node,
+        "turn_time": turn_time,
+    }
+    if multiselect:
+        resp["_multiselect"] = True
+
     return {
         "session_id": req.session_id,
-        "response": {
-            "text": response_text,
-            "buttons": buttons,
-            "node": node,
-            "turn_time": turn_time,
-        },
+        "response": resp,
         "state": _safe_state(state),
         "completed": completed,
         "api_trace": api_trace,

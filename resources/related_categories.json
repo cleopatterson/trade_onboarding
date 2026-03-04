@@ -1,0 +1,2198 @@
+{
+  "Accountant": [
+    {
+      "category": "Bookkeeper",
+      "pct": 84
+    },
+    {
+      "category": "Financial Planner",
+      "pct": 33
+    }
+  ],
+  "Agriculture & Livestock": [
+    {
+      "category": "Carpenter",
+      "pct": 40
+    },
+    {
+      "category": "Earthworks contractor",
+      "pct": 39
+    },
+    {
+      "category": "Gardener",
+      "pct": 39
+    },
+    {
+      "category": "Landscaper",
+      "pct": 37
+    },
+    {
+      "category": "Handyman",
+      "pct": 36
+    }
+  ],
+  "Air Conditioning & Heating Technician": [
+    {
+      "category": "Cleaner",
+      "pct": 66
+    },
+    {
+      "category": "High pressure cleaning company",
+      "pct": 57
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 57
+    },
+    {
+      "category": "Carpet Cleaner",
+      "pct": 57
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 38
+    }
+  ],
+  "App Developer": [
+    {
+      "category": "Website Developers and Designers",
+      "pct": 81
+    },
+    {
+      "category": "Graphic Designer",
+      "pct": 64
+    },
+    {
+      "category": "Marketing Company",
+      "pct": 25
+    },
+    {
+      "category": "Computer Repairer & IT Service Provider",
+      "pct": 24
+    }
+  ],
+  "Arborist": [
+    {
+      "category": "Gardener",
+      "pct": 91
+    },
+    {
+      "category": "Landscaper",
+      "pct": 70
+    },
+    {
+      "category": "Earthworks contractor",
+      "pct": 65
+    },
+    {
+      "category": "Handyman",
+      "pct": 41
+    },
+    {
+      "category": "Builder",
+      "pct": 30
+    }
+  ],
+  "Architecture & Residential Design": [
+    {
+      "category": "Builder",
+      "pct": 16
+    },
+    {
+      "category": "Building Designer",
+      "pct": 16
+    }
+  ],
+  "Asbestos Removalist": [
+    {
+      "category": "Demolition Company",
+      "pct": 44
+    },
+    {
+      "category": "Carpenter",
+      "pct": 32
+    },
+    {
+      "category": "Builder",
+      "pct": 32
+    },
+    {
+      "category": "Handyman",
+      "pct": 30
+    },
+    {
+      "category": "Concreter",
+      "pct": 28
+    }
+  ],
+  "Asphalting Company": [
+    {
+      "category": "Concreter",
+      "pct": 97
+    },
+    {
+      "category": "Carpenter",
+      "pct": 56
+    },
+    {
+      "category": "Stonemason",
+      "pct": 39
+    },
+    {
+      "category": "Handyman",
+      "pct": 38
+    },
+    {
+      "category": "Builder",
+      "pct": 37
+    }
+  ],
+  "Auto Electrician": [
+    {
+      "category": "Mechanic",
+      "pct": 89
+    },
+    {
+      "category": "Smash Repair Company",
+      "pct": 69
+    },
+    {
+      "category": "Auto Tuner",
+      "pct": 44
+    },
+    {
+      "category": "Car detailer",
+      "pct": 28
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 26
+    }
+  ],
+  "Auto Tuner": [
+    {
+      "category": "Auto Electrician",
+      "pct": 97
+    },
+    {
+      "category": "Mechanic",
+      "pct": 97
+    },
+    {
+      "category": "Smash Repair Company",
+      "pct": 65
+    },
+    {
+      "category": "Car detailer",
+      "pct": 20
+    }
+  ],
+  "Automatic Door & Gate Company": [
+    {
+      "category": "Handyman",
+      "pct": 86
+    },
+    {
+      "category": "Security Company",
+      "pct": 85
+    },
+    {
+      "category": "Blinds & Shutter Installer",
+      "pct": 85
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 81
+    },
+    {
+      "category": "Cleaner",
+      "pct": 80
+    }
+  ],
+  "Automotive Glass Repair Company": [
+    {
+      "category": "Mechanic",
+      "pct": 41
+    },
+    {
+      "category": "Auto Electrician",
+      "pct": 40
+    },
+    {
+      "category": "Smash Repair Company",
+      "pct": 38
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 34
+    },
+    {
+      "category": "Car detailer",
+      "pct": 25
+    }
+  ],
+  "Babysitting": [
+    {
+      "category": "Housekeeper",
+      "pct": 57
+    },
+    {
+      "category": "Cleaner",
+      "pct": 29
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 24
+    },
+    {
+      "category": "Pet Minder",
+      "pct": 24
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 20
+    }
+  ],
+  "Bathroom Renovation Company": [
+    {
+      "category": "Handyman",
+      "pct": 64
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 62
+    },
+    {
+      "category": "Builder",
+      "pct": 59
+    },
+    {
+      "category": "Carpenter",
+      "pct": 59
+    },
+    {
+      "category": "Plumber",
+      "pct": 47
+    }
+  ],
+  "Blinds & Shutter Installer": [
+    {
+      "category": "Handyman",
+      "pct": 79
+    },
+    {
+      "category": "Security Company",
+      "pct": 62
+    },
+    {
+      "category": "Carpenter",
+      "pct": 61
+    },
+    {
+      "category": "Cleaner",
+      "pct": 60
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 59
+    }
+  ],
+  "Boating & Marine": [
+    {
+      "category": "Handyman",
+      "pct": 31
+    },
+    {
+      "category": "Carpenter",
+      "pct": 30
+    },
+    {
+      "category": "Concreter",
+      "pct": 28
+    },
+    {
+      "category": "Builder",
+      "pct": 26
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 24
+    }
+  ],
+  "Bookkeeper": [
+    {
+      "category": "Accountant",
+      "pct": 86
+    },
+    {
+      "category": "Financial Planner",
+      "pct": 32
+    },
+    {
+      "category": "Personal Assistant",
+      "pct": 16
+    }
+  ],
+  "Bricklayer": [
+    {
+      "category": "Carpenter",
+      "pct": 57
+    },
+    {
+      "category": "Fencing & Gate Company",
+      "pct": 52
+    },
+    {
+      "category": "Concreter",
+      "pct": 46
+    },
+    {
+      "category": "Handyman",
+      "pct": 39
+    },
+    {
+      "category": "Builder",
+      "pct": 33
+    }
+  ],
+  "Builder": [
+    {
+      "category": "Carpenter",
+      "pct": 63
+    },
+    {
+      "category": "Handyman",
+      "pct": 62
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 57
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 55
+    },
+    {
+      "category": "Plumber",
+      "pct": 50
+    }
+  ],
+  "Building Designer": [
+    {
+      "category": "Upholsterer",
+      "pct": 68
+    },
+    {
+      "category": "Electrician",
+      "pct": 40
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 40
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 39
+    },
+    {
+      "category": "Solar Company",
+      "pct": 38
+    }
+  ],
+  "Building Inspector": [
+    {
+      "category": "Builder",
+      "pct": 91
+    },
+    {
+      "category": "Carpenter",
+      "pct": 90
+    },
+    {
+      "category": "Handyman",
+      "pct": 90
+    },
+    {
+      "category": "Concreter",
+      "pct": 89
+    },
+    {
+      "category": "Waterproofing Company",
+      "pct": 89
+    }
+  ],
+  "Car Hire Companies": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 28
+    },
+    {
+      "category": "Removalist",
+      "pct": 18
+    }
+  ],
+  "Car detailer": [
+    {
+      "category": "Mechanic",
+      "pct": 38
+    },
+    {
+      "category": "Smash Repair Company",
+      "pct": 37
+    },
+    {
+      "category": "Auto Electrician",
+      "pct": 35
+    },
+    {
+      "category": "Cleaner",
+      "pct": 31
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 22
+    }
+  ],
+  "Carpenter": [
+    {
+      "category": "Handyman",
+      "pct": 57
+    },
+    {
+      "category": "Builder",
+      "pct": 50
+    },
+    {
+      "category": "Concreter",
+      "pct": 48
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 44
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 42
+    }
+  ],
+  "Carpet Cleaner": [
+    {
+      "category": "Cleaner",
+      "pct": 93
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 82
+    },
+    {
+      "category": "High pressure cleaning company",
+      "pct": 79
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 75
+    },
+    {
+      "category": "Housekeeper",
+      "pct": 45
+    }
+  ],
+  "Carpet Installer": [
+    {
+      "category": "Cleaner",
+      "pct": 90
+    },
+    {
+      "category": "Carpet Cleaner",
+      "pct": 85
+    },
+    {
+      "category": "High pressure cleaning company",
+      "pct": 83
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 83
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 82
+    }
+  ],
+  "Caterer": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 90
+    }
+  ],
+  "Celebrant": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 87
+    }
+  ],
+  "Childcare & Nannying": [
+    {
+      "category": "Cleaner",
+      "pct": 39
+    },
+    {
+      "category": "Housekeeper",
+      "pct": 35
+    }
+  ],
+  "Cleaner": [
+    {
+      "category": "Carpet Cleaner",
+      "pct": 24
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 24
+    },
+    {
+      "category": "High pressure cleaning company",
+      "pct": 23
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 22
+    },
+    {
+      "category": "Housekeeper",
+      "pct": 16
+    }
+  ],
+  "Computer Repairer & IT Service Provider": [
+    {
+      "category": "Marketing Company",
+      "pct": 34
+    },
+    {
+      "category": "Website Developers and Designers",
+      "pct": 27
+    },
+    {
+      "category": "Graphic Designer",
+      "pct": 23
+    },
+    {
+      "category": "Personal Assistant",
+      "pct": 20
+    }
+  ],
+  "Concreter": [
+    {
+      "category": "Carpenter",
+      "pct": 62
+    },
+    {
+      "category": "Handyman",
+      "pct": 52
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 50
+    },
+    {
+      "category": "Builder",
+      "pct": 49
+    },
+    {
+      "category": "Roofer",
+      "pct": 45
+    }
+  ],
+  "Crane Hire Company": [
+    {
+      "category": "Carpenter",
+      "pct": 99
+    },
+    {
+      "category": "Builder",
+      "pct": 99
+    },
+    {
+      "category": "Handyman",
+      "pct": 99
+    },
+    {
+      "category": "Concreter",
+      "pct": 99
+    },
+    {
+      "category": "Waterproofing Company",
+      "pct": 99
+    }
+  ],
+  "Demolition Company": [
+    {
+      "category": "Earthworks contractor",
+      "pct": 58
+    },
+    {
+      "category": "Carpenter",
+      "pct": 35
+    },
+    {
+      "category": "Concreter",
+      "pct": 33
+    },
+    {
+      "category": "Builder",
+      "pct": 31
+    },
+    {
+      "category": "Handyman",
+      "pct": 30
+    }
+  ],
+  "Dishwasher Installation & Repair Company": [
+    {
+      "category": "Oven Installation & Repairs",
+      "pct": 89
+    },
+    {
+      "category": "Washing Machine and Dryer Technician",
+      "pct": 89
+    },
+    {
+      "category": "Electrician",
+      "pct": 86
+    },
+    {
+      "category": "Gas Fitter",
+      "pct": 82
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 79
+    }
+  ],
+  "Door Installation Company": [
+    {
+      "category": "Handyman",
+      "pct": 80
+    },
+    {
+      "category": "Carpenter",
+      "pct": 66
+    },
+    {
+      "category": "Fencing & Gate Company",
+      "pct": 60
+    },
+    {
+      "category": "Blinds & Shutter Installer",
+      "pct": 56
+    },
+    {
+      "category": "Cleaner",
+      "pct": 54
+    }
+  ],
+  "Draftsman": [
+    {
+      "category": "Building Designer",
+      "pct": 86
+    },
+    {
+      "category": "Builder",
+      "pct": 58
+    },
+    {
+      "category": "Surveyor",
+      "pct": 27
+    },
+    {
+      "category": "Carpenter",
+      "pct": 22
+    },
+    {
+      "category": "Handyman",
+      "pct": 16
+    }
+  ],
+  "Ducting and Ventiliation Company": [
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 93
+    },
+    {
+      "category": "Waterproofing Company",
+      "pct": 86
+    },
+    {
+      "category": "Electrician",
+      "pct": 86
+    },
+    {
+      "category": "Fridge & Freezer Repair & Installation Company",
+      "pct": 84
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 83
+    }
+  ],
+  "Earthworks contractor": [
+    {
+      "category": "Landscaper",
+      "pct": 70
+    },
+    {
+      "category": "Gardener",
+      "pct": 67
+    },
+    {
+      "category": "Arborist",
+      "pct": 58
+    },
+    {
+      "category": "Handyman",
+      "pct": 43
+    },
+    {
+      "category": "Carpenter",
+      "pct": 36
+    }
+  ],
+  "Electrician": [
+    {
+      "category": "Handyman",
+      "pct": 36
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 34
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 31
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 29
+    },
+    {
+      "category": "Solar Company",
+      "pct": 27
+    }
+  ],
+  "Exterminator": [
+    {
+      "category": "Gardener",
+      "pct": 56
+    },
+    {
+      "category": "Arborist",
+      "pct": 54
+    },
+    {
+      "category": "Bricklayer",
+      "pct": 29
+    },
+    {
+      "category": "Paver",
+      "pct": 28
+    },
+    {
+      "category": "Concreter",
+      "pct": 26
+    }
+  ],
+  "Fencing & Gate Company": [
+    {
+      "category": "Carpenter",
+      "pct": 67
+    },
+    {
+      "category": "Handyman",
+      "pct": 47
+    },
+    {
+      "category": "Bricklayer",
+      "pct": 44
+    },
+    {
+      "category": "Concreter",
+      "pct": 35
+    },
+    {
+      "category": "Builder",
+      "pct": 33
+    }
+  ],
+  "Financial Planner": [
+    {
+      "category": "Accountant",
+      "pct": 85
+    },
+    {
+      "category": "Bookkeeper",
+      "pct": 80
+    }
+  ],
+  "Flooring Company": [
+    {
+      "category": "Concreter",
+      "pct": 53
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 49
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 47
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 45
+    },
+    {
+      "category": "Tiler",
+      "pct": 45
+    }
+  ],
+  "Fridge & Freezer Repair & Installation Company": [
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 94
+    },
+    {
+      "category": "Electrician",
+      "pct": 87
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 81
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 80
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 77
+    }
+  ],
+  "Gardener": [
+    {
+      "category": "Landscaper",
+      "pct": 50
+    },
+    {
+      "category": "Arborist",
+      "pct": 46
+    },
+    {
+      "category": "Earthworks contractor",
+      "pct": 39
+    },
+    {
+      "category": "Handyman",
+      "pct": 31
+    },
+    {
+      "category": "Carpenter",
+      "pct": 23
+    }
+  ],
+  "Gas Fitter": [
+    {
+      "category": "Plumber",
+      "pct": 83
+    },
+    {
+      "category": "Handyman",
+      "pct": 78
+    },
+    {
+      "category": "Builder",
+      "pct": 70
+    },
+    {
+      "category": "Gardener",
+      "pct": 56
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 45
+    }
+  ],
+  "Glass Repair Company": [
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 98
+    },
+    {
+      "category": "Handyman",
+      "pct": 91
+    },
+    {
+      "category": "Carpenter",
+      "pct": 91
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 90
+    },
+    {
+      "category": "Builder",
+      "pct": 89
+    }
+  ],
+  "Graphic Designer": [
+    {
+      "category": "Website Developers and Designers",
+      "pct": 55
+    },
+    {
+      "category": "Printer",
+      "pct": 51
+    },
+    {
+      "category": "Writer",
+      "pct": 45
+    },
+    {
+      "category": "Photographer",
+      "pct": 44
+    },
+    {
+      "category": "Videographer",
+      "pct": 43
+    }
+  ],
+  "Hair Stylist": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 84
+    },
+    {
+      "category": "Make Up Artist",
+      "pct": 78
+    },
+    {
+      "category": "Personal Trainer",
+      "pct": 19
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 17
+    }
+  ],
+  "Handyman": [
+    {
+      "category": "Carpenter",
+      "pct": 56
+    },
+    {
+      "category": "Builder",
+      "pct": 48
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 47
+    },
+    {
+      "category": "Plumber",
+      "pct": 46
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 41
+    }
+  ],
+  "High pressure cleaning company": [
+    {
+      "category": "Cleaner",
+      "pct": 91
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 84
+    },
+    {
+      "category": "Carpet Cleaner",
+      "pct": 81
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 76
+    },
+    {
+      "category": "Housekeeper",
+      "pct": 43
+    }
+  ],
+  "Home theatre installation company": [
+    {
+      "category": "Electrician",
+      "pct": 98
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 92
+    },
+    {
+      "category": "Test and tag company",
+      "pct": 88
+    },
+    {
+      "category": "Solar Company",
+      "pct": 86
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 86
+    }
+  ],
+  "Housekeeper": [
+    {
+      "category": "Cleaner",
+      "pct": 93
+    },
+    {
+      "category": "Window Cleaner",
+      "pct": 70
+    },
+    {
+      "category": "Carpet Cleaner",
+      "pct": 66
+    },
+    {
+      "category": "High pressure cleaning company",
+      "pct": 62
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 57
+    }
+  ],
+  "Insulation Company": [
+    {
+      "category": "Carpenter",
+      "pct": 96
+    },
+    {
+      "category": "Handyman",
+      "pct": 96
+    },
+    {
+      "category": "Builder",
+      "pct": 96
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 95
+    },
+    {
+      "category": "Concreter",
+      "pct": 95
+    }
+  ],
+  "Insurance": [
+    {
+      "category": "Financial Planner",
+      "pct": 30
+    },
+    {
+      "category": "Accountant",
+      "pct": 26
+    },
+    {
+      "category": "Bookkeeper",
+      "pct": 22
+    }
+  ],
+  "Interior Designer": [
+    {
+      "category": "Painter",
+      "pct": 50
+    },
+    {
+      "category": "Builder",
+      "pct": 34
+    },
+    {
+      "category": "Carpenter",
+      "pct": 33
+    },
+    {
+      "category": "Building Designer",
+      "pct": 27
+    },
+    {
+      "category": "Handyman",
+      "pct": 26
+    }
+  ],
+  "Kitchen Renovation Company": [
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 79
+    },
+    {
+      "category": "Builder",
+      "pct": 73
+    },
+    {
+      "category": "Carpenter",
+      "pct": 71
+    },
+    {
+      "category": "Handyman",
+      "pct": 70
+    },
+    {
+      "category": "Concreter",
+      "pct": 65
+    }
+  ],
+  "Labourer": [
+    {
+      "category": "Handyman",
+      "pct": 49
+    },
+    {
+      "category": "Carpenter",
+      "pct": 47
+    },
+    {
+      "category": "Builder",
+      "pct": 45
+    },
+    {
+      "category": "Concreter",
+      "pct": 37
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 34
+    }
+  ],
+  "Landscaper": [
+    {
+      "category": "Gardener",
+      "pct": 81
+    },
+    {
+      "category": "Earthworks contractor",
+      "pct": 65
+    },
+    {
+      "category": "Arborist",
+      "pct": 57
+    },
+    {
+      "category": "Handyman",
+      "pct": 40
+    },
+    {
+      "category": "Carpenter",
+      "pct": 35
+    }
+  ],
+  "Lighting installation company": [
+    {
+      "category": "Electrician",
+      "pct": 82
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 72
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 71
+    },
+    {
+      "category": "Test and tag company",
+      "pct": 70
+    },
+    {
+      "category": "Building Designer",
+      "pct": 68
+    }
+  ],
+  "Locksmith": [
+    {
+      "category": "Handyman",
+      "pct": 51
+    },
+    {
+      "category": "Carpenter",
+      "pct": 35
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 31
+    },
+    {
+      "category": "Fencing & Gate Company",
+      "pct": 30
+    },
+    {
+      "category": "Painter",
+      "pct": 27
+    }
+  ],
+  "Make Up Artist": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 88
+    },
+    {
+      "category": "Hair Stylist",
+      "pct": 81
+    },
+    {
+      "category": "Personal Trainer",
+      "pct": 18
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 17
+    }
+  ],
+  "Manufacturing": [
+    {
+      "category": "Builder",
+      "pct": 22
+    },
+    {
+      "category": "Welders and Boilermakers",
+      "pct": 21
+    },
+    {
+      "category": "Carpenter",
+      "pct": 19
+    },
+    {
+      "category": "Handyman",
+      "pct": 18
+    },
+    {
+      "category": "Fencing & Gate Company",
+      "pct": 15
+    }
+  ],
+  "Marketing Company": [
+    {
+      "category": "Website Developers and Designers",
+      "pct": 62
+    },
+    {
+      "category": "Graphic Designer",
+      "pct": 49
+    },
+    {
+      "category": "Computer Repairer & IT Service Provider",
+      "pct": 35
+    },
+    {
+      "category": "Writer",
+      "pct": 35
+    },
+    {
+      "category": "Photographer",
+      "pct": 27
+    }
+  ],
+  "Mechanic": [
+    {
+      "category": "Auto Electrician",
+      "pct": 72
+    },
+    {
+      "category": "Smash Repair Company",
+      "pct": 56
+    },
+    {
+      "category": "Auto Tuner",
+      "pct": 36
+    },
+    {
+      "category": "Car detailer",
+      "pct": 25
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 20
+    }
+  ],
+  "Musician & Entertainer": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 41
+    }
+  ],
+  "Oven Installation & Repairs": [
+    {
+      "category": "Electrician",
+      "pct": 85
+    },
+    {
+      "category": "Gas Fitter",
+      "pct": 74
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 71
+    },
+    {
+      "category": "Dishwasher Installation & Repair Company",
+      "pct": 68
+    },
+    {
+      "category": "Washing Machine and Dryer Technician",
+      "pct": 66
+    }
+  ],
+  "Painter": [
+    {
+      "category": "Handyman",
+      "pct": 23
+    },
+    {
+      "category": "Carpenter",
+      "pct": 20
+    },
+    {
+      "category": "Roofer",
+      "pct": 18
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 16
+    },
+    {
+      "category": "Builder",
+      "pct": 15
+    }
+  ],
+  "Paver": [
+    {
+      "category": "Concreter",
+      "pct": 79
+    },
+    {
+      "category": "Tiler",
+      "pct": 64
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 64
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 61
+    },
+    {
+      "category": "Cleaner",
+      "pct": 60
+    }
+  ],
+  "Personal Assistant": [
+    {
+      "category": "Marketing Company",
+      "pct": 56
+    },
+    {
+      "category": "Computer Repairer & IT Service Provider",
+      "pct": 52
+    },
+    {
+      "category": "Bookkeeper",
+      "pct": 44
+    },
+    {
+      "category": "Accountant",
+      "pct": 37
+    },
+    {
+      "category": "Writer",
+      "pct": 28
+    }
+  ],
+  "Personal Trainer": [
+    {
+      "category": "Flooring Company",
+      "pct": 49
+    },
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 23
+    },
+    {
+      "category": "Hair Stylist",
+      "pct": 21
+    },
+    {
+      "category": "Make Up Artist",
+      "pct": 20
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 19
+    }
+  ],
+  "Pet Minder": [
+    {
+      "category": "Housekeeper",
+      "pct": 59
+    }
+  ],
+  "Photographer": [
+    {
+      "category": "Videographer",
+      "pct": 50
+    },
+    {
+      "category": "Graphic Designer",
+      "pct": 43
+    },
+    {
+      "category": "Printer",
+      "pct": 42
+    },
+    {
+      "category": "Writer",
+      "pct": 41
+    },
+    {
+      "category": "Building Designer",
+      "pct": 39
+    }
+  ],
+  "Plasterer": [
+    {
+      "category": "Carpenter",
+      "pct": 40
+    },
+    {
+      "category": "Handyman",
+      "pct": 39
+    },
+    {
+      "category": "Builder",
+      "pct": 33
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 30
+    },
+    {
+      "category": "Painter",
+      "pct": 30
+    }
+  ],
+  "Plumber": [
+    {
+      "category": "Handyman",
+      "pct": 83
+    },
+    {
+      "category": "Builder",
+      "pct": 69
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 62
+    },
+    {
+      "category": "Carpenter",
+      "pct": 62
+    },
+    {
+      "category": "Roofer",
+      "pct": 62
+    }
+  ],
+  "Pool & Spa Company": [
+    {
+      "category": "Waterproofing Company",
+      "pct": 49
+    },
+    {
+      "category": "Cleaner",
+      "pct": 45
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 40
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 35
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 33
+    }
+  ],
+  "Printer": [
+    {
+      "category": "Graphic Designer",
+      "pct": 81
+    },
+    {
+      "category": "Photographer",
+      "pct": 68
+    },
+    {
+      "category": "Writer",
+      "pct": 67
+    },
+    {
+      "category": "Building Designer",
+      "pct": 64
+    },
+    {
+      "category": "Videographer",
+      "pct": 64
+    }
+  ],
+  "Removalist": [
+    {
+      "category": "Upholsterer",
+      "pct": 50
+    },
+    {
+      "category": "Concreter",
+      "pct": 38
+    },
+    {
+      "category": "Flooring Company",
+      "pct": 37
+    },
+    {
+      "category": "Cleaner",
+      "pct": 32
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 31
+    }
+  ],
+  "Rendering Company": [
+    {
+      "category": "Concreter",
+      "pct": 75
+    },
+    {
+      "category": "Asphalting Company",
+      "pct": 43
+    },
+    {
+      "category": "Carpenter",
+      "pct": 35
+    },
+    {
+      "category": "Plasterer",
+      "pct": 28
+    },
+    {
+      "category": "Builder",
+      "pct": 28
+    }
+  ],
+  "Roofer": [
+    {
+      "category": "Handyman",
+      "pct": 76
+    },
+    {
+      "category": "Carpenter",
+      "pct": 74
+    },
+    {
+      "category": "Builder",
+      "pct": 74
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 71
+    },
+    {
+      "category": "Plumber",
+      "pct": 71
+    }
+  ],
+  "Rubbish Removalist": [
+    {
+      "category": "Gardener",
+      "pct": 61
+    },
+    {
+      "category": "Earthworks contractor",
+      "pct": 55
+    },
+    {
+      "category": "Handyman",
+      "pct": 40
+    },
+    {
+      "category": "Landscaper",
+      "pct": 36
+    },
+    {
+      "category": "Arborist",
+      "pct": 32
+    }
+  ],
+  "Scaffolding Company": [
+    {
+      "category": "Carpenter",
+      "pct": 31
+    },
+    {
+      "category": "Builder",
+      "pct": 30
+    },
+    {
+      "category": "Handyman",
+      "pct": 30
+    },
+    {
+      "category": "Concreter",
+      "pct": 27
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 26
+    }
+  ],
+  "Security Company": [
+    {
+      "category": "Lighting installation company",
+      "pct": 59
+    },
+    {
+      "category": "Handyman",
+      "pct": 56
+    },
+    {
+      "category": "Blinds & Shutter Installer",
+      "pct": 53
+    },
+    {
+      "category": "Electrician",
+      "pct": 52
+    },
+    {
+      "category": "Cleaner",
+      "pct": 49
+    }
+  ],
+  "Shades and Sails Company": [
+    {
+      "category": "Carpenter",
+      "pct": 93
+    },
+    {
+      "category": "Handyman",
+      "pct": 91
+    },
+    {
+      "category": "Builder",
+      "pct": 89
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 85
+    },
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 84
+    }
+  ],
+  "Sign Company": [
+    {
+      "category": "Printer",
+      "pct": 78
+    },
+    {
+      "category": "Graphic Designer",
+      "pct": 60
+    },
+    {
+      "category": "Writer",
+      "pct": 44
+    },
+    {
+      "category": "Photographer",
+      "pct": 43
+    },
+    {
+      "category": "Building Designer",
+      "pct": 40
+    }
+  ],
+  "Skylight Installation Company": [
+    {
+      "category": "Window and Glass Installation Company",
+      "pct": 88
+    },
+    {
+      "category": "Glass Repair Company",
+      "pct": 72
+    },
+    {
+      "category": "Carpenter",
+      "pct": 69
+    },
+    {
+      "category": "Handyman",
+      "pct": 69
+    },
+    {
+      "category": "Roofer",
+      "pct": 62
+    }
+  ],
+  "Smash Repair Company": [
+    {
+      "category": "Mechanic",
+      "pct": 88
+    },
+    {
+      "category": "Auto Electrician",
+      "pct": 87
+    },
+    {
+      "category": "Car detailer",
+      "pct": 37
+    },
+    {
+      "category": "Auto Tuner",
+      "pct": 37
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 24
+    }
+  ],
+  "Solar Company": [
+    {
+      "category": "Electrician",
+      "pct": 94
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 87
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 87
+    },
+    {
+      "category": "Test and tag company",
+      "pct": 87
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 86
+    }
+  ],
+  "Stonemason": [
+    {
+      "category": "Carpenter",
+      "pct": 78
+    },
+    {
+      "category": "Concreter",
+      "pct": 78
+    },
+    {
+      "category": "Asphalting Company",
+      "pct": 55
+    },
+    {
+      "category": "Landscaper",
+      "pct": 45
+    },
+    {
+      "category": "Bricklayer",
+      "pct": 44
+    }
+  ],
+  "Structural Engineer": [
+    {
+      "category": "Building Designer",
+      "pct": 48
+    },
+    {
+      "category": "Draftsman",
+      "pct": 42
+    },
+    {
+      "category": "Builder",
+      "pct": 38
+    },
+    {
+      "category": "Surveyor",
+      "pct": 17
+    },
+    {
+      "category": "Building Inspector",
+      "pct": 15
+    }
+  ],
+  "Surveyor": [
+    {
+      "category": "Building Designer",
+      "pct": 79
+    },
+    {
+      "category": "Builder",
+      "pct": 62
+    },
+    {
+      "category": "Draftsman",
+      "pct": 58
+    },
+    {
+      "category": "Carpenter",
+      "pct": 35
+    },
+    {
+      "category": "Handyman",
+      "pct": 33
+    }
+  ],
+  "TV Antenna Technician": [
+    {
+      "category": "Electrician",
+      "pct": 87
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 45
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 34
+    },
+    {
+      "category": "Handyman",
+      "pct": 31
+    },
+    {
+      "category": "Test and tag company",
+      "pct": 29
+    }
+  ],
+  "TV repair technician": [
+    {
+      "category": "Electrician",
+      "pct": 95
+    },
+    {
+      "category": "Oven Installation & Repairs",
+      "pct": 87
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 87
+    },
+    {
+      "category": "Washing Machine and Dryer Technician",
+      "pct": 87
+    },
+    {
+      "category": "Dishwasher Installation & Repair Company",
+      "pct": 87
+    }
+  ],
+  "Tailor & Dressmaker": [
+    {
+      "category": "Wedding & Event Supplier",
+      "pct": 48
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 19
+    },
+    {
+      "category": "Carpenter",
+      "pct": 17
+    },
+    {
+      "category": "Handyman",
+      "pct": 17
+    },
+    {
+      "category": "Builder",
+      "pct": 17
+    }
+  ],
+  "Test and tag company": [
+    {
+      "category": "Electrician",
+      "pct": 97
+    },
+    {
+      "category": "Lighting installation company",
+      "pct": 95
+    },
+    {
+      "category": "Home theatre installation company",
+      "pct": 92
+    },
+    {
+      "category": "Upholsterer",
+      "pct": 92
+    },
+    {
+      "category": "Solar Company",
+      "pct": 91
+    }
+  ],
+  "Tiler": [
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 77
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 76
+    },
+    {
+      "category": "Builder",
+      "pct": 47
+    },
+    {
+      "category": "Carpenter",
+      "pct": 45
+    },
+    {
+      "category": "Handyman",
+      "pct": 45
+    }
+  ],
+  "Tutor": [
+    {
+      "category": "Computer Repairer & IT Service Provider",
+      "pct": 21
+    },
+    {
+      "category": "Website Developers and Designers",
+      "pct": 16
+    }
+  ],
+  "Upholsterer": [
+    {
+      "category": "Building Designer",
+      "pct": 47
+    },
+    {
+      "category": "Concreter",
+      "pct": 42
+    },
+    {
+      "category": "Carpenter",
+      "pct": 38
+    },
+    {
+      "category": "Electrician",
+      "pct": 36
+    },
+    {
+      "category": "Handyman",
+      "pct": 34
+    }
+  ],
+  "Videographer": [
+    {
+      "category": "Photographer",
+      "pct": 87
+    },
+    {
+      "category": "Graphic Designer",
+      "pct": 73
+    },
+    {
+      "category": "Printer",
+      "pct": 68
+    },
+    {
+      "category": "Writer",
+      "pct": 68
+    },
+    {
+      "category": "Building Designer",
+      "pct": 68
+    }
+  ],
+  "Washing Machine and Dryer Technician": [
+    {
+      "category": "Dishwasher Installation & Repair Company",
+      "pct": 77
+    },
+    {
+      "category": "Oven Installation & Repairs",
+      "pct": 76
+    },
+    {
+      "category": "Electrician",
+      "pct": 75
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 75
+    },
+    {
+      "category": "Gas Fitter",
+      "pct": 70
+    }
+  ],
+  "Waterproofing Company": [
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 80
+    },
+    {
+      "category": "Builder",
+      "pct": 78
+    },
+    {
+      "category": "Handyman",
+      "pct": 78
+    },
+    {
+      "category": "Carpenter",
+      "pct": 77
+    },
+    {
+      "category": "Concreter",
+      "pct": 76
+    }
+  ],
+  "Website Developers and Designers": [
+    {
+      "category": "Graphic Designer",
+      "pct": 72
+    },
+    {
+      "category": "Marketing Company",
+      "pct": 48
+    },
+    {
+      "category": "Writer",
+      "pct": 32
+    },
+    {
+      "category": "Photographer",
+      "pct": 29
+    },
+    {
+      "category": "Printer",
+      "pct": 28
+    }
+  ],
+  "Wedding & Event Supplier": [
+    {
+      "category": "Photographer",
+      "pct": 35
+    },
+    {
+      "category": "Make Up Artist",
+      "pct": 19
+    },
+    {
+      "category": "Hair Stylist",
+      "pct": 19
+    }
+  ],
+  "Welders and Boilermakers": [
+    {
+      "category": "Carpenter",
+      "pct": 91
+    },
+    {
+      "category": "Handyman",
+      "pct": 91
+    },
+    {
+      "category": "Builder",
+      "pct": 90
+    },
+    {
+      "category": "Roofer",
+      "pct": 89
+    },
+    {
+      "category": "Kitchen Renovation Company",
+      "pct": 89
+    }
+  ],
+  "Window Cleaner": [
+    {
+      "category": "Cleaner",
+      "pct": 95
+    },
+    {
+      "category": "Carpet Cleaner",
+      "pct": 83
+    },
+    {
+      "category": "High pressure cleaning company",
+      "pct": 83
+    },
+    {
+      "category": "Air Conditioning & Heating Technician",
+      "pct": 76
+    },
+    {
+      "category": "Housekeeper",
+      "pct": 48
+    }
+  ],
+  "Window and Glass Installation Company": [
+    {
+      "category": "Glass Repair Company",
+      "pct": 85
+    },
+    {
+      "category": "Carpenter",
+      "pct": 83
+    },
+    {
+      "category": "Handyman",
+      "pct": 82
+    },
+    {
+      "category": "Builder",
+      "pct": 80
+    },
+    {
+      "category": "Bathroom Renovation Company",
+      "pct": 79
+    }
+  ],
+  "Writer": [
+    {
+      "category": "Graphic Designer",
+      "pct": 75
+    },
+    {
+      "category": "Printer",
+      "pct": 70
+    },
+    {
+      "category": "Photographer",
+      "pct": 69
+    },
+    {
+      "category": "Videographer",
+      "pct": 67
+    },
+    {
+      "category": "Building Designer",
+      "pct": 66
+    }
+  ]
+}
