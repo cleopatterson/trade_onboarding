@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Wizard | Trade Onboarding</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      -webkit-font-smoothing: antialiased;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── SPLIT LAYOUT ─── */
+    .debug-layout { display: flex; height: 100vh; }
+
+    /* LEFT PANE — Wizard */
+    .wizard-pane {
+      width: 50%; background: white;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .wizard-pane-header {
+      background: #f8f9fa; border-bottom: 1px solid #e0e0e0;
+      padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .wizard-pane-header .title {
+      font-size: 14px; font-weight: 600; color: #333;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .wizard-pane-header .title i { color: #298AE3; }
+    .wizard-pane-header .session-id { font-size: 12px; color: #888; font-family: 'SF Mono', monospace; }
+
+    .wizard-progress-bar { height: 6px; background: #e0e0e0; overflow: hidden; flex-shrink: 0; }
+    .wizard-progress-fill { height: 100%; background: #1FC759; width: 0%; transition: width 0.5s ease; }
+
+    #wizard-content {
+      flex: 1; padding: 20px 40px 40px; display: flex; flex-direction: column;
+      overflow-y: auto; min-height: 0; color: #1a1a1a;
+    }
+
+    /* RIGHT PANE — Debug Timeline */
+    .debug-pane {
+      width: 50%; display: flex; flex-direction: column;
+      background: #16213e; border-left: 2px solid #0f3460;
+    }
+    .debug-header {
+      background: #0f3460; padding: 10px 16px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .debug-header-title { font-size: 13px; font-weight: 700; color: #4fc3f7; display: flex; align-items: center; gap: 8px; }
+    .debug-header-title i { font-size: 11px; }
+    .flow-mini { display: flex; align-items: center; gap: 3px; }
+    .flow-dot { width: 8px; height: 8px; border-radius: 50%; background: #2a3a5c; transition: all 0.3s; }
+    .flow-dot.completed { background: #4ade80; }
+    .flow-dot.current { background: #4fc3f7; box-shadow: 0 0 6px rgba(79,195,247,0.5); }
+    .flow-dot-arrow { color: #3a4a6c; font-size: 8px; }
+    .debug-timeline {
+      flex: 1; overflow-y: auto; padding: 16px; min-height: 0;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .debug-empty { text-align: center; color: #5a7099; padding: 40px; font-size: 14px; }
+    .debug-empty i { font-size: 32px; margin-bottom: 12px; display: block; color: #3a4a6c; }
+
+    /* Timeline turn block */
+    .tl-turn {
+      position: relative; padding-left: 24px; padding-bottom: 16px;
+      border-left: 2px solid #2a3a5c;
+      animation: fadeInUp 0.3s ease;
+    }
+    .tl-turn:last-child { border-left-color: transparent; }
+    .tl-turn::before {
+      content: ''; position: absolute; left: -6px; top: 0;
+      width: 10px; height: 10px; border-radius: 50%; background: #4fc3f7;
+      border: 2px solid #16213e;
+    }
+    .tl-turn.node-welcome::before { background: #94a3b8; }
+    .tl-turn.node-business_verification::before { background: #fbbf24; }
+    .tl-turn.node-service_discovery::before { background: #4ade80; }
+    .tl-turn.node-service_area::before { background: #38bdf8; }
+    .tl-turn.node-profile::before { background: #c084fc; }
+    .tl-turn.node-pricing::before { background: #f97316; }
+    .tl-turn.node-complete::before { background: #22c55e; }
+
+    .tl-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .tl-node-badge {
+      padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tl-node-badge.welcome { background: #1e293b; color: #94a3b8; }
+    .tl-node-badge.business_verification { background: #2a2a1a; color: #fbbf24; }
+    .tl-node-badge.service_discovery { background: #1a3a2a; color: #4ade80; }
+    .tl-node-badge.service_area { background: #1a2a4a; color: #38bdf8; }
+    .tl-node-badge.profile { background: #2a1a4a; color: #c084fc; }
+    .tl-node-badge.pricing { background: #2a1a0a; color: #f97316; }
+    .tl-node-badge.complete { background: #1a3a2a; color: #22c55e; }
+    .tl-time { font-size: 11px; color: #5a7099; }
+    .tl-turn-num { font-size: 11px; color: #3a4a6c; }
+
+    /* Event rows inside a turn */
+    .tl-event {
+      display: flex; align-items: flex-start; gap: 8px; padding: 4px 0;
+      font-size: 12px; line-height: 1.4;
+    }
+    .tl-icon {
+      width: 20px; height: 20px; border-radius: 5px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 10px; margin-top: 1px;
+    }
+    .tl-icon.api { background: #1a2a4a; color: #4fc3f7; }
+    .tl-icon.llm { background: #2a1a4a; color: #c084fc; }
+    .tl-icon.data { background: #1a3a2a; color: #4ade80; }
+    .tl-icon.map { background: #2a2a1a; color: #fbbf24; }
+    .tl-icon.chain { background: #1e293b; color: #94a3b8; }
+    .tl-icon.info { background: #1a2744; color: #7b8db6; }
+    .tl-icon.guide { background: #2a2210; color: #f59e0b; }
+    .tl-icon.user { background: #0f3460; color: #38bdf8; }
+    .tl-event-body { flex: 1; }
+    .tl-event-title { color: #c8d6e5; font-weight: 600; }
+    .tl-event-detail { color: #5a7099; font-size: 11px; margin-top: 2px; }
+    .tl-event-time { color: #3a4a6c; font-size: 10px; margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+
+    /* Collapsible group bundle */
+    .tl-group {
+      margin: 2px 0; border-radius: 6px; overflow: hidden;
+      border: 1px solid #1e2d4a; background: #131d33;
+    }
+    .tl-group-header {
+      display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+      cursor: pointer; user-select: none; font-size: 12px;
+      transition: background 0.15s;
+    }
+    .tl-group-header:hover { background: #1a2844; }
+    .tl-group-chevron {
+      font-size: 9px; color: #3a4a6c; transition: transform 0.2s; flex-shrink: 0;
+    }
+    .tl-group.open .tl-group-chevron { transform: rotate(90deg); }
+    .tl-group-title { color: #c8d6e5; font-weight: 600; flex: 1; }
+    .tl-group-meta { font-size: 10px; color: #5a7099; }
+    .tl-group-body {
+      max-height: 0; overflow: hidden; transition: max-height 0.25s ease;
+      padding: 0 10px;
+    }
+    .tl-group.open .tl-group-body { max-height: 600px; padding: 4px 10px 8px; }
+    .tl-group-body .tl-event { padding: 3px 0; }
+    .tl-group-body .tl-event-title { font-weight: 500; font-size: 11px; }
+    .tl-group-body .tl-icon { width: 16px; height: 16px; font-size: 8px; }
+
+    /* Expandable data */
+    .tl-expand {
+      margin: 4px 0 4px 28px; padding: 6px 10px;
+      background: #0f1a2e; border-radius: 6px; font-size: 11px;
+      font-family: 'SF Mono', monospace; color: #5a7099;
+      max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+      display: none; cursor: default;
+    }
+    .tl-expand.open { display: block; }
+    .tl-clickable { cursor: pointer; }
+    .tl-clickable:hover .tl-event-title { color: #4fc3f7; }
+    .tl-group-body .tl-expand { margin-left: 24px; }
+
+    /* Service chips in timeline */
+    .tl-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .tl-chip {
+      padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+    }
+    .tl-chip.core { background: #1a3a2a; color: #4ade80; }
+    .tl-chip.evidence { background: #1a2a4a; color: #4fc3f7; }
+    .tl-chip.licence { background: #2a1a4a; color: #c084fc; }
+    .tl-chip.gap { background: #1a2744; color: #6b7280; }
+    .tl-chip.related { background: #2a2a1a; color: #fbbf24; }
+
+    /* ═══ WIZARD STYLES (from landing.html) ═══ */
+    .wizard-question-container { animation: fadeInUp 0.4s ease; }
+    .wizard-question-number { color: #298AE3; font-size: 14px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .wizard-question-text { font-size: 18px; font-weight: 500; color: #202020; margin-bottom: 30px; line-height: 140%; letter-spacing: -0.018em; white-space: pre-line; }
+    .wizard-question-text p { margin-bottom: 15px; line-height: 1.7; letter-spacing: normal; }
+    .wizard-question-text strong { color: #0066cc; font-weight: 700; }
+    .wizard-info-box { background: #f8faff; border-left: 4px solid #0066cc; padding: 16px 20px; margin: 20px 0; border-radius: 8px; font-size: 16px; line-height: 1.4; }
+    .wizard-info-box strong { display: block; margin-bottom: 8px; color: #0066cc; font-size: 15px; font-weight: 700; }
+    .wizard-info-box .wizard-summary-item:first-child { padding-top: 0; }
+    .wizard-info-box .wizard-summary-item:last-child { padding-bottom: 0; }
+    .wizard-summary-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e0e0e0; font-size: 15px; line-height: 1.3; gap: 16px; }
+    .wizard-summary-item:last-child { border-bottom: none; }
+    .wizard-summary-label { color: #666; font-weight: 500; flex-shrink: 0; }
+    .wizard-summary-value { color: #1a1a1a; font-weight: 600; text-align: right; }
+    .wizard-buttons-container { display: flex; flex-direction: column; gap: 12px; }
+    .wizard-button { padding: 14px 20px; background: white; border: 2px solid #EDEDED; border-radius: 10px; font-size: 16px; font-weight: 500; color: #202020; cursor: pointer; transition: all 0.2s ease; text-align: left; display: flex; align-items: center; justify-content: space-between; line-height: 100%; letter-spacing: -0.018em; }
+    .wizard-button i { opacity: 0; transform: translateX(-10px); transition: all 0.2s ease; color: #0066cc; }
+    .wizard-button:hover { border-color: #167DD5; background: #f8faff; transform: translateX(5px); }
+    .wizard-button:hover i { opacity: 1; transform: translateX(0); }
+    .wizard-button.wizard-button-confirm { border-color: #00BB4D; background: #f0fff4; }
+    .wizard-button.wizard-button-confirm:hover { border-color: #009B40; background: #d5f5e3; }
+    .wizard-button.wizard-button-confirm i { color: #00BB4D; }
+    .wizard-button.wizard-button-confirm:hover i { color: #009B40; }
+    .wizard-buttons-wrap { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+    .wizard-button-remove { padding: 8px 14px; font-size: 14px; border-color: #e0e0e0; background: #fafafa; flex: 0 0 auto; }
+    .wizard-button-remove:hover { border-color: #e53e3e; background: #fff5f5; color: #e53e3e; transform: none; }
+    .wizard-button-remove.toggled-off { border-color: #e0e0e0; background: #f0f0f0; color: #999; text-decoration: line-through; }
+    .wizard-button-done { width: 100%; border-color: #0066cc; background: #f8faff; justify-content: center; }
+    .wizard-button-done:hover { border-color: #167DD5; background: #e8f0fe; }
+    .wizard-button-multi { padding: 14px 20px; background: white; border: 2px solid #EDEDED; border-radius: 10px; font-size: 16px; font-weight: 500; color: #202020; cursor: pointer; transition: all 0.2s ease; text-align: left; display: flex; align-items: center; gap: 12px; line-height: 100%; letter-spacing: -0.018em; }
+    .wizard-button-multi:hover { border-color: #167DD5; background: #f8faff; }
+    .wizard-button-multi .multi-check { width: 22px; height: 22px; border: 2px solid #ccc; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; flex-shrink: 0; margin-left: auto; }
+    .wizard-button-multi .multi-check i { font-size: 12px; color: white; opacity: 0; transition: opacity 0.15s ease; }
+    .wizard-button-multi:hover .multi-check { border-color: #167DD5; }
+    .wizard-button-multi.selected { border-color: #0066cc; background: #f0f6ff; }
+    .wizard-button-multi.selected .multi-check { background: #0066cc; border-color: #0066cc; }
+    .wizard-button-multi.selected .multi-check i { opacity: 1; }
+    .edit-section { margin: 16px 0; }
+    .edit-section-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .edit-chips-container { display: flex; flex-wrap: wrap; gap: 8px; }
+    .edit-chip { padding: 7px 14px; background: white; border: 1.5px solid #d8dce5; border-radius: 20px; font-size: 13px; font-weight: 500; color: #333; cursor: pointer; transition: all 0.15s ease; }
+    .edit-chip:hover { border-color: #cc3333; color: #cc3333; background: #fff8f8; }
+    .edit-chip.toggled-off { background: #f5f5f5; color: #aaa; text-decoration: line-through; border-color: transparent; }
+    .wizard-divider { text-align: center; margin: 25px 0 15px; position: relative; }
+    .wizard-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #E3E3E3; }
+    .wizard-divider span { background: white; padding: 0 15px; color: #444; font-size: 14px; font-weight: 800; line-height: 100%; letter-spacing: -0.018em; position: relative; z-index: 1; }
+    .wizard-input-row { display: flex; gap: 0.5rem; align-items: center; }
+    .wizard-text-input { flex: 1; height: 54px; padding: 0 1rem; border: 2px solid #EDEDED; border-radius: 8px; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; box-sizing: border-box; color: #1a1a1a; }
+    .wizard-text-input:focus { border-color: #167DD5; box-shadow: none; }
+    .wizard-submit-btn { width: 54px; height: 54px; background: #A6C7EB; color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; }
+    .wizard-submit-btn i { font-size: 22px; }
+    .wizard-submit-btn.active { background: #298AE3; }
+    .wizard-submit-btn.active:hover { background: #167DD5; }
+    .wizard-loading { text-align: center; color: #1a1a1a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 400px; }
+    .magic-stars { position: relative; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+    .magic-star { position: absolute; clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%); animation: starFlash 1.5s ease-in-out infinite; }
+    .magic-star:nth-child(1) { width: 36px; height: 36px; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0066cc; box-shadow: 0 0 10px #0066cc, 0 0 20px #0052a3; animation: starFlashCenter 1.5s ease-in-out infinite; }
+    .magic-star:nth-child(2) { width: 22px; height: 22px; top: 0; right: 0; background: #288AE2; animation-delay: 0.3s; }
+    .magic-star:nth-child(3) { width: 16px; height: 16px; bottom: 4px; left: 4px; background: #4DA3E8; animation-delay: 0.6s; }
+    .magic-star:nth-child(4) { width: 14px; height: 14px; top: 10px; left: 8px; background: #7ABFEF; animation-delay: 0.9s; }
+    @keyframes starFlash { 0%, 100% { opacity: 0.3; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.15); } }
+    @keyframes starFlashCenter { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.8) rotate(0deg); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(12deg); } }
+    .wizard-loading-title { font-size: 24px; font-weight: 800; color: #202020; }
+    .wizard-loading-subtitle { margin-top: 4px; font-size: 16px; font-weight: 500; color: #575757; transition: opacity 0.2s ease-in-out; }
+    .skeleton-text { height: 18px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 2s infinite; border-radius: 4px; margin-bottom: 10px; }
+    .skeleton-text-short { width: 60%; }
+    .skeleton-button { height: 52px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 2s infinite; border-radius: 10px; margin-bottom: 10px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .wizard-progress-loading { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 350px; }
+    .progress-steps { display: flex; flex-direction: column; gap: 0; align-items: flex-start; margin-top: 20px; }
+    .progress-step { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: #999; padding: 7px 0; opacity: 0; transform: translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease, color 0.3s ease; }
+    .progress-step.visible { opacity: 1; transform: translateY(0); }
+    .progress-step.done { color: #22c55e; }
+    .progress-step.active { color: #202020; }
+    .progress-step-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .step-spinner { width: 14px; height: 14px; border: 2px solid #e0e0e0; border-top-color: #0066cc; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .step-check { color: #22c55e; font-size: 15px; }
+    .wizard-error { text-align: center; color: #e74c3c; padding: 40px; }
+    .wizard-error i { font-size: 48px; margin-bottom: 15px; display: block; }
+    .wizard-completion { text-align: center; animation: fadeInUp 0.5s ease; padding: 30px 0; }
+    .wizard-success-icon i { font-size: 64px; color: #1FC759; }
+    .wizard-completion h2 { font-size: 32px; color: #1a1a1a; margin: 16px 0 15px; }
+    .wizard-completion p { font-size: 16px; color: #666; line-height: 1.6; margin-bottom: 10px; }
+    .wizard-result-json { text-align: left; background: #f5f5f5; border-radius: 12px; padding: 20px; margin: 20px 0; font-family: 'SF Mono', monospace; font-size: 12px; line-height: 1.5; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .wizard-close-btn { padding: 14px 32px; background: #0066cc; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+    .wizard-close-btn:hover { background: #0052a3; }
+    .service-chip { display: inline-block; background: #f0f8ff; border: 1px solid #b8d4e8; color: #0066cc; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; margin: 3px; }
+    .profile-wrap { background: #F8FAFC; margin: -20px -22px -40px; padding: 0; }
+    .profile-hero { background: linear-gradient(135deg, #0A2266 0%, #1565B8 40%, #298AE3 100%); padding: 28px 24px 24px; text-align: center; position: relative; overflow: hidden; }
+    .profile-hero::before { content: ''; position: absolute; top: -40%; right: -20%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(0,182,122,0.2) 0%, transparent 70%); border-radius: 50%; }
+    .profile-logo-upload { width: 80px; height: 80px; border-radius: 18px; border: 3px solid rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; margin: 0 auto 14px; background: rgba(255,255,255,0.12); position: relative; z-index: 1; }
+    .profile-logo-upload:hover { border-color: rgba(255,255,255,0.6); transform: scale(1.05); }
+    .profile-logo-monogram { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 1px; background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%); border-radius: 15px; user-select: none; position: relative; }
+    .profile-logo-monogram .camera-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); border-radius: 15px; opacity: 0; transition: opacity 0.2s; font-size: 18px; color: rgba(255,255,255,0.9); }
+    .profile-logo-upload:hover .profile-logo-monogram .camera-hint { opacity: 1; }
+    .profile-logo-preview { width: 100%; height: 100%; object-fit: cover; border-radius: 15px; }
+    .profile-business-name { font-size: 21px; font-weight: 800; color: #fff; margin: 0 0 2px; position: relative; z-index: 1; }
+    .profile-contact-name { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 4px; position: relative; z-index: 1; }
+    .profile-hero-subtitle { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 14px; position: relative; z-index: 1; }
+    .profile-trust-bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; position: relative; z-index: 1; }
+    .profile-trust-badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
+    .profile-trust-badge.green { background: rgba(0,182,122,0.25); border-color: rgba(0,182,122,0.35); }
+    .profile-trust-badge.gold { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.35); }
+    .profile-trust-badge.star { background: rgba(251,191,36,0.25); border-color: rgba(251,191,36,0.35); }
+    .profile-cards { padding: 16px 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .profile-card { background: #fff; border-radius: 16px; border: 1px solid #E2E8F0; overflow: hidden; }
+    .profile-card-head { padding: 16px 20px 0; display: flex; align-items: center; justify-content: space-between; }
+    .profile-card-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94A3B8; }
+    .profile-card-edit { width: 30px; height: 30px; border-radius: 8px; border: none; background: #F1F5F9; color: #94A3B8; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .profile-card-inner { padding: 12px 20px 20px; }
+    .profile-description-textarea { width: 100%; padding: 12px 14px; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 14px; font-family: inherit; line-height: 1.75; resize: none; outline: none; min-height: 140px; box-sizing: border-box; background: #FAFBFC; color: #334155; }
+    .profile-char-counter { text-align: right; font-size: 11px; color: #CBD5E1; margin-top: 5px; }
+    .profile-services-flow { display: flex; flex-wrap: wrap; gap: 7px; }
+    .profile-stag { padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; color: #334155; background: #F1F5F9; cursor: default; }
+    .profile-services-flow.editing .profile-stag { cursor: pointer; user-select: none; }
+    .profile-stag.toggled-off { opacity: 0.35; text-decoration: line-through; }
+    .profile-card-edit.active { background: #1A56DB; color: white; }
+    .profile-card.editing { border-color: #298AE3; }
+    .profile-edit-hint { font-size: 11px; color: #94A3B8; margin-top: 8px; display: none; }
+    .profile-card.editing .profile-edit-hint { display: block; }
+    .profile-lic-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .profile-lic-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: #E8F8F1; border-radius: 10px; border: 1px solid rgba(0,182,122,0.15); }
+    .profile-lic-check { width: 22px; height: 22px; border-radius: 6px; background: #00B67A; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .profile-lic-check i { color: white; font-size: 11px; }
+    .profile-lic-name { font-size: 13px; font-weight: 600; color: #065F46; }
+    .profile-cat-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .profile-cat-badge { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; background: #EBF0FF; color: #1E3A8A; font-size: 14px; font-weight: 600; }
+    .profile-cat-badge-icon { width: 22px; height: 22px; border-radius: 6px; background: #1A56DB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .profile-cat-badge-icon i { color: white; font-size: 11px; }
+    .profile-area-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .profile-area-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: #EBF0FF; border-radius: 10px; border: 1px solid rgba(26,86,219,0.12); }
+    .profile-area-item.toggled-off { opacity: 0.35; text-decoration: line-through; }
+    .profile-area-list.editing .profile-area-item { cursor: pointer; user-select: none; }
+    .profile-area-pin { width: 22px; height: 22px; border-radius: 6px; background: #1A56DB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .profile-area-pin i { color: white; font-size: 10px; }
+    .profile-area-name { font-size: 14px; font-weight: 600; color: #1E3A8A; }
+    .profile-photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .profile-photo-thumb { position: relative; aspect-ratio: 4/3; border-radius: 10px; overflow: hidden; background: #F1F5F9; }
+    .profile-photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-photo-remove { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,0.5); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; opacity: 0; }
+    .profile-photo-thumb:hover .profile-photo-remove { opacity: 1; }
+    .profile-photo-add { aspect-ratio: 4/3; border: 2px dashed #CBD5E1; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: #94A3B8; font-size: 11px; background: #F8FAFC; }
+    .profile-cta { background: linear-gradient(135deg, #298AE3 0%, #1565B8 100%); border-radius: 16px; padding: 28px 24px; text-align: center; position: relative; overflow: hidden; }
+    .profile-cta-title { font-size: 18px; font-weight: 800; color: white; margin-bottom: 6px; position: relative; }
+    .profile-cta-sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 18px; position: relative; }
+    .profile-save-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; background: #1FC759; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .profile-save-btn:hover { background: #00BB4D; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="debug-layout">
+    <div class="wizard-pane">
+      <div class="wizard-pane-header">
+        <div class="title"><i class="fas fa-tools"></i> Trade Onboarding Wizard</div>
+        <div class="session-id" id="sessionIdLabel">No session</div>
+      </div>
+      <div class="wizard-progress-bar"><div class="wizard-progress-fill" id="wizardProgressBar"></div></div>
+      <div id="wizard-content">
+        <div class="wizard-loading">
+          <div class="magic-stars"><div class="magic-star"></div><div class="magic-star"></div><div class="magic-star"></div><div class="magic-star"></div></div>
+          <div class="wizard-loading-title">Starting wizard...</div>
+          <div class="wizard-loading-subtitle" id="loading-subtitle">Connecting to server</div>
+        </div>
+      </div>
+    </div>
+    <div class="debug-pane">
+      <div class="debug-header">
+        <div class="debug-header-title"><i class="fas fa-stream"></i> Live Debug Timeline</div>
+        <div class="flow-mini" id="flowMini"></div>
+      </div>
+      <div class="debug-timeline" id="debugTimeline">
+        <div class="debug-empty" id="debugEmpty"><i class="fas fa-play-circle"></i>Waiting for wizard to start...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '')
+      ? ('http://localhost:' + (window.location.port || '8001'))
+      : window.location.origin;
+
+    let sessionId = null;
+    let questionCount = 0;
+    let currentState = {};
+    let isSending = false;
+    let turnNumber = 0;
+    let prevDebugState = null;
+    let allTraces = [];
+    let autoChainLog = [];
+
+    const STEPS = ['business', 'services', 'areas', 'profile', 'pricing', 'done'];
+    const NODE_TO_STEP = { 'welcome': 'business', 'business_verification': 'business', 'service_discovery': 'services', 'service_area': 'areas', 'confirmation': 'profile', 'profile': 'profile', 'pricing': 'pricing', 'complete': 'done' };
+    const FLOW_NODES = [
+      { key: 'welcome', label: 'WELCOME' }, { key: 'business_verification', label: 'BIZ VERIFY' },
+      { key: 'service_discovery', label: 'SERVICES' }, { key: 'service_area', label: 'AREA' },
+      { key: 'profile', label: 'PROFILE' }, { key: 'pricing', label: 'PRICING' }, { key: 'complete', label: 'COMPLETE' },
+    ];
+    const FLOW_ORDER = FLOW_NODES.map(function(n) { return n.key; });
+
+    // ── DOM helpers ──
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    // ── Flow mini-dots in header ──
+    function initFlowMini() {
+      var container = document.getElementById('flowMini');
+      FLOW_NODES.forEach(function(n, i) {
+        if (i > 0) container.appendChild(el('span', 'flow-dot-arrow', '\u203A'));
+        var dot = el('span', 'flow-dot');
+        dot.id = 'flowDot-' + n.key;
+        dot.title = n.label;
+        container.appendChild(dot);
+      });
+    }
+
+    function updateFlowMini(currentNode) {
+      var currentIdx = FLOW_ORDER.indexOf(currentNode);
+      FLOW_NODES.forEach(function(n, i) {
+        var dot = document.getElementById('flowDot-' + n.key);
+        if (!dot) return;
+        dot.className = 'flow-dot';
+        if (i < currentIdx) dot.classList.add('completed');
+        else if (i === currentIdx) dot.classList.add('current');
+      });
+    }
+
+    // ── Classify API trace calls into icon types ──
+    function getEventType(apiName) {
+      if (!apiName) return 'info';
+      var lower = apiName.toLowerCase();
+      if (lower.startsWith('llm')) return 'llm';
+      // Decision/mapping events
+      if (lower.includes('licence matching') || lower.includes('category pre-detect') || lower.includes('category detect')) return 'map';
+      if (lower.includes('tier') || lower.includes('map') || lower.includes('category') || lower.includes('gap') || lower.includes('cluster')) return 'map';
+      // Guide & reference data — own bucket so they're visible
+      if (lower.includes('guide')) return 'guide';
+      if (lower.includes('suburb group') || lower.includes('service gaps')) return 'data';
+      // API calls
+      if (lower.includes('abr') || lower.includes('google') || lower.includes('brave') || lower.includes('nsw') || lower.includes('qbcc') || lower.includes('dmirs') || lower.includes('licence') || lower.includes('places')) return 'api';
+      // Web scraping & data extraction
+      if (lower.includes('scrape') || lower.includes('website') || lower.includes('extract') || lower.includes('social') || lower.includes('photo filter') || lower.includes('discovery')) return 'data';
+      if (lower.includes('auto-chain') || lower.includes('chain')) return 'chain';
+      return 'api';
+    }
+
+    function getEventIcon(type) {
+      var icons = { api: 'fas fa-plug', llm: 'fas fa-brain', data: 'fas fa-globe', map: 'fas fa-sitemap', chain: 'fas fa-link', info: 'fas fa-info', user: 'fas fa-user', decision: 'fas fa-balance-scale', guide: 'fas fa-book' };
+      return icons[type] || icons.info;
+    }
+
+    // ── Build a single timeline event row ──
+    function makeEvent(type, title, detail, time, expandData) {
+      var row = el('div', 'tl-event' + (expandData ? ' tl-clickable' : ''));
+      var icon = el('div', 'tl-icon ' + type);
+      icon.appendChild(el('i', getEventIcon(type)));
+      row.appendChild(icon);
+
+      var body = el('div', 'tl-event-body');
+      body.appendChild(el('div', 'tl-event-title', title));
+      if (detail) body.appendChild(el('div', 'tl-event-detail', detail));
+      row.appendChild(body);
+
+      if (time !== undefined && time !== null) {
+        row.appendChild(el('div', 'tl-event-time', time + 's'));
+      }
+
+      if (expandData) {
+        var expandId = 'expand-' + turnNumber + '-' + Math.random().toString(36).substr(2, 6);
+        row.addEventListener('click', function() {
+          var exp = document.getElementById(expandId);
+          if (exp) exp.classList.toggle('open');
+        });
+        var expandDiv = el('div', 'tl-expand');
+        expandDiv.id = expandId;
+        // Special formatting for licence matching candidates
+        if (expandData && expandData.candidates && Array.isArray(expandData.candidates)) {
+          var lines = [];
+          if (expandData.search_clean) lines.push('Search: "' + expandData.search_clean + '"  Categories: ' + (expandData.detected_categories || []).join(', '));
+          if (expandData.reason) lines.push('Result: ' + expandData.reason);
+          lines.push('');
+          lines.push('  Licensee                        Type           Name     Trade');
+          lines.push('  ' + '\u2500'.repeat(72));
+          expandData.candidates.forEach(function(c) {
+            var name = (c.licensee || '').substring(0, 30).padEnd(30);
+            var type = (c.licence_type || '-').substring(0, 12).padEnd(12);
+            var ns = (c.name_label || '?').padEnd(9);
+            var tr = c.trade_label || '?';
+            var marker = (expandData.winner && c.licensee === expandData.winner) ? ' \u2190 PICKED' : '';
+            lines.push('  ' + name + '  ' + type + '  ' + ns + '  ' + tr + marker);
+          });
+          expandDiv.textContent = lines.join('\n');
+        } else {
+          expandDiv.textContent = typeof expandData === 'string' ? expandData : JSON.stringify(expandData, null, 2);
+        }
+        // Return both elements — caller appends both
+        row._expandDiv = expandDiv;
+      }
+      return row;
+    }
+
+    // ── Build service chips ──
+    function makeServiceChips(services, prevServices) {
+      var prevIds = {};
+      (prevServices || []).forEach(function(s) { prevIds[s.subcategory_id || s.input || s.subcategory_name] = true; });
+
+      var newOnes = (services || []).filter(function(s) { return !prevIds[s.subcategory_id || s.input || s.subcategory_name]; });
+      if (newOnes.length === 0) return null;
+
+      var chips = el('div', 'tl-chips');
+      newOnes.forEach(function(s) {
+        var src = s.source || 'core';
+        var chip = el('span', 'tl-chip ' + (src === 'gap_question' ? 'gap' : src), s.subcategory_name || s.input || '');
+        chip.title = src;
+        chips.appendChild(chip);
+      });
+      return chips;
+    }
+
+    // ── Diff state to find interesting changes ──
+    function getStateChanges(ds, prev) {
+      var changes = [];
+      if (!prev) return changes;
+
+      // Business verified
+      if (ds.business_verified && !prev.business_verified) {
+        changes.push({ type: 'info', title: 'Business verified', detail: (ds.business_name || '') + ' \u2014 ABN ' + (ds.abn || '') + ' (' + (ds.business_state || '') + ')' });
+      }
+      // Category detection
+      var prevCats = []; var newCats = [];
+      (prev.services || []).forEach(function(s) { if (s.category_name && prevCats.indexOf(s.category_name) < 0) prevCats.push(s.category_name); });
+      (ds.services || []).forEach(function(s) { if (s.category_name && newCats.indexOf(s.category_name) < 0) newCats.push(s.category_name); });
+      var addedCats = newCats.filter(function(c) { return prevCats.indexOf(c) < 0; });
+      if (addedCats.length > 0) {
+        changes.push({ type: 'map', title: 'Category detected: ' + addedCats.join(', '), detail: ds.google_primary_type ? 'Google type: ' + ds.google_primary_type : null });
+      }
+      // Tiered mapping start
+      if (ds._specialist_gap_ids && (!prev._specialist_gap_ids || prev._specialist_gap_ids.length === 0) && ds._specialist_gap_ids.length > 0) {
+        changes.push({ type: 'map', title: 'Tiered mapping active', detail: (ds.services || []).length + ' services mapped, ' + ds._specialist_gap_ids.length + ' specialist gaps remaining' });
+      }
+      // Gap count change
+      if (prev._specialist_gap_ids && ds._specialist_gap_ids && prev._specialist_gap_ids.length !== ds._specialist_gap_ids.length) {
+        var diff = prev._specialist_gap_ids.length - ds._specialist_gap_ids.length;
+        if (diff > 0) changes.push({ type: 'map', title: diff + ' specialist gap' + (diff > 1 ? 's' : '') + ' resolved', detail: ds._specialist_gap_ids.length + ' remaining' });
+      }
+      // Pending clusters
+      if (ds._pending_cluster_ids && ds._pending_cluster_ids.length > 0 && JSON.stringify(ds._pending_cluster_ids) !== JSON.stringify(prev._pending_cluster_ids || [])) {
+        changes.push({ type: 'map', title: 'Cluster queued: IDs ' + ds._pending_cluster_ids.join(', ') });
+      }
+      // Related category suggestions
+      if (ds._category_suggestions_shown && !prev._category_suggestions_shown) {
+        changes.push({ type: 'map', title: 'Related category suggestions shown', detail: ds._category_suggestions ? JSON.stringify(ds._category_suggestions) : null });
+      }
+      // Services confirmed
+      if (ds.services_confirmed && !prev.services_confirmed) {
+        changes.push({ type: 'info', title: 'Services confirmed', detail: (ds.services || []).length + ' total services' });
+      }
+      // Licence info
+      if (ds.licence_info && ds.licence_info.licence_number && (!prev.licence_info || !prev.licence_info.licence_number)) {
+        var lic = ds.licence_info;
+        changes.push({ type: 'data', title: 'Licence found: ' + lic.licence_number, detail: (lic.regulator || '') + (ds.licence_classes ? ' \u2014 ' + ds.licence_classes.join(', ') : '') });
+      }
+      // Service areas
+      if (ds.service_areas_confirmed && !prev.service_areas_confirmed) {
+        var areas = ds.service_areas || {};
+        changes.push({ type: 'info', title: 'Service areas confirmed', detail: (areas.regions_included || []).join(', ') + ' (' + (areas.total_suburbs || 0) + ' suburbs)' });
+      }
+      // Profile saved
+      if (ds.profile_saved && !prev.profile_saved) {
+        changes.push({ type: 'info', title: 'Profile published' });
+      }
+      // Subscription
+      if (ds.subscription_plan && !prev.subscription_plan) {
+        changes.push({ type: 'info', title: 'Plan selected: ' + ds.subscription_plan, detail: ds.subscription_billing ? 'Billing: ' + ds.subscription_billing + ' \u2014 ' + (ds.subscription_price || '') : null });
+      }
+      // Google Places data
+      if (ds.google_rating && !prev.google_rating) {
+        changes.push({ type: 'data', title: 'Google Places: ' + ds.google_rating + '\u2605 (' + (ds.google_review_count || 0) + ' reviews)', detail: ds.google_business_name || null });
+      }
+      return changes;
+    }
+
+    // ── Build a collapsible group bundle ──
+    function makeGroup(iconType, title, meta, items) {
+      // items: [{ type, title, detail, time, expandData }]
+      if (!items || items.length === 0) return null;
+
+      var group = el('div', 'tl-group');
+      var header = el('div', 'tl-group-header');
+
+      var icon = el('div', 'tl-icon ' + iconType);
+      icon.appendChild(el('i', getEventIcon(iconType)));
+      header.appendChild(icon);
+
+      var chevron = el('i', 'fas fa-caret-right tl-group-chevron');
+      header.appendChild(chevron);
+      header.appendChild(el('span', 'tl-group-title', title));
+      if (meta) header.appendChild(el('span', 'tl-group-meta', meta));
+
+      header.addEventListener('click', function() { group.classList.toggle('open'); });
+      group.appendChild(header);
+
+      var body = el('div', 'tl-group-body');
+      items.forEach(function(item) {
+        var evt = makeEvent(item.type || iconType, item.title, item.detail, item.time, item.expandData);
+        body.appendChild(evt);
+        if (evt._expandDiv) body.appendChild(evt._expandDiv);
+      });
+      group.appendChild(body);
+      return group;
+    }
+
+    // ── Group name + icon for API trace call categories ──
+    var GROUP_DEFS = {
+      api:   { icon: 'api',  label: 'API Calls' },
+      llm:   { icon: 'llm',  label: 'LLM Calls' },
+      data:  { icon: 'data', label: 'Web & Data' },
+      guide: { icon: 'guide', label: 'Guides & Reference Data' },
+      map:   { icon: 'map',  label: 'Mapping & Detection' },
+      chain: { icon: 'chain', label: 'Auto-Chain' },
+      info:  { icon: 'info', label: 'State Changes' }
+    };
+
+    // ── Add a turn block to the timeline ──
+    function addTimelineTurn(node, turnTime, apiTrace, ds) {
+      var timeline = document.getElementById('debugTimeline');
+      var empty = document.getElementById('debugEmpty');
+      if (empty) empty.remove();
+
+      updateFlowMini(node || (ds && ds.current_node) || 'welcome');
+
+      var turn = el('div', 'tl-turn node-' + (node || 'welcome'));
+
+      // Header: node badge + turn + time
+      var header = el('div', 'tl-header');
+      header.appendChild(el('span', 'tl-node-badge ' + (node || 'welcome'), (node || 'welcome').replace('_', ' ')));
+      header.appendChild(el('span', 'tl-turn-num', 'Turn ' + turnNumber));
+      if (turnTime) header.appendChild(el('span', 'tl-time', turnTime + 's'));
+      turn.appendChild(header);
+
+      // Auto-chain detection (shown inline, not grouped)
+      if (prevDebugState) {
+        var prevNode = prevDebugState.current_node;
+        if (prevNode && prevNode !== node) {
+          var prevIdx = FLOW_ORDER.indexOf(prevNode);
+          var curIdx = FLOW_ORDER.indexOf(node);
+          if (curIdx - prevIdx > 1) {
+            var chainEvt = makeEvent('chain', 'Auto-chained', prevNode + ' \u2192 ' + node + ' (skipped ' + (curIdx - prevIdx - 1) + ')');
+            turn.appendChild(chainEvt);
+          }
+        }
+      }
+
+      // ── Bucket API trace calls by type ──
+      var trace = apiTrace || [];
+      var buckets = {};
+      trace.forEach(function(call) {
+        var type = getEventType(call.api);
+        if (!buckets[type]) buckets[type] = [];
+        buckets[type].push({ type: type, title: call.api || 'Unknown', detail: call.summary || null, time: call.time, expandData: call.data });
+      });
+
+      // State-derived change events → info/map/data buckets
+      var changes = getStateChanges(ds, prevDebugState);
+      changes.forEach(function(ch) {
+        var bk = ch.type === 'map' ? 'map' : ch.type === 'data' ? 'data' : 'info';
+        if (!buckets[bk]) buckets[bk] = [];
+        buckets[bk].push({ type: ch.type, title: ch.title, detail: ch.detail });
+      });
+
+      // Render groups in a fixed order: api, data, llm, map, info
+      ['api', 'data', 'guide', 'llm', 'map', 'info'].forEach(function(gk) {
+        var items = buckets[gk];
+        if (!items || items.length === 0) return;
+        var def = GROUP_DEFS[gk] || GROUP_DEFS.info;
+
+        // If only 1 item, show inline (no group wrapper)
+        if (items.length === 1) {
+          var item = items[0];
+          var evt = makeEvent(item.type, item.title, item.detail, item.time, item.expandData);
+          turn.appendChild(evt);
+          if (evt._expandDiv) turn.appendChild(evt._expandDiv);
+          return;
+        }
+
+        // Multiple items → collapsible group
+        var totalTime = 0;
+        items.forEach(function(it) { if (it.time) totalTime += parseFloat(it.time) || 0; });
+        var meta = items.length + ' calls';
+        if (totalTime > 0) meta += ' \u00B7 ' + totalTime.toFixed(1) + 's';
+
+        var group = makeGroup(def.icon, def.label, meta, items);
+        if (group) turn.appendChild(group);
+      });
+
+      // New service chips → collapsible group
+      var chips = makeServiceChips(ds.services, prevDebugState ? prevDebugState.services : null);
+      if (chips) {
+        var newCount = chips.childNodes.length;
+        // Group by source for the summary
+        var srcCounts = {};
+        var prevIds = {};
+        (prevDebugState ? prevDebugState.services || [] : []).forEach(function(s) { prevIds[s.subcategory_id || s.input || s.subcategory_name] = true; });
+        (ds.services || []).filter(function(s) { return !prevIds[s.subcategory_id || s.input || s.subcategory_name]; }).forEach(function(s) {
+          var src = s.source || 'core';
+          srcCounts[src] = (srcCounts[src] || 0) + 1;
+        });
+        var srcParts = [];
+        ['core', 'evidence', 'licence', 'related', 'gap_question'].forEach(function(k) {
+          if (srcCounts[k]) srcParts.push(srcCounts[k] + ' ' + (k === 'gap_question' ? 'gap' : k));
+        });
+
+        var svcGroup = el('div', 'tl-group');
+        var svcHeader = el('div', 'tl-group-header');
+        var svcIcon = el('div', 'tl-icon map');
+        svcIcon.appendChild(el('i', 'fas fa-plus-circle'));
+        svcHeader.appendChild(svcIcon);
+        svcHeader.appendChild(el('i', 'fas fa-caret-right tl-group-chevron'));
+        var totalCount = (ds.services || []).length;
+        svcHeader.appendChild(el('span', 'tl-group-title', '+' + newCount + ' service' + (newCount > 1 ? 's' : '') + ' (' + totalCount + ' total)'));
+        svcHeader.appendChild(el('span', 'tl-group-meta', srcParts.join(' \u00B7 ')));
+        svcHeader.addEventListener('click', function() { svcGroup.classList.toggle('open'); });
+        svcGroup.appendChild(svcHeader);
+
+        var svcBody = el('div', 'tl-group-body');
+        svcBody.appendChild(chips);
+        // Also add a source legend inside
+        var legend = el('div');
+        legend.style.cssText = 'display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;';
+        [['core', '#4ade80'], ['evidence', '#4fc3f7'], ['licence', '#c084fc'], ['related', '#fbbf24'], ['gap', '#6b7280']].forEach(function(p) {
+          var item = el('span');
+          item.style.cssText = 'font-size:10px;color:#5a7099;display:flex;align-items:center;gap:3px;';
+          var dot = el('span');
+          dot.style.cssText = 'width:6px;height:6px;border-radius:2px;background:' + p[1] + ';';
+          item.appendChild(dot);
+          item.appendChild(document.createTextNode(p[0]));
+          legend.appendChild(item);
+        });
+        svcBody.appendChild(legend);
+
+        // Full running service list (all services, grouped by source)
+        var allSvcs = ds.services || [];
+        if (allSvcs.length > 0) {
+          var divider = el('div');
+          divider.style.cssText = 'border-top:1px solid #1e2d4a;margin:8px 0 6px;padding-top:6px;';
+          divider.appendChild(el('span', null, ''));
+          var totalLabel = el('span');
+          totalLabel.style.cssText = 'font-size:10px;font-weight:700;color:#5a7099;text-transform:uppercase;letter-spacing:0.5px;';
+          totalLabel.textContent = 'All services (' + allSvcs.length + ')';
+          divider.appendChild(totalLabel);
+          svcBody.appendChild(divider);
+
+          // Group by category, then show source badge per service
+          var byCat = {};
+          allSvcs.forEach(function(s) {
+            var cat = s.category_name || 'Uncategorised';
+            if (!byCat[cat]) byCat[cat] = [];
+            byCat[cat].push(s);
+          });
+          Object.keys(byCat).forEach(function(cat) {
+            var catLabel = el('div');
+            catLabel.style.cssText = 'font-size:10px;font-weight:600;color:#4fc3f7;margin:4px 0 2px;';
+            catLabel.textContent = cat;
+            svcBody.appendChild(catLabel);
+            var allChips = el('div', 'tl-chips');
+            byCat[cat].forEach(function(s) {
+              var src = s.source || 'core';
+              var isNew = !prevIds[s.subcategory_id || s.input || s.subcategory_name];
+              var chip = el('span', 'tl-chip ' + (src === 'gap_question' ? 'gap' : src), s.subcategory_name || s.input || '');
+              chip.title = src;
+              if (!isNew) chip.style.opacity = '0.5';
+              allChips.appendChild(chip);
+            });
+            svcBody.appendChild(allChips);
+          });
+        }
+
+        svcGroup.appendChild(svcBody);
+        turn.appendChild(svcGroup);
+      }
+
+      // Expandable full state (always last, collapsed)
+      var stateEvt = makeEvent('info', 'Full state (' + Object.keys(ds).length + ' keys)', 'Click to expand', null, ds);
+      turn.appendChild(stateEvt);
+      if (stateEvt._expandDiv) turn.appendChild(stateEvt._expandDiv);
+
+      timeline.appendChild(turn);
+      timeline.scrollTop = timeline.scrollHeight;
+    }
+
+    // ── Start session ──
+    async function startSession() {
+      initFlowMini();
+      try {
+        var response = await fetch(API_URL + '/api/session', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+        });
+        var data = await response.json();
+        sessionId = data.session_id;
+        document.getElementById('sessionIdLabel').textContent = 'Session: ' + sessionId;
+        // Fetch initial debug state and add to timeline
+        await fetchDebugState(data.response);
+        displayResponse(data.response, data.state);
+      } catch (error) {
+        console.error('Error:', error);
+        var content = document.getElementById('wizard-content');
+        content.textContent = '';
+        var errDiv = el('div', 'wizard-error');
+        errDiv.appendChild(el('i', 'fas fa-exclamation-circle'));
+        errDiv.appendChild(el('h3', null, 'Connection Error'));
+        errDiv.appendChild(el('p', null, 'Make sure server is running on port 8001'));
+        content.appendChild(errDiv);
+      }
+    }
+
+    // ── Fetch debug state and update timeline ──
+    var _pendingTrace = null;
+    var _pendingTurnTime = null;
+    var _pendingNode = null;
+
+    async function fetchDebugState(responseData) {
+      if (!sessionId) return;
+      try {
+        var resp = await fetch(API_URL + '/api/debug-state/' + sessionId);
+        var data = await resp.json();
+        var ds = data.debug_state;
+
+        var node = _pendingNode || (responseData && responseData.node) || (ds && ds.current_node) || 'welcome';
+        var turnTime = _pendingTurnTime || (responseData && responseData.turn_time) || null;
+        var trace = _pendingTrace || [];
+
+        addTimelineTurn(node, turnTime, trace, ds);
+        prevDebugState = ds;
+
+        _pendingTrace = null;
+        _pendingTurnTime = null;
+        _pendingNode = null;
+      } catch (e) { console.error('Debug state fetch error:', e); }
+    }
+
+    // ════════ WIZARD LOGIC ════════
+    function displayResponse(response, state) {
+      questionCount++;
+      currentState = state || {};
+      var node = (response && response.node) || (state && state.current_node) || '';
+      var step = NODE_TO_STEP[node] || 'business';
+      updateProgress(step);
+
+      var content = document.getElementById('wizard-content');
+      content.scrollTop = 0;
+
+      if ((node === 'profile' || node === 'confirmation') && !(state && state.profile_saved)) {
+        showProfileBuilder(content, state);
+        return;
+      }
+      if (node === 'complete' || (state && state.profile_saved && state.subscription_plan)) {
+        showCompletion(content, state);
+        return;
+      }
+
+      var text = (response && response.text) || '';
+      var buttons = (response && response.buttons) || [];
+      var isMultiSelect = response && response._multiselect === true;
+
+      // Build wizard question via DOM
+      content.textContent = '';
+      var container = el('div', 'wizard-question-container');
+      container.appendChild(el('div', 'wizard-question-number', 'Question ' + questionCount));
+
+      var qText = el('div', 'wizard-question-text');
+      // Parse text into paragraphs and info-box items
+      var lines = text.split('\n').filter(function(l) { return l.trim(); });
+      var bulletLines = lines.filter(function(l) { return /^-\s+.+:\s+.+$/.test(l); });
+
+      if (bulletLines.length >= 2) {
+        var inBox = false;
+        var boxDiv = null;
+        lines.forEach(function(line) {
+          var bullet = line.match(/^-\s+(.+?):\s+(.+)$/);
+          if (bullet) {
+            if (!inBox) { boxDiv = el('div', 'wizard-info-box'); inBox = true; }
+            var item = el('div', 'wizard-summary-item');
+            item.appendChild(el('span', 'wizard-summary-label', bullet[1].trim()));
+            item.appendChild(el('span', 'wizard-summary-value', bullet[2].trim()));
+            boxDiv.appendChild(item);
+          } else {
+            if (inBox) { qText.appendChild(boxDiv); inBox = false; boxDiv = null; }
+            if (line.trim()) {
+              var p = el('p');
+              // Handle bold **text** safely
+              var parts = line.split(/\*\*(.+?)\*\*/);
+              parts.forEach(function(part, idx) {
+                if (idx % 2 === 1) {
+                  var strong = el('strong', null, part);
+                  p.appendChild(strong);
+                } else {
+                  p.appendChild(document.createTextNode(part));
+                }
+              });
+              qText.appendChild(p);
+            }
+          }
+        });
+        if (inBox && boxDiv) qText.appendChild(boxDiv);
+      } else if (lines.length > 1) {
+        lines.forEach(function(line) {
+          var p2 = el('p');
+          var parts2 = line.split(/\*\*(.+?)\*\*/);
+          parts2.forEach(function(part, idx) {
+            if (idx % 2 === 1) p2.appendChild(el('strong', null, part));
+            else p2.appendChild(document.createTextNode(part));
+          });
+          qText.appendChild(p2);
+        });
+      } else {
+        var parts3 = text.split(/\*\*(.+?)\*\*/);
+        parts3.forEach(function(part, idx) {
+          if (idx % 2 === 1) qText.appendChild(el('strong', null, part));
+          else qText.appendChild(document.createTextNode(part));
+        });
+      }
+      container.appendChild(qText);
+
+      // Buttons
+      if (buttons.length > 0) {
+        var isEditMode = buttons.some(function(b) { return b.label.startsWith('\u2715'); });
+        var btnsDiv = el('div', 'wizard-buttons-container' + (isEditMode ? ' wizard-buttons-wrap' : ''));
+        buttons.forEach(function(btn, i) {
+          var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these';
+          var btnEl;
+          if (isMultiSelect && !isActionBtn) {
+            btnEl = el('button', 'wizard-button-multi');
+            btnEl.id = 'wizardBtn' + i;
+            btnEl.dataset.value = btn.value;
+            btnEl.appendChild(el('span', null, btn.label));
+            var checkSpan = el('span', 'multi-check');
+            var checkI = el('i', 'fas fa-check');
+            checkSpan.appendChild(checkI);
+            btnEl.appendChild(checkSpan);
+          } else {
+            var isConfirm = btn.label.toLowerCase().includes('confirm');
+            var isDone = btn.label.toLowerCase().includes('done');
+            var isRemove = btn.label.startsWith('\u2715');
+            var cls = isConfirm ? 'wizard-button wizard-button-confirm' : isRemove ? 'wizard-button wizard-button-remove' : isDone ? 'wizard-button wizard-button-done' : 'wizard-button';
+            btnEl = el('button', cls);
+            btnEl.id = 'wizardBtn' + i;
+            btnEl.dataset.value = btn.value;
+            btnEl.appendChild(el('span', null, btn.label));
+            if (!isRemove) {
+              var arrowI = el('i', 'fas fa-arrow-right');
+              btnEl.appendChild(arrowI);
+            }
+          }
+          btnsDiv.appendChild(btnEl);
+        });
+        container.appendChild(btnsDiv);
+
+        var divider = el('div', 'wizard-divider');
+        divider.appendChild(el('span', null, 'or type below'));
+        container.appendChild(divider);
+      }
+
+      // Input row
+      var inputRow = el('div', 'wizard-input-row');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'wizard-text-input';
+      input.id = 'wizardInput';
+      input.placeholder = node === 'welcome' ? 'e.g. Smith Plumbing or 51 824 753 556' : 'Type your answer...';
+      input.maxLength = 500;
+      input.addEventListener('keypress', function(e) { if (e.key === 'Enter') submitInput(); });
+      inputRow.appendChild(input);
+      var submitBtn = document.createElement('button');
+      submitBtn.className = 'wizard-submit-btn';
+      submitBtn.addEventListener('click', submitInput);
+      var planeI = el('i', 'fas fa-paper-plane');
+      submitBtn.appendChild(planeI);
+      inputRow.appendChild(submitBtn);
+      container.appendChild(inputRow);
+
+      content.appendChild(container);
+
+      // Attach button handlers
+      buttons.forEach(function(btn, i) {
+        var btnEl = document.getElementById('wizardBtn' + i);
+        if (!btnEl) return;
+        var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these';
+        var isEditMode2 = buttons.some(function(b) { return b.label.startsWith('\u2715'); });
+
+        if (isMultiSelect && !isActionBtn) {
+          btnEl.addEventListener('click', function() {
+            btnEl.classList.toggle('selected');
+            var selected = [];
+            buttons.forEach(function(b, j) {
+              var bel = document.getElementById('wizardBtn' + j);
+              if (bel && bel.classList.contains('selected')) selected.push(b.label);
+            });
+            var inp = document.getElementById('wizardInput');
+            var sub = document.querySelector('.wizard-submit-btn');
+            if (inp) { inp.value = selected.join(', '); if (sub) sub.classList.toggle('active', selected.length > 0); }
+          });
+        } else if (isEditMode2 && btn.label.startsWith('\u2715')) {
+          btnEl.addEventListener('click', function() { btnEl.classList.toggle('toggled-off'); });
+        } else if (isEditMode2 && btn.label.toLowerCase().includes('done')) {
+          btnEl.addEventListener('click', function() {
+            var removed = [];
+            buttons.forEach(function(b, j) {
+              var bel = document.getElementById('wizardBtn' + j);
+              if (bel && bel.classList.contains('toggled-off')) removed.push(b.label.replace('\u2715 ', ''));
+            });
+            if (removed.length === 0) sendMessage(btn.value);
+            else sendMessage('Remove ' + removed.join(', '));
+          });
+        } else {
+          btnEl.addEventListener('click', function() { sendMessage(btn.value); });
+        }
+      });
+
+      setTimeout(function() {
+        var inp = document.getElementById('wizardInput');
+        var sub = document.querySelector('.wizard-submit-btn');
+        if (inp) {
+          inp.focus({ preventScroll: true });
+          inp.addEventListener('input', function() { if (sub) sub.classList.toggle('active', inp.value.trim().length > 0); });
+        }
+      }, 100);
+    }
+
+    function showSkeleton(content) {
+      content.textContent = '';
+      var c = el('div', 'wizard-question-container');
+      c.appendChild(el('div', 'wizard-question-number', '\u00A0'));
+      var txt = el('div', 'wizard-question-text');
+      txt.appendChild(el('div', 'skeleton-text'));
+      txt.appendChild(el('div', 'skeleton-text skeleton-text-short'));
+      c.appendChild(txt);
+      c.appendChild(el('div', 'skeleton-button'));
+      c.appendChild(el('div', 'skeleton-button'));
+      content.appendChild(c);
+    }
+
+    function showProgressLoading(content, title, steps) {
+      content.textContent = '';
+      var wrap = el('div', 'wizard-progress-loading');
+
+      // Magic stars
+      var stars = el('div', 'magic-stars');
+      for (var si = 0; si < 4; si++) stars.appendChild(el('div', 'magic-star'));
+      wrap.appendChild(stars);
+      wrap.appendChild(el('div', 'wizard-loading-title', title));
+
+      var stepsDiv = el('div', 'progress-steps');
+      steps.forEach(function(s, i) {
+        var step = el('div', 'progress-step');
+        step.id = 'pStep' + i;
+        var icon = el('div', 'progress-step-icon');
+        icon.id = 'pIcon' + i;
+        icon.appendChild(el('div', 'step-spinner'));
+        step.appendChild(icon);
+        step.appendChild(el('span', null, s));
+        stepsDiv.appendChild(step);
+      });
+      wrap.appendChild(stepsDiv);
+      content.appendChild(wrap);
+
+      steps.forEach(function(_, i) {
+        setTimeout(function() {
+          var step = document.getElementById('pStep' + i);
+          if (step) { step.classList.add('visible', 'active'); }
+          if (i > 0) {
+            var prev = document.getElementById('pStep' + (i - 1));
+            var prevIcon = document.getElementById('pIcon' + (i - 1));
+            if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+            if (prevIcon) { prevIcon.textContent = ''; var ch = el('i', 'fas fa-check step-check'); prevIcon.appendChild(ch); }
+          }
+        }, i * 1200);
+      });
+    }
+
+    async function sendMessage(message) {
+      if (isSending) return;
+      isSending = true;
+      turnNumber++;
+      var content = document.getElementById('wizard-content');
+
+      var isBusinessConfirm = currentState.current_node === 'business_verification'
+        && !currentState.business_verified
+        && (message.toLowerCase().startsWith('yes') || message.includes('ABN:'));
+      var isServiceGap = currentState.current_node === 'service_discovery' && currentState.services && currentState.services.length > 0;
+      var isAreaConfirm = currentState.current_node === 'service_area' && !currentState.service_areas_confirmed;
+
+      if (isBusinessConfirm) {
+        var bState = currentState.business_state || '';
+        var licenceLabel = bState === 'QLD' ? 'Checking QBCC trade licences' : bState === 'NSW' ? 'Checking NSW trade licences' : bState === 'VIC' ? 'Scanning for VIC trade registration' : bState === 'WA' ? 'Checking WA DMIRS trade licences' : ['SA','TAS','ACT','NT'].indexOf(bState) >= 0 ? ('Scanning for ' + bState + ' trade registration') : 'Looking up trade licences';
+        showProgressLoading(content, 'Setting up your services...', [licenceLabel, 'Searching web for business details', 'Mapping your services']);
+      } else if (isAreaConfirm) {
+        showProgressLoading(content, 'Building your profile...', ['Finalising your services', 'Pulling images from your website', 'Generating your business description', 'Preparing your profile preview']);
+      } else if (isServiceGap) {
+        showProgressLoading(content, 'Updating your services...', ['Processing your answer', 'Preparing next step']);
+      } else {
+        showSkeleton(content);
+      }
+
+      try {
+        var response = await fetch(API_URL + '/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, message: message })
+        });
+        var data = await response.json();
+        // Store trace data for timeline rendering
+        _pendingTrace = data.api_trace || [];
+        _pendingTurnTime = data.response && data.response.turn_time;
+        _pendingNode = data.response && data.response.node;
+        await fetchDebugState(data.response);
+        displayResponse(data.response, data.state);
+      } catch (error) {
+        console.error('Error:', error);
+        content.textContent = '';
+        var errDiv = el('div', 'wizard-error');
+        errDiv.appendChild(el('i', 'fas fa-exclamation-circle'));
+        errDiv.appendChild(el('p', null, 'Error sending message. Please try again.'));
+        content.appendChild(errDiv);
+      } finally {
+        isSending = false;
+      }
+    }
+
+    function submitInput() {
+      var input = document.getElementById('wizardInput');
+      var msg = input && input.value && input.value.trim();
+      if (msg) sendMessage(msg);
+    }
+
+    // ════════ PROFILE BUILDER ════════
+    function showProfileBuilder(content, state) {
+      var businessName = (state && state.business_name) || '';
+      var abn = (state && state.abn) || '';
+      var contactName = (state && state.contact_name) || '';
+      var years = (state && state.years_in_business) || 0;
+      var description = (state && state.profile_description) || '';
+      var licenceClassList = (state && state.licence_classes) || [];
+      var services = (state && state.services) || [];
+      var regions = (state && state.service_areas && state.service_areas.regions_included) || [];
+      var logoUrl = (state && state.profile_logo) || '';
+      var photos = (state && state.profile_photos) || [];
+      var intro = (state && state.profile_intro) || '';
+
+      content.textContent = '';
+      var container = el('div', 'wizard-question-container');
+
+      if (intro) {
+        container.appendChild(el('div', 'wizard-question-number', 'Profile Preview'));
+        var qText = el('div', 'wizard-question-text');
+        qText.appendChild(el('p', null, intro));
+        container.appendChild(qText);
+      }
+
+      var wrap = el('div', 'profile-wrap');
+      var hero = el('div', 'profile-hero');
+
+      // Logo
+      var logoLabel = document.createElement('label');
+      logoLabel.className = 'profile-logo-upload';
+      logoLabel.id = 'logoUploadZone';
+      if (logoUrl) {
+        var img = document.createElement('img');
+        img.src = logoUrl;
+        img.className = 'profile-logo-preview';
+        img.alt = 'Logo';
+        img.onerror = function() { this.remove(); logoLabel.insertBefore(buildLogoMonogram(businessName), logoLabel.firstChild); };
+        logoLabel.appendChild(img);
+      } else {
+        logoLabel.appendChild(buildLogoMonogram(businessName));
+      }
+      var logoInput = document.createElement('input');
+      logoInput.type = 'file'; logoInput.accept = 'image/*'; logoInput.style.display = 'none'; logoInput.id = 'logoFileInput';
+      logoLabel.appendChild(logoInput);
+      hero.appendChild(logoLabel);
+
+      var h3 = el('h3', 'profile-business-name', businessName);
+      hero.appendChild(h3);
+
+      if (contactName) hero.appendChild(el('div', 'profile-contact-name', contactName));
+
+      var suburb = (state && state.service_areas && state.service_areas.base_suburb) || '';
+      var postcode = (state && state.business_postcode) || '';
+      var estYear = years > 0 ? new Date().getFullYear() - years : 0;
+      var subtitleParts = [];
+      if (suburb) subtitleParts.push(suburb + (postcode ? ' ' + postcode : ''));
+      if (estYear > 0) subtitleParts.push('Est. ' + estYear);
+      if (subtitleParts.length > 0) {
+        var sub = el('div', 'profile-hero-subtitle');
+        var pinI = el('i', 'fas fa-map-marker-alt');
+        sub.appendChild(pinI);
+        sub.appendChild(document.createTextNode(' ' + subtitleParts.join('  \u00B7  ')));
+        hero.appendChild(sub);
+      }
+
+      // Trust badges
+      var trustBar = el('div', 'profile-trust-bar');
+      if (abn) {
+        var b1 = el('span', 'profile-trust-badge green');
+        b1.appendChild(el('i', 'fas fa-check'));
+        b1.appendChild(document.createTextNode(' ABN Verified'));
+        trustBar.appendChild(b1);
+      }
+      if (licenceClassList.length > 0) {
+        var b2 = el('span', 'profile-trust-badge gold');
+        b2.appendChild(el('i', 'fas fa-shield-alt'));
+        b2.appendChild(document.createTextNode(' Licensed'));
+        trustBar.appendChild(b2);
+      }
+      if (years > 0) {
+        var b3 = el('span', 'profile-trust-badge');
+        b3.appendChild(el('i', 'fas fa-clock'));
+        b3.appendChild(document.createTextNode(' ' + years + ' Yr' + (years !== 1 ? 's' : '') + ' Experience'));
+        trustBar.appendChild(b3);
+      }
+      var gRating = (state && state.google_rating) || 0;
+      var gReviews = (state && state.google_review_count) || 0;
+      if (gRating > 0) {
+        var b4 = el('span', 'profile-trust-badge star');
+        b4.appendChild(el('i', 'fas fa-star'));
+        b4.appendChild(document.createTextNode(' ' + gRating + '\u2605 (' + gReviews + ' reviews)'));
+        trustBar.appendChild(b4);
+      }
+      hero.appendChild(trustBar);
+      wrap.appendChild(hero);
+
+      function makeCard(label, editable) {
+        var card = el('div', 'profile-card');
+        var head = el('div', 'profile-card-head');
+        head.appendChild(el('span', 'profile-card-label', label));
+        var editBtn = null;
+        if (editable) {
+          editBtn = document.createElement('button');
+          editBtn.className = 'profile-card-edit';
+          var pencil = el('i', 'fas fa-pencil-alt');
+          editBtn.appendChild(pencil);
+          head.appendChild(editBtn);
+        }
+        card.appendChild(head);
+        var inner = el('div', 'profile-card-inner');
+        card.appendChild(inner);
+        return { card: card, inner: inner, editBtn: editBtn };
+      }
+
+      var cards = el('div', 'profile-cards');
+
+      // Licences
+      if (licenceClassList.length > 0) {
+        var licCard = makeCard('Licences', false);
+        var licList = el('div', 'profile-lic-list');
+        licenceClassList.forEach(function(cls) {
+          var item = el('div', 'profile-lic-item');
+          var check = el('div', 'profile-lic-check');
+          check.appendChild(el('i', 'fas fa-shield-alt'));
+          item.appendChild(check);
+          item.appendChild(el('span', 'profile-lic-name', cls));
+          licList.appendChild(item);
+        });
+        licCard.inner.appendChild(licList);
+        cards.appendChild(licCard.card);
+      }
+
+      // Categories
+      var catNames = []; var catSeen = {};
+      services.forEach(function(s) { if (s.category_name && !catSeen[s.category_name]) { catSeen[s.category_name] = true; catNames.push(s.category_name); } });
+      if (catNames.length > 0) {
+        var catCard = makeCard('Categories', false);
+        var catFlow = el('div', 'profile-cat-badges');
+        catNames.forEach(function(cat) {
+          var badge = el('span', 'profile-cat-badge');
+          var icon2 = el('span', 'profile-cat-badge-icon');
+          icon2.appendChild(el('i', 'fas fa-briefcase'));
+          badge.appendChild(icon2);
+          badge.appendChild(document.createTextNode(cat));
+          catFlow.appendChild(badge);
+        });
+        catCard.inner.appendChild(catFlow);
+        cards.appendChild(catCard.card);
+      }
+
+      // About
+      var aboutCard = makeCard('About', true);
+      if (aboutCard.editBtn) aboutCard.editBtn.addEventListener('click', function() { var ta = document.getElementById('profileDescription'); if (ta) ta.focus(); });
+      var textarea = document.createElement('textarea');
+      textarea.className = 'profile-description-textarea'; textarea.id = 'profileDescription'; textarea.maxLength = 500; textarea.value = description;
+      aboutCard.inner.appendChild(textarea);
+      var counter = el('div', 'profile-char-counter');
+      counter.appendChild(el('span', null, String(description.length)));
+      counter.firstChild.id = 'charCount';
+      counter.appendChild(document.createTextNode(' / 500'));
+      aboutCard.inner.appendChild(counter);
+      cards.appendChild(aboutCard.card);
+
+      // Services
+      var svcCard = makeCard('Services We Provide', true);
+      var svcFlow = el('div', 'profile-services-flow');
+      var svcEditing = false;
+      services.forEach(function(s, i) {
+        var tag = el('span', 'profile-stag', s.subcategory_name || s.input || '');
+        tag.id = 'profileSvc' + i;
+        tag.addEventListener('click', function() { if (svcEditing) tag.classList.toggle('toggled-off'); });
+        svcFlow.appendChild(tag);
+      });
+      if (services.length === 0) { svcFlow.style.color = '#94A3B8'; svcFlow.textContent = 'None mapped'; }
+      svcCard.inner.appendChild(svcFlow);
+      var svcHint = el('div', 'profile-edit-hint', 'Tap a service to remove it');
+      svcCard.inner.appendChild(svcHint);
+      if (svcCard.editBtn) svcCard.editBtn.addEventListener('click', function() {
+        svcEditing = !svcEditing;
+        svcFlow.classList.toggle('editing', svcEditing);
+        svcCard.editBtn.classList.toggle('active', svcEditing);
+        svcCard.card.classList.toggle('editing', svcEditing);
+        svcCard.editBtn.textContent = '';
+        svcCard.editBtn.appendChild(el('i', svcEditing ? 'fas fa-check' : 'fas fa-pencil-alt'));
+      });
+      cards.appendChild(svcCard.card);
+
+      // Areas
+      var areaCard = makeCard('Service Areas', true);
+      var areaList = el('div', 'profile-area-list');
+      var areaEditing = false;
+      regions.forEach(function(r, i) {
+        var item = el('div', 'profile-area-item');
+        item.id = 'profileArea' + i;
+        var pin = el('div', 'profile-area-pin');
+        pin.appendChild(el('i', 'fas fa-map-marker-alt'));
+        item.appendChild(pin);
+        item.appendChild(el('span', 'profile-area-name', r));
+        item.addEventListener('click', function() { if (areaEditing) item.classList.toggle('toggled-off'); });
+        areaList.appendChild(item);
+      });
+      if (regions.length === 0) { areaList.style.color = '#94A3B8'; areaList.textContent = 'None set'; }
+      areaCard.inner.appendChild(areaList);
+      areaCard.inner.appendChild(el('div', 'profile-edit-hint', 'Tap an area to remove it'));
+      if (areaCard.editBtn) areaCard.editBtn.addEventListener('click', function() {
+        areaEditing = !areaEditing;
+        areaList.classList.toggle('editing', areaEditing);
+        areaCard.editBtn.classList.toggle('active', areaEditing);
+        areaCard.card.classList.toggle('editing', areaEditing);
+        areaCard.editBtn.textContent = '';
+        areaCard.editBtn.appendChild(el('i', areaEditing ? 'fas fa-check' : 'fas fa-pencil-alt'));
+      });
+      cards.appendChild(areaCard.card);
+
+      // Gallery
+      var galleryCard = makeCard('Gallery', false);
+      var photoGrid = el('div', 'profile-photos-grid');
+      photos.forEach(function(p, i) {
+        var thumb = el('div', 'profile-photo-thumb');
+        thumb.id = 'photoThumb' + i;
+        var pImg = document.createElement('img');
+        pImg.src = p; pImg.alt = 'Work photo ' + (i + 1);
+        thumb.appendChild(pImg);
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'profile-photo-remove';
+        removeBtn.dataset.index = i;
+        removeBtn.appendChild(el('i', 'fas fa-times'));
+        removeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = parseInt(removeBtn.dataset.index);
+          var cp = currentState.profile_photos || [];
+          cp.splice(idx, 1);
+          currentState.profile_photos = cp;
+          showProfileBuilder(content, currentState);
+        });
+        thumb.appendChild(removeBtn);
+        photoGrid.appendChild(thumb);
+      });
+      if (photos.length < 6) {
+        var addLabel = document.createElement('label');
+        addLabel.className = 'profile-photo-add'; addLabel.id = 'addPhotoBtn';
+        addLabel.appendChild(el('i', 'fas fa-plus'));
+        addLabel.appendChild(el('span', null, 'Add Photos'));
+        var photoInput = document.createElement('input');
+        photoInput.type = 'file'; photoInput.accept = 'image/*'; photoInput.style.display = 'none'; photoInput.id = 'photoFileInput'; photoInput.multiple = true;
+        photoInput.addEventListener('change', function(e) { Array.from(e.target.files).forEach(function(f) { handlePhotoFile(f); }); });
+        addLabel.appendChild(photoInput);
+        photoGrid.appendChild(addLabel);
+      }
+      galleryCard.inner.appendChild(photoGrid);
+      cards.appendChild(galleryCard.card);
+
+      // CTA
+      var cta = el('div', 'profile-cta');
+      cta.appendChild(el('h3', 'profile-cta-title', 'Ready to start winning work?'));
+      var tradeText2 = catNames[0] ? catNames[0].toLowerCase() + 's' : 'tradies';
+      cta.appendChild(el('p', 'profile-cta-sub', 'Publish your profile to get matched with customers looking for ' + tradeText2 + ' in your area'));
+      var saveBtn = el('button', 'profile-save-btn', 'Publish My Profile \u2192');
+      saveBtn.id = 'saveProfileBtn';
+      cta.appendChild(saveBtn);
+      cards.appendChild(cta);
+
+      wrap.appendChild(cards);
+      container.appendChild(wrap);
+      content.appendChild(container);
+
+      textarea.addEventListener('input', function() { document.getElementById('charCount').textContent = textarea.value.length; });
+      logoInput.addEventListener('change', function(e) { if (e.target.files[0]) handleLogoFile(e.target.files[0]); });
+      logoLabel.addEventListener('dragover', function(e) { e.preventDefault(); logoLabel.classList.add('drag-over'); });
+      logoLabel.addEventListener('dragleave', function() { logoLabel.classList.remove('drag-over'); });
+      logoLabel.addEventListener('drop', function(e) { e.preventDefault(); logoLabel.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleLogoFile(e.dataTransfer.files[0]); });
+
+      saveBtn.addEventListener('click', function() {
+        var desc = document.getElementById('profileDescription').value.trim();
+        var removedSvc = []; var removedArea = [];
+        services.forEach(function(s, i) { var e = document.getElementById('profileSvc' + i); if (e && e.classList.contains('toggled-off')) removedSvc.push(s.subcategory_name || s.input || ''); });
+        regions.forEach(function(r, i) { var e = document.getElementById('profileArea' + i); if (e && e.classList.contains('toggled-off')) removedArea.push(r); });
+        saveProfile(JSON.stringify({ description: desc, removed_services: removedSvc, removed_areas: removedArea }));
+      });
+    }
+
+    function handleLogoFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); return; }
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var zone = document.getElementById('logoUploadZone');
+        if (!zone) return;
+        while (zone.firstChild) zone.removeChild(zone.firstChild);
+        var img = document.createElement('img');
+        img.src = e.target.result; img.className = 'profile-logo-preview'; img.alt = 'Logo';
+        zone.appendChild(img);
+        var newInput = document.createElement('input');
+        newInput.type = 'file'; newInput.accept = 'image/*'; newInput.style.display = 'none'; newInput.id = 'logoFileInput';
+        newInput.addEventListener('change', function(ev) { if (ev.target.files[0]) handleLogoFile(ev.target.files[0]); });
+        zone.appendChild(newInput);
+        if (currentState) currentState.profile_logo = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      var formData = new FormData();
+      formData.append('session_id', sessionId); formData.append('upload_type', 'logo'); formData.append('file', file);
+      fetch(API_URL + '/api/upload', { method: 'POST', body: formData }).catch(function(e) { console.error('Logo upload error:', e); });
+    }
+
+    function handlePhotoFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); return; }
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        if (!currentState.profile_photos) currentState.profile_photos = [];
+        if (currentState.profile_photos.length >= 6) return;
+        currentState.profile_photos.push(e.target.result);
+        showProfileBuilder(document.getElementById('wizard-content'), currentState);
+      };
+      reader.readAsDataURL(file);
+      var formData = new FormData();
+      formData.append('session_id', sessionId); formData.append('upload_type', 'photo'); formData.append('file', file);
+      fetch(API_URL + '/api/upload', { method: 'POST', body: formData }).catch(function(e) { console.error('Photo upload error:', e); });
+    }
+
+    function saveProfile(description) {
+      var content = document.getElementById('wizard-content');
+      showProgressLoading(content, 'Publishing your profile...', ['Saving profile details', 'Preparing subscription options']);
+      sendMessage('__SAVE_PROFILE__:' + description);
+    }
+
+    // ════════ COMPLETION ════════
+    function showCompletion(content, state) {
+      updateProgress('done');
+      var output = (state && state.output_json) || {};
+      var profile = output.profile || {};
+      var services = output.services || [];
+      var regions = (output.service_areas && output.service_areas.regions_included) || [];
+      var logoUrl = profile.logo || (state && state.profile_logo) || '';
+      var description = profile.description || (state && state.profile_description) || '';
+
+      content.textContent = '';
+      var wrapper = el('div', 'wizard-completion');
+
+      var iconDiv = el('div', 'wizard-success-icon');
+      if (logoUrl) {
+        var img = document.createElement('img');
+        img.src = logoUrl; img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover;'; img.alt = 'Logo';
+        img.onerror = function() { this.remove(); var mono = el('div'); mono.style.cssText = 'width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;background:linear-gradient(135deg,#298AE3 0%,#1a6fbd 100%);'; mono.textContent = getInitials((state && state.business_name) || ''); iconDiv.appendChild(mono); };
+        iconDiv.appendChild(img);
+      } else {
+        var mono = el('div');
+        mono.style.cssText = 'width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;background:linear-gradient(135deg,#298AE3 0%,#1a6fbd 100%);';
+        mono.textContent = getInitials((state && state.business_name) || '');
+        iconDiv.appendChild(mono);
+      }
+      wrapper.appendChild(iconDiv);
+
+      var contactName = (state && state.contact_name) || '';
+      var firstName = contactName ? contactName.split(' ')[0] : '';
+      wrapper.appendChild(el('h2', null, firstName ? "You're live, " + firstName + "!" : "You're live on Service Seeking!"));
+
+      var subtitle = el('p');
+      subtitle.appendChild(document.createTextNode('Welcome to Service Seeking, '));
+      subtitle.appendChild(el('strong', null, output.business_name || ''));
+      subtitle.appendChild(document.createTextNode('!'));
+      wrapper.appendChild(subtitle);
+
+      if (description) {
+        var descP = el('p', null, description);
+        descP.style.fontStyle = 'italic'; descP.style.color = '#555';
+        wrapper.appendChild(descP);
+      }
+
+      // Services summary
+      var infoBox = el('div'); infoBox.style.cssText = 'margin:24px 0;text-align:left;';
+      var box = el('div', 'wizard-info-box');
+      var svcRow = el('div', 'wizard-summary-item');
+      svcRow.appendChild(el('span', 'wizard-summary-label', 'Services'));
+      var svcVal = el('span', 'wizard-summary-value');
+      services.forEach(function(cat) { (cat.subcategories || []).forEach(function(sc) { var chip = el('span', 'service-chip', sc.name); svcVal.appendChild(chip); svcVal.appendChild(document.createTextNode(' ')); }); });
+      if (services.length === 0) svcVal.textContent = 'None';
+      svcRow.appendChild(svcVal);
+      box.appendChild(svcRow);
+      var areaRow = el('div', 'wizard-summary-item');
+      areaRow.appendChild(el('span', 'wizard-summary-label', 'Service Areas'));
+      areaRow.appendChild(el('span', 'wizard-summary-value', regions.length ? regions.join(', ') : 'Not set'));
+      box.appendChild(areaRow);
+      infoBox.appendChild(box);
+      wrapper.appendChild(infoBox);
+      wrapper.appendChild(el('p', null, "You'll start receiving relevant job leads in your area soon."));
+
+      // JSON
+      var details = document.createElement('details');
+      details.style.cssText = 'text-align:left;margin:16px 0;';
+      var summary = el('summary', null, 'View raw JSON output');
+      summary.style.cssText = 'cursor:pointer;color:#888;font-size:13px;margin-bottom:8px;';
+      details.appendChild(summary);
+      var jsonDiv = el('div', 'wizard-result-json', JSON.stringify(output, null, 2));
+      details.appendChild(jsonDiv);
+      wrapper.appendChild(details);
+
+      content.appendChild(wrapper);
+    }
+
+    function updateProgress(currentStep) {
+      var stepIndex = STEPS.indexOf(currentStep);
+      if (stepIndex < 0) return;
+      var pct = ((stepIndex + 1) / STEPS.length) * 100;
+      var bar = document.getElementById('wizardProgressBar');
+      if (bar) bar.style.width = pct + '%';
+    }
+
+    function buildLogoMonogram(name) {
+      var monogram = el('div', 'profile-logo-monogram', getInitials(name));
+      var hint = el('div', 'camera-hint');
+      hint.appendChild(el('i', 'fas fa-camera'));
+      monogram.appendChild(hint);
+      return monogram;
+    }
+
+    function getInitials(name) {
+      if (!name) return '?';
+      var clean = name.replace(/\b(pty\.?\s*ltd\.?|proprietary|limited|inc\.?|llc|group)\b/gi, '').trim();
+      var words = clean.split(/\s+/).filter(function(w) { return w.length > 0; });
+      if (words.length === 0) return '?';
+      if (words.length === 1) return words[0][0].toUpperCase();
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+
+    startSession();
+  </script>
+</body>
+</html>

@@ -1109,6 +1109,19 @@
     .profile-lic-name {
       font-size: 13px; font-weight: 600; color: #065F46;
     }
+    /* Category badges */
+    .profile-cat-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .profile-cat-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 8px;
+      background: #EBF0FF; color: #1E3A8A;
+      font-size: 14px; font-weight: 600;
+    }
+    .profile-cat-badge-icon {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #1A56DB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .profile-cat-badge-icon i { color: white; font-size: 11px; }
     /* Area items — blue rows, 2 columns */
     .profile-area-list {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
@@ -2116,6 +2129,28 @@
         });
         licInner.appendChild(licList);
         cards.appendChild(licCard);
+      }
+
+      // ── Categories card (read-only, derived from services) ──
+      const categories = [...new Set(services.map(s => s.category_name).filter(Boolean))];
+      if (categories.length > 0) {
+        const { card: catCard, inner: catInner } = makeCard('Categories', false);
+        const catFlow = document.createElement('div');
+        catFlow.className = 'profile-cat-badges';
+        categories.forEach(cat => {
+          const badge = document.createElement('span');
+          badge.className = 'profile-cat-badge';
+          const icon = document.createElement('span');
+          icon.className = 'profile-cat-badge-icon';
+          const iEl = document.createElement('i');
+          iEl.className = 'fas fa-briefcase';
+          icon.appendChild(iEl);
+          badge.appendChild(icon);
+          badge.appendChild(document.createTextNode(cat));
+          catFlow.appendChild(badge);
+        });
+        catInner.appendChild(catFlow);
+        cards.appendChild(catCard);
       }
 
       // ── About card ──

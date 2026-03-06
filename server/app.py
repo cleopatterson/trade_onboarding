@@ -6,10 +6,12 @@ import uuid
 import time
 import json
 import logging
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+import os
 import base64
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Request
 from fastapi.staticfiles import StaticFiles
@@ -534,6 +536,62 @@ async def get_log(session_id: str):
     }
 
 
+def _is_debug_allowed(request: Request) -> bool:
+    """Check if debug endpoints are accessible: localhost or DEBUG=1 env var."""
+    if os.environ.get("DEBUG") == "1":
+        return True
+    host = request.client.host if request.client else ""
+    return host in ("127.0.0.1", "::1", "localhost")
+
+
+def _debug_state(state: dict) -> dict:
+    """Return full state for debug panel, minus non-serialisable messages."""
+    from langchain_core.messages import BaseMessage
+    out = {}
+    for k, v in state.items():
+        if k == "messages":
+            out["_message_count"] = len(v) if isinstance(v, list) else 0
+            continue
+        # Skip large binary data
+        if k in ("profile_logo", "profile_photos") and v:
+            if k == "profile_logo":
+                out[k] = "(base64 data)" if v else ""
+            else:
+                out[k] = [f"(photo {i+1})" for i in range(len(v))]
+            continue
+        try:
+            json.dumps(v)
+            out[k] = v
+        except (TypeError, ValueError):
+            out[k] = str(v)
+    return out
+
+
+@app.get("/debug.html")
+async def debug_page(request: Request):
+    """Serve the debug page (localhost/DEBUG only)."""
+    if not _is_debug_allowed(request):
+        raise HTTPException(status_code=403, detail="Debug page not available in production")
+    debug_file = web_dir / "debug.html"
+    if debug_file.exists():
+        return HTMLResponse(content=debug_file.read_text())
+    raise HTTPException(status_code=404, detail="debug.html not found")
+
+
+@app.get("/api/debug-state/{session_id}")
+async def get_debug_state(session_id: str, request: Request):
+    """Return full unfiltered session state for the debug panel.
+
+    Gated: only available on localhost or when DEBUG=1 env var is set.
+    """
+    if not _is_debug_allowed(request):
+        raise HTTPException(status_code=403, detail="Debug endpoint not available in production")
+    state = sessions.get(session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"session_id": session_id, "debug_state": _debug_state(state)}
+
+
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_PHOTOS = 6
@@ -592,6 +650,14 @@ def _get_buttons_for_state(state: dict) -> list:
                     {"label": "No, that's not right", "value": "No, that's not my business"},
                 ]
             else:
+                # Detect near-duplicate names (e.g. "Foo Electrical" + "Foo Electrical Pty Ltd")
+                # so we can add entity type to disambiguate
+                name_stems = {}
+                for r in abr_results[:8]:
+                    stem = re.sub(r'\s*(pty|ltd|limited|inc)\.?\s*', '', r.get("entity_name", "").lower()).strip()
+                    name_stems.setdefault(stem, []).append(r.get("abn", ""))
+                has_similar = any(len(abns) > 1 for abns in name_stems.values())
+
                 buttons = []
                 for r in abr_results[:8]:
                     name = r.get("entity_name", "Unknown")
@@ -609,6 +675,11 @@ def _get_buttons_for_state(state: dict) -> list:
                         detail = f"ABN ...{abn[-5:]}"
                     else:
                         detail = ""
+                    # When near-duplicate names exist, show sole trader vs company
+                    if has_similar and not (legal and legal.lower() != name.lower()):
+                        is_pty = bool(re.search(r'\bpty\b', name.lower()))
+                        type_hint = "Company" if is_pty else "Sole Trader"
+                        detail = f"{type_hint} · {detail}" if detail else type_hint
                     parts = [p for p in [location, detail] if p]
                     label = f"{name} ({' · '.join(parts)})" if parts else name
                     if len(label) > 70:

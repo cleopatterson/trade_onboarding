@@ -31,7 +31,7 @@ from agent.tools import (
     get_filtered_cluster_groups, scrape_website_text,
     qbcc_licence_lookup, _detect_category, _detect_categories,
     extract_licence_from_text, scan_website_for_licence, _VIC_LICENCE_CONFIG,
-    get_licence_config, wa_dmirs_lookup,
+    get_licence_config, wa_dmirs_lookup, match_licence,
     suggest_related_categories, map_extra_categories,
 )
 
@@ -207,8 +207,12 @@ async def business_verification_node(state: OnboardingState) -> dict:
         # Runs for all name searches — even single results need the entity name
         # (e.g. sole trader "Watertight Plumbing" → entity "SMITH, JACK" for licence)
         if not is_abn and abr_results:
+            t_enrich = time.time()
             abr_results = await enrich_abr_with_entity_names(abr_results)
             results["results"] = abr_results
+            _trace(state, "ABR Enrich Names", time.time() - t_enrich,
+                   f"Enriched {len(abr_results)} results with entity names",
+                   {"results": [{"entity": r.get("entity_name"), "legal": r.get("legal_name")} for r in abr_results[:5]]})
 
         # If user provided a postcode, filter results and auto-confirm if single match
         if user_postcode and abr_results:
@@ -493,10 +497,31 @@ def _merge_llm_services(state_services: list[dict], llm_services: list[dict]) ->
     return llm_services
 
 
+def _format_services_context(services: list[dict], general_headings: list[str]) -> str:
+    """Format services for the LLM context.
+
+    For turn 1 (only general services), show a summary to prevent the LLM
+    from listing individual services. Once specialist services are added,
+    show the full list so the LLM can track what's mapped.
+    """
+    if not services:
+        return "SERVICES MAPPED SO FAR: None yet"
+    has_specialist = any(s.get("source") in ("evidence", "licence") for s in services)
+    if not has_specialist and general_headings:
+        # Turn 1: only general services — summarise to keep LLM brief
+        return (
+            f"SERVICES MAPPED SO FAR: {len(services)} standard services auto-tagged under "
+            f"{' and '.join(general_headings)} (do NOT list these individually to the user)"
+        )
+    # Later turns: full list needed for gap tracking
+    return f"SERVICES MAPPED SO FAR: {json.dumps(services)}"
+
+
 def _build_service_prompt(
     state: dict, services: list[dict], gaps: list[dict],
     cluster_groups: list[dict], cluster_added: list[str],
     tiered_mode: bool, pending_cluster_ids: list,
+    related_suggestions: list[dict] | None = None,
 ) -> tuple[str, str]:
     """Build static + dynamic context strings for the service discovery LLM call.
 
@@ -565,8 +590,15 @@ def _build_service_prompt(
 
     contact = state.get("contact_name", "")
     conv_history = _format_conversation(messages, max_turns=6)
-    guide = find_subcategory_guide(business_name)
+    guide, guide_files = find_subcategory_guide(business_name, return_files=True)
     taxonomy = get_category_taxonomy_text()
+
+    _trace(state, "Guides Loaded", 0,
+           f"Subcategory: {', '.join(guide_files) if guide_files else 'none (full taxonomy)'} | Taxonomy: {len(taxonomy)} chars",
+           {"subcategory_guides": guide_files,
+            "guide_chars": len(guide),
+            "taxonomy_chars": len(taxonomy),
+            "has_guide": bool(guide)})
 
     # ── Licence acknowledgement hint for turn 1 ──
     licence_ack = ""
@@ -583,6 +615,20 @@ def _build_service_prompt(
         else:
             licence_ack = "Mention briefly that you found their NSW trade licence on file. "
 
+    # ── Related category suggestions hint ──
+    suggestions_hint = ""
+    if related_suggestions:
+        sug_names = [s["category"] for s in related_suggestions]
+        suggestions_hint = (
+            f"RELATED CATEGORIES: Data shows most tradies in this field also list under "
+            f"{', '.join(sug_names)} to get more leads. After summarising the pre-mapped services "
+            f"and acknowledging the licence (if any), mention these extra categories naturally and "
+            f"ask if they'd like to add any. Keep it casual — e.g. \"Most {sug_names[0].lower()} "
+            f"tradies also list under {' and '.join(sug_names[:2])} for extra leads — want me to add any of those?\" "
+            f"Do NOT ask about specialist clusters this turn — just the related categories. "
+            f"The buttons will be provided separately so do NOT list them in your response."
+        )
+
     # ── Multi-category note ──
     multi_cat_note = ""
     if services:
@@ -595,26 +641,55 @@ def _build_service_prompt(
                 f"{' and '.join(cat_names_in_services)}. Mention both trades naturally. "
             )
 
+    # ── General headings for prompt ──
+    general_headings = state.get("_general_headings", [])
+    if not general_headings and services:
+        # Fallback: derive from category names
+        general_headings = list(dict.fromkeys(
+            s.get("category_name", "") for s in services if s.get("source") == "general"
+        ))
+    general_heading_text = " and ".join(general_headings) if general_headings else "their trade"
+    general_count = sum(1 for s in services if s.get("source") == "general")
+
     # ── Turn 1 rule ──
     if tiered_mode:
-        if cluster_groups:
+        if related_suggestions and suggestions_hint:
+            # Turn 1 with related category suggestions — LLM handles naturally
+            turn1_rule = (
+                f"- TURN 1 RULE (TIERED): {len(services)} services have been pre-mapped under {general_heading_text}. "
+                f"Your response MUST be 1-2 SHORT sentences max. Say something like: "
+                f"\"I've got you down for {general_heading_text}\" and briefly mention the licence if found. "
+                f"FORBIDDEN: Do NOT name, list, or enumerate ANY individual services (no power points, no switches, no fans, etc). "
+                f"The tradie does not need to know the breakdown — just the general heading. "
+                f"Include the pre-mapped services array exactly as-is in your JSON output. "
+                f"{licence_ack}{multi_cat_note}"
+                f"{suggestions_hint} "
+                f"Set step_complete=false. cluster_ids should be empty. "
+                f"Do NOT ask about specialist clusters this turn."
+            )
+        elif cluster_groups:
             first_cluster = cluster_groups[0]
             first_names = [s["name"] for s in first_cluster["services"]]
             turn1_rule = (
-                f"- TURN 1 RULE (TIERED): {len(services)} core services have been pre-mapped. "
+                f"- TURN 1 RULE (TIERED): {len(services)} services have been pre-mapped under {general_heading_text}. "
+                f"Your response MUST be 1-2 SHORT sentences max. Say something like: "
+                f"\"I've got you down for {general_heading_text}\" and briefly mention the licence if found. "
+                f"FORBIDDEN: Do NOT name, list, or enumerate ANY individual services (no power points, no switches, no fans, etc). "
+                f"The tradie does not need to know the breakdown — just the general heading. "
+                f"Include the pre-mapped services array exactly as-is in your JSON output. "
                 f"{licence_ack}{multi_cat_note}"
-                f"Summarise them in one casual sentence (count + 2-3 key groups, e.g. \"I've added "
-                f"13 services covering general electrical, switchboards, safety gear and a few more\"). "
-                f"Do NOT list every service. Include the pre-mapped services array exactly as-is in your output. "
-                f"Then ask about the FIRST cluster from the CLUSTER GROUPS list: \"{first_cluster['label']}\" "
+                f"Then ask about the FIRST specialist cluster: \"{first_cluster['label']}\" "
                 f"({', '.join(first_names)}). "
-                f"Keep it to ONE simple question per turn. Remaining clusters will be asked on follow-up turns."
+                f"Keep it to ONE simple question per turn."
             )
         else:
             turn1_rule = (
-                f"- TURN 1 RULE (TIERED): {len(services)} core services have been pre-mapped and "
-                f"all specialist areas are covered. {licence_ack}{multi_cat_note}"
-                f"Summarise briefly and set step_complete=true."
+                f"- TURN 1 RULE (TIERED): {len(services)} services have been pre-mapped under {general_heading_text} "
+                f"and all specialist areas are covered. "
+                f"Say \"I've got you down for {general_heading_text}\" and mention the licence if found. "
+                f"FORBIDDEN: Do NOT list individual services. "
+                f"{licence_ack}{multi_cat_note}"
+                f"Set step_complete=true."
             )
     else:
         turn1_rule = (
@@ -670,7 +745,7 @@ Return ONLY the JSON object."""
     # ── Dynamic context ──
     dynamic_context = f"""BUSINESS: {business_name}
 {f'CONTACT: {contact}' if contact else ''}
-SERVICES MAPPED SO FAR: {json.dumps(services) if services else "None yet"}
+{_format_services_context(services, general_headings)}
 {licence_context}
 {web_context}{reviews_context}{gaps_text}{cluster_groups_text}{cluster_context}
 
@@ -829,39 +904,41 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             services = initial["services"]
             tiered_mode = True
             specialist_gap_ids = [g["subcategory_id"] for g in initial["specialist_gaps"]]
+            _eso_updates["_general_headings"] = initial.get("general_headings", [])
             logger.info(f"[SVC] Tiered mapping: {len(services)} pre-mapped, {len(initial['specialist_gaps'])} specialist gaps")
+            # Trace: category detection + tiered mapping breakdown
+            general_svcs = [s for s in services if s.get("source") == "general"]
+            evidence_svcs = [s for s in services if s.get("source") == "evidence"]
+            licence_svcs = [s for s in services if s.get("source") == "licence"]
+            general_headings = initial.get("general_headings", initial.get("category_names", []))
+            _trace(state, "Tiered Mapping", 0,
+                   f"Detected {', '.join(initial.get('category_names', []))} → {len(services)} services "
+                   f"(general heading: {', '.join(general_headings)}, {len(general_svcs)} general, "
+                   f"{len(evidence_svcs)} evidence, {len(licence_svcs)} licence), {len(specialist_gap_ids)} specialist gaps",
+                   {"categories_detected": initial.get("category_names", []),
+                    "general_headings": general_headings,
+                    "detection_inputs": {"business_name": business_name,
+                                         "licence_classes": licence_classes[:5],
+                                         "google_name": google_biz_name, "google_type": google_type},
+                    "general_services": [s.get("subcategory_name", "") for s in general_svcs],
+                    "evidence_services": [{"name": s.get("subcategory_name", ""), "matched_keyword": s.get("evidence_keyword", "")} for s in evidence_svcs],
+                    "licence_services": [s.get("subcategory_name", "") for s in licence_svcs],
+                    "specialist_gaps": [g.get("subcategory_name", "") for g in initial["specialist_gaps"]][:20]})
 
     # ── Category suggestion (turn 1, after initial mapping) ──
+    related_suggestions = None
     if svc_turn == 1 and not state.get("_category_suggestions_shown") and services and tiered_mode:
         cat_names = initial.get("category_names", []) if tiered_mode else []
         suggestions = suggest_related_categories(cat_names)
         if suggestions:
+            related_suggestions = suggestions
             sug_names = [s["category"] for s in suggestions]
-            sug_text = ", ".join(f"**{s['category']}**" for s in suggestions)
-            count = len(services)
-            primary = cat_names[0] if cat_names else "your trade"
-            buttons = [{"label": "Yes, all of these", "value": "Yes, all of these"}]
-            for s in suggestions:
-                buttons.append({"label": s["category"], "value": s["category"]})
-            buttons.append({"label": "None of these", "value": "__CAT_SKIP__"})
-            logger.info(f"[SVC] Suggesting related categories: {sug_names}")
-            return {
-                "current_node": "service_discovery",
-                "services": services,
-                "_svc_turn": svc_turn,
-                "_specialist_gap_ids": specialist_gap_ids,
-                "_pending_cluster_ids": [],
-                "_category_suggestions_shown": True,
-                "_category_suggestions": suggestions,
-                "buttons": buttons,
-                "_multiselect": True,
-                "messages": [AIMessage(content=(
-                    f"I've pre-mapped {count} {primary.lower()} services from your details. "
-                    f"On Service Seeking, most {primary.lower()}s also list under a few extra categories to get more leads — "
-                    f"like {sug_text}. Want me to add any of these?"
-                ))],
-                **_eso_updates,
-            }
+            logger.info(f"[SVC] Related category suggestions available: {sug_names}")
+            _trace(state, "Related Category Suggestions", 0,
+                   f"Suggesting {len(suggestions)} related categories: {', '.join(sug_names)}",
+                   {"primary_categories": cat_names,
+                    "suggestions": suggestions,
+                    "source": "co-occurrence data from related_categories.json"})
 
     # ── Process category suggestion response ──
     if state.get("_category_suggestions_shown") and state.get("_category_suggestions") and is_follow_up:
@@ -901,6 +978,11 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             services.extend(new_svcs)
             specialist_gap_ids.extend(g["subcategory_id"] for g in new_gaps)
             logger.info(f"[SVC] Accepted extra categories {accepted}: +{len(new_svcs)} services, +{len(new_gaps)} gaps")
+            _trace(state, "Extra Category Mapping", 0,
+                   f"Accepted {', '.join(accepted)}: +{len(new_svcs)} services, +{len(new_gaps)} gaps",
+                   {"accepted": accepted,
+                    "new_services": [s.get("subcategory_name", "") for s in new_svcs],
+                    "new_gaps": [g.get("subcategory_name", "") for g in new_gaps]})
         else:
             logger.info(f"[SVC] Category suggestions skipped")
 
@@ -922,12 +1004,28 @@ async def service_discovery_node(state: OnboardingState) -> dict:
         gaps = compute_service_gaps(services, business_name, licence_classes,
                                     google_biz_name, google_type)
 
+    if is_follow_up:
+        _trace(state, "Service Gaps", 0,
+               f"{len(gaps)} gaps remaining ({len(services)} services mapped)",
+               {"gap_count": len(gaps), "service_count": len(services),
+                "gaps": [g.get("subcategory_name", "") for g in gaps[:15]],
+                "tiered_mode": tiered_mode})
+
     # ── Pre-process cluster response (deterministic) ──
     cluster_added: list[str] = []
     if pending_cluster_ids and is_follow_up and gaps:
+        pre_svc_count = len(services)
         services, cluster_added, gaps = _process_cluster_response(
             pending_cluster_ids, gaps, services, last_msg,
         )
+        action = "added" if cluster_added else "skipped"
+        _trace(state, "Cluster Processing", 0,
+               f"Cluster {action}: +{len(services) - pre_svc_count} services, {len(gaps)} gaps left",
+               {"action": action,
+                "pending_cluster_ids": pending_cluster_ids,
+                "user_message": (last_msg or "")[:200],
+                "services_added": cluster_added,
+                "gaps_remaining": len(gaps)})
 
     # ── Fast-exit: no specialist gaps left in tiered mode — skip LLM ──
     if tiered_mode and not gaps and is_follow_up:
@@ -982,11 +1080,16 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             gaps, business_name, licence_classes,
             google_biz_name, google_type,
         )
+        if cluster_groups:
+            _trace(state, "Cluster Groups", 0,
+                   f"{len(cluster_groups)} cluster groups for {len(gaps)} gaps",
+                   {"groups": [{"label": g.get("label", ""), "count": len(g.get("services", []))} for g in cluster_groups]})
 
     # ── Build prompt ──
     static_context, dynamic_context = _build_service_prompt(
         state, services, gaps, cluster_groups, cluster_added,
         tiered_mode, pending_cluster_ids,
+        related_suggestions=related_suggestions,
     )
 
     # ── Single LLM call ──
@@ -1030,7 +1133,12 @@ async def service_discovery_node(state: OnboardingState) -> dict:
         _trace(state, "LLM: Service Discovery", llm_time,
                f"Mapped {len(new_services)} services, {len(new_gaps)} gaps remaining, complete={step_complete}, tiered={tiered_mode}",
                {"services_count": len(new_services), "gaps_remaining": len(new_gaps),
-                "step_complete": step_complete, "turn": svc_turn, "tiered": tiered_mode})
+                "step_complete": step_complete, "turn": svc_turn, "tiered": tiered_mode,
+                "prompt_context": dynamic_context[:800],
+                "user_message": (last_msg or "")[:200],
+                "llm_response": (response.content or "")[:1000],
+                "cluster_ids": cluster_ids,
+                "buttons": buttons[:6]})
 
         # Build button list — mark as multi-select when there are cluster toggles
         _DECLINE_WORDS = {"none", "not", "nah", "skip", "move on"}
@@ -1048,12 +1156,24 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                     btn["value"] = MSG_YES_ALL
             multiselect = True
 
+        # ── Override buttons for related category suggestions ──
+        if related_suggestions:
+            btn_list = [{"label": "Yes, all of these", "value": "Yes, all of these"}]
+            for s in related_suggestions:
+                btn_list.append({"label": s["category"], "value": s["category"]})
+            btn_list.append({"label": "None of these", "value": "__CAT_SKIP__"})
+            multiselect = True
+            step_complete = False
+            cluster_ids = []
+            _eso_updates["_category_suggestions_shown"] = True
+            _eso_updates["_category_suggestions"] = related_suggestions
+
         result = {
             "current_node": "service_discovery",
             "services": new_services,
             "services_raw": last_msg or f"Inferred from: {business_name}",
             "services_confirmed": step_complete,
-            "_svc_turn": svc_turn + 1,
+            "_svc_turn": svc_turn if related_suggestions else svc_turn + 1,
             "_specialist_gap_ids": specialist_gap_ids,
             "_pending_cluster_ids": cluster_ids,
             "buttons": btn_list,
@@ -1123,14 +1243,22 @@ async def service_area_node(state: OnboardingState) -> dict:
     # Build region summary with suburb counts
     # Filter out regions with <3 suburbs — those are misclassified stray entries in the CSV
     region_list = ""
+    valid_regions = 0
+    total_suburbs = 0
     if grouped.get("by_area"):
         region_lines = []
         for area, suburbs in sorted(grouped["by_area"].items(), key=lambda x: len(x[1]), reverse=True):
             if len(suburbs) < 3:
                 continue
+            valid_regions += 1
+            total_suburbs += len(suburbs)
             sample = ", ".join([s["name"] for s in suburbs[:3]])
             region_lines.append(f"  - {area} ({len(suburbs)} suburbs, e.g. {sample})")
         region_list = "\n".join(region_lines)
+    if grouped:
+        _trace(state, "Suburb Grouping", 0,
+               f"{valid_regions} regions, {total_suburbs} suburbs within 20km of {postcode}",
+               {"postcode": postcode, "regions": valid_regions, "total_suburbs": total_suburbs})
 
     # ── Extract location evidence from website text + Google reviews ──
     location_evidence = ""
@@ -1221,6 +1349,11 @@ Return ONLY the JSON object."""
     # ── TURN 1: Full prompt with regional guide ──
     else:
         regional_guide = get_regional_guide(business_state)
+        _state_city_map = {"NSW": "sydney", "VIC": "melbourne", "QLD": "brisbane", "WA": "perth"}
+        _trace(state, "Regional Guide Loaded", 0,
+               f"{'Loaded ' + _state_city_map.get(business_state, '?') + '_regions.md' if regional_guide else 'No regional guide for ' + business_state} ({len(regional_guide)} chars)",
+               {"state": business_state, "guide_file": _state_city_map.get(business_state, "none") + "_regions.md" if regional_guide else "none",
+                "chars": len(regional_guide)})
 
         static_context = f"""You are the Service Seeking onboarding assistant helping a tradie define their service area.
 
@@ -1290,10 +1423,14 @@ CURRENT SERVICE AREA: Not set yet"""
         included = new_areas.get("regions_included", [])
         excluded = new_areas.get("regions_excluded", [])
         logger.info(f"[AREA] user='{last_msg}' | model={model_name} | included={included} | excluded={excluded} | complete={step_complete}")
+        _area_prompt = dynamic_context[:800] if not is_follow_up else prompt[:800]
         _trace(state, "LLM: Service Area", llm_time,
                f"{len(included)} regions included, {len(excluded)} excluded, complete={step_complete}",
                {"model": model_name, "regions_included": included,
-                "regions_excluded": excluded, "step_complete": step_complete, "follow_up": is_follow_up})
+                "regions_excluded": excluded, "step_complete": step_complete, "follow_up": is_follow_up,
+                "prompt_context": _area_prompt,
+                "user_message": (last_msg or "")[:200],
+                "llm_response": (response.content or "")[:1000]})
 
         return {
             "current_node": "service_area",
@@ -1482,6 +1619,14 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
     brave_scraped = results["scrape"]
     social_result = results["social"]
 
+    if discovered_url:
+        _trace(state, "Website Discovery", time.time() - t0,
+               f"Discovered: {discovered_url}",
+               {"url": discovered_url, "business_name": business_name})
+    elif not google_website:
+        _trace(state, "Website Discovery", time.time() - t0,
+               "No website found (tried .com.au/.au/.net.au)", {})
+
     # If we have a Google website, we already scraped it directly above
     # If not, discovered domain takes priority over Brave result scrape
     if google_website:
@@ -1533,9 +1678,15 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
     if social_result:
         if not logo and social_result.get("logo"):
             logo = social_result["logo"]
+        social_added = 0
         for p in social_result.get("photos", []):
             if p not in photos and p != logo and len(photos) < 8:
                 photos.append(p)
+                social_added += 1
+        if social_added or social_result.get("logo"):
+            _trace(state, "Social Images", 0,
+                   f"logo={'yes' if social_result.get('logo') else 'no'}, {social_added} photos from social",
+                   {"urls": social_urls[:3]})
 
     # Brave thumbnails as last resort — only from non-junk sources
     _skip_thumb_domains = _directory_domains + ["facebook.com", "instagram.com"]
@@ -1550,7 +1701,11 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
 
     _trace(state, "LLM: Profile Description", llm_time,
            f"Generated {len(description)} char description",
-           {"years_in_business": years})
+           {"years_in_business": years,
+            "prompt_inputs": {"business": business_name, "contact": contact_name,
+                              "services": services_text[:300], "areas": regions_text[:200],
+                              "years": years, "google_rating": google_rating},
+            "llm_response": {"intro": intro[:300], "description": description[:500]}})
     if scrape_url:
         _trace(state, "Website Scrape", llm_time,
                f"logo={'yes' if logo else 'no'}, {len(scraped.get('photos', []))} photos from site, {len(photos)} total",
@@ -1558,13 +1713,18 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
                 "brave_thumbs": len(photos) - len(scraped.get("photos", []))})
 
     # ── AI filter: use vision to keep only real work photos ──
-    logger.info(f"[PROFILE] {len(photos)} candidate photos before AI filter: {[u[:60] for u in photos]}")
+    pre_filter_count = len(photos)
+    logger.info(f"[PROFILE] {pre_filter_count} candidate photos before AI filter: {[u[:60] for u in photos]}")
     if photos:
         trade_type = ""
         if services:
             cats = list(dict.fromkeys(s.get("category_name", "") for s in services if s.get("category_name")))
             trade_type = cats[0].lower() if cats else "tradesperson"
+        t_filter = time.time()
         photos = await ai_filter_photos(photos[:8], trade_type or "tradesperson")
+        _trace(state, "AI Photo Filter", time.time() - t_filter,
+               f"{pre_filter_count} candidates → {len(photos)} kept (Haiku vision WORK/SKIP)",
+               {"before": pre_filter_count, "after": len(photos), "trade_type": trade_type})
 
     return {
         "current_node": "profile",
@@ -1963,6 +2123,18 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     if google_rating:
         logger.info(f"[BIZ] Google: {google_rating}★ ({google_review_count} reviews), {len(google_reviews)} review snippets, {len(google_photos)} photos")
 
+    # Pre-detect trade categories (needed for licence matching trade relevance)
+    google_type = google_place.get("primary_type", "")
+    pre_detected = _detect_categories(business_name, [],
+                                      google_place.get("name", ""), google_type)
+    if pre_detected:
+        _trace(state, "Category Pre-Detection", 0,
+               f"Pre-detected: {', '.join(pre_detected)} (before licence)",
+               {"categories": pre_detected,
+                "inputs": {"business_name": business_name,
+                           "google_name": google_place.get("name", ""),
+                           "google_type": google_type}})
+
     # Find the best licence match (current, matching name closely)
     licence_info = {}
     licence_classes = []
@@ -1997,29 +2169,12 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         website_text = await website_text_task if website_text_task else ""
     else:
         # NSW (or other states with browse-style results): find best match then get details
-        best_match = None
-        for lic in licence_matches:
-            if lic.get("status") != "Current":
-                continue
-            licensee = lic.get("licensee", "").lower()
-            if search_name.lower() in licensee or licensee in search_name.lower():
-                best_match = lic
-                break
-
-        # Fallback: accept first current result only if single result or word overlap >= 50%
-        if not best_match:
-            current_lics = [lic for lic in licence_matches if lic.get("status") == "Current"]
-            if len(current_lics) == 1:
-                best_match = current_lics[0]
-            elif current_lics:
-                search_words = set(search_name.lower().split())
-                for lic in current_lics:
-                    lic_words = set(lic.get("licensee", "").lower().split())
-                    if search_words and lic_words:
-                        overlap = len(search_words & lic_words) / min(len(search_words), len(lic_words))
-                        if overlap >= 0.5:
-                            best_match = lic
-                            break
+        best_match, match_details = match_licence(licence_matches, search_name,
+                                                  detected_categories=pre_detected,
+                                                  return_details=True)
+        _trace(state, "Licence Matching", 0,
+               f"{'Matched: ' + match_details.get('winner', '?') if best_match else 'No match'} — {match_details.get('reason', '')}",
+               match_details)
 
         if best_match:
             lid = best_match.get("licence_id", "")
@@ -2071,7 +2226,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         for r in web_results[:3]:
             desc = r.get("description", "")
             # Look for Australian phone patterns: 1300/1800, 04xx, (0x) xxxx
-            phone_match = re.search(r'(?:1[38]00\s?\d{3}\s?\d{3}|0[24]\d{2}\s?\d{3}\s?\d{3}|\(0\d\)\s?\d{4}\s?\d{4})', desc)
+            phone_match = re.search(r'(?:1[38]00\s?\d{3}\s?\d{3}|0[2-8]\d{2}\s?\d{3}\s?\d{3}|\(0[2-8]\)\s?\d{4}\s?\d{4})', desc)
             if phone_match:
                 contact_phone = phone_match.group(0).strip()
                 break
@@ -2081,11 +2236,18 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     if contact_phone:
         logger.info(f"[BIZ] Contact phone: {contact_phone}")
 
-    # Detect trade categories for licence routing (multi-category)
-    google_type = google_place.get("primary_type", "")
+    # Re-detect with licence classes now available (may find additional categories)
     detected_categories = _detect_categories(business_name, licence_classes,
-                                             google_place.get("name", ""), google_type)
+                                             google_place.get("name", ""), google_type) if licence_classes else pre_detected
     detected_category = detected_categories[0] if detected_categories else None
+    if detected_categories:
+        _trace(state, "Category Detection", 0,
+               f"Detected: {', '.join(detected_categories)}",
+               {"categories": detected_categories,
+                "inputs": {"business_name": business_name,
+                            "licence_classes": licence_classes[:5],
+                            "google_name": google_place.get("name", ""),
+                            "google_type": google_type}})
 
     # Web extraction: try to extract licence from Brave descriptions, then full website scan
     # Applies to VIC, WA, SA, TAS, ACT, NT — any state with patterns in _STATE_LICENCE_CONFIG
@@ -2145,6 +2307,11 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                     "default_classes": config["default_classes"],
                 }
                 break
+
+    if website_text:
+        _trace(state, "Website Text Scrape", 0,
+               f"{len(website_text)} chars from {google_website or 'website'}",
+               {"url": google_website, "chars": len(website_text), "preview": website_text[:200]})
 
     return {
         "current_node": "business_verification",

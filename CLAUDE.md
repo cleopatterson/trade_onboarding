@@ -63,11 +63,12 @@ WELCOME → BUSINESS_VERIFICATION → SERVICE_DISCOVERY → SERVICE_AREA → PRO
 ABR JSON API, NSW Fair Trading Trades API (OAuth2), WA DMIRS PrimeFaces (scrape), Brave Search API, Google Places API (Text Search). See `docs/PRD.md` Section 4 for details, `.env.example` for required keys.
 
 ## Development Notes
+- Security hook blocks `innerHTML` — use `createElement`/`appendChild`/`textContent` for all DOM construction in `landing.html`
 - Server runs on port **8001** (Concierge uses 8000)
 - Python venv at `./venv/bin/python` — system Python won't have dependencies
 - OAuth token pre-warmed on startup for NSW Trades API
 - Per-session JSONL logging in `logs/` directory
-- API call traces visible in browser dev tools console (color-coded)
+- API call traces visible in browser dev tools console (color-coded) and `web/debug.html` timeline (31 trace points, grouped by type: api/llm/data/guide/map/chain/info)
 - Prompt caching enabled for taxonomy + guides (large static context)
 - LLM JSON fallback: if LLM returns plain text, wraps in default structure
 - Suburbs CSV has some bad data: state filter + min 3 suburbs threshold filters junk regions
@@ -78,7 +79,7 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), WA DMIRS PrimeFaces (scrape)
 - Upload endpoint: `POST /api/upload` for logo + work photos (base64, max 5MB, photos capped at 6)
 - Progressive loading with magic stars + API activity steps for key transitions
 - Service discovery: tiered mapping (core → evidence → licence) on turn 1, related category suggestions, specialist gap questions on follow-ups, safety cap at 5 turns
-- Related category suggestions: after initial mapping, shows data-driven suggestions from co-occurrence data (e.g. "Plumbers also list under Handyman, Bathroom Renovations"). One turn, no LLM. Buttons: Yes all + individual categories + Skip
+- Related category suggestions: after initial mapping, LLM naturally mentions related categories from co-occurrence data alongside licence acknowledgement. Buttons programmatically overridden: Yes all + individual categories + None of these
 - Deterministic cluster processing: LLM outputs `cluster_ids`, system pre-adds services from "Yes, all of these" programmatically before next LLM call
 - `_pending_cluster_ids` + `_specialist_gap_ids` persisted in state; fast-exit when all specialist gaps covered (no LLM needed)
 - Website text scraped in parallel with licence details; fed into evidence keyword scanning for better service detection
@@ -92,6 +93,9 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), WA DMIRS PrimeFaces (scrape)
 - `_STATE_LICENCE_CONFIG` keyed by state → trade with regex patterns, regulators, default classes
 - WA DMIRS: PrimeFaces scrape (ViewState + cookies), covers EC/PL/GF trades only
 - SA/TAS/ACT/NT: scan Brave + website text for licence patterns, fallback to self-report
+- Licence matching: `match_licence()` in tools.py — consolidated scorer for NSW + WA results. Scores on name (substring > word overlap) and trade relevance (category match via `_TRADE_CATEGORY_MAP`). Prevents cross-trade false positives
+- ABR buttons: near-duplicate name detection (strips Pty/Ltd) adds "Company" or "Sole Trader" hint when same business has both registrations
+- Service `source` field: every mapped service has `source` = "core" | "evidence" | "licence" — set by `_resolve()` in `_map_single_tier()`
 - Deployed on Railway: https://trade-onboarding.up.railway.app
 
 ## Docs

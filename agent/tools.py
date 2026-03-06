@@ -319,6 +319,8 @@ _TRADE_CATEGORY_MAP = {
     "landscap": "Landscaper",
     "carpent": "Carpenter",
     "build": "Builder",
+    "construct": "Builder",
+    "joiner": "Carpenter",
     "roof": "Roofer",
     "tile": "Tiler",
     "concret": "Concreter",
@@ -329,9 +331,10 @@ _TRADE_CATEGORY_MAP = {
     "plaster": "Plasterer",
     "brick": "Bricklayer",
     "render": "Rendering Company",
-    "pool": "Pool & Spa Company",
+    " pool": "Pool & Spa Company",
     "solar": "Solar Company",
     "air con": "Air Conditioning & Heating Technician",
+    "aircon": "Air Conditioning & Heating Technician",
     "hvac": "Air Conditioning & Heating Technician",
     "pest": "Exterminator",
     "waterproof": "Waterproofing Company",
@@ -341,6 +344,7 @@ _TRADE_CATEGORY_MAP = {
     "bathroom": "Bathroom Renovation Company",
     "secur": "Security Company",
     "gas fit": "Gas Fitter",
+    "upholster": "Upholsterer",
 }
 
 
@@ -619,6 +623,141 @@ async def scan_website_for_licence(url: str, trade: str, state: str = "VIC") -> 
         return None
 
 
+# ────────── CONSOLIDATED LICENCE MATCHING ──────────
+
+_BUSINESS_SUFFIX_RE = re.compile(
+    r'\s*(PTY\.?\s*LTD\.?|LTD\.?|INC\.?|P/L|GROUP|SERVICES?|SOLUTIONS?)\s*$',
+    re.IGNORECASE,
+)
+
+
+def match_licence(
+    results: list[dict],
+    search_name: str,
+    detected_categories: list[str] | None = None,
+    return_details: bool = False,
+) -> dict | None:
+    """Pick the best licence match from browse/search results.
+
+    Scores each current licence on two axes:
+    - name_score: 3=substring, 2=word overlap ≥60%, 1=overlap ≥40%
+    - trade_relevance: 2=licence_type matches a detected category, 0=no match
+
+    Returns best match (trade_relevance, name_score desc) with name_score ≥ 2,
+    or None if nothing qualifies.
+
+    If return_details=True, returns (match, details_dict) tuple for debug tracing.
+    """
+    _NAME_LABELS = {3: "substring", 2: "overlap≥60%", 1: "overlap≥40%", 0: "no match"}
+    _TRADE_LABELS = {2: "matches", 0: "no match"}
+
+    if not results or not search_name:
+        return (None, {"reason": "empty input"}) if return_details else None
+
+    # Clean search name
+    clean = _BUSINESS_SUFFIX_RE.sub('', search_name).strip().lower()
+    clean_words = set(clean.split())
+
+    # Build trade keyword set from detected categories for relevance scoring
+    trade_keywords: set[str] = set()
+    if detected_categories:
+        for cat in detected_categories:
+            trade_keywords.add(cat.lower())
+            # Add keywords that map to this category
+            for kw, mapped_cat in _TRADE_CATEGORY_MAP.items():
+                if mapped_cat == cat:
+                    trade_keywords.add(kw)
+
+    scored: list[tuple[int, int, dict]] = []
+    all_candidates: list[dict] = []  # For debug details
+    for lic in results:
+        if lic.get("status", "").lower() not in ("current", ""):
+            # Skip non-current (but allow empty status for WA DMIRS)
+            if lic.get("status", ""):
+                continue
+
+        lic_name = (lic.get("licensee") or lic.get("name", "")).lower()
+        lic_clean = _BUSINESS_SUFFIX_RE.sub('', lic_name).strip()
+
+        # Name score
+        if clean in lic_clean or lic_clean in clean:
+            name_score = 3
+        else:
+            lic_words = set(lic_clean.split())
+            if clean_words and lic_words:
+                overlap = len(clean_words & lic_words) / min(len(clean_words), len(lic_words))
+                if overlap >= 0.6:
+                    name_score = 2
+                elif overlap >= 0.4:
+                    name_score = 1
+                else:
+                    name_score = 0
+            else:
+                name_score = 0
+
+        # Trade relevance
+        trade_rel = 0
+        lic_type = (lic.get("licence_type") or "").lower()
+        if trade_keywords and lic_type:
+            for tk in trade_keywords:
+                if tk in lic_type or lic_type in tk:
+                    trade_rel = 2
+                    break
+
+        if return_details:
+            all_candidates.append({
+                "licensee": lic.get("licensee") or lic.get("name", ""),
+                "licence_type": lic.get("licence_type", ""),
+                "name_score": name_score,
+                "name_label": _NAME_LABELS.get(name_score, "?"),
+                "trade_rel": trade_rel,
+                "trade_label": _TRADE_LABELS.get(trade_rel, "?"),
+                "status": lic.get("status", ""),
+            })
+
+        if name_score < 1:
+            continue
+
+        scored.append((trade_rel, name_score, lic))
+
+    if not scored:
+        if return_details:
+            return None, {"reason": "no candidates scored ≥1", "search_clean": clean,
+                          "detected_categories": detected_categories or [],
+                          "candidates": all_candidates}
+        return None
+
+    # Sort descending by (trade_relevance, name_score)
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    best_rel, best_name, best = scored[0]
+
+    # Require name_score ≥ 2 for primary match
+    if best_name >= 2:
+        if return_details:
+            return best, {"reason": f"primary match (name={_NAME_LABELS[best_name]}, trade={_TRADE_LABELS[best_rel]})",
+                          "search_clean": clean, "detected_categories": detected_categories or [],
+                          "winner": (best.get("licensee") or best.get("name", "")),
+                          "candidates": all_candidates}
+        return best
+
+    # Single-current fallback: if only one current licence and name_score ≥ 1
+    current = [s for s in scored if s[2].get("status", "").lower() == "current"]
+    if len(current) == 1 and current[0][1] >= 1:
+        if return_details:
+            fb = current[0][2]
+            return fb, {"reason": f"single-current fallback (name={_NAME_LABELS[current[0][1]]})",
+                        "search_clean": clean, "detected_categories": detected_categories or [],
+                        "winner": (fb.get("licensee") or fb.get("name", "")),
+                        "candidates": all_candidates}
+        return current[0][2]
+
+    if return_details:
+        return None, {"reason": f"best name_score={best_name} < 2, {len(current)} current candidates",
+                      "search_clean": clean, "detected_categories": detected_categories or [],
+                      "candidates": all_candidates}
+    return None
+
+
 # ────────── WA DMIRS LICENCE LOOKUP ──────────
 
 _WA_DMIRS_URL = "https://occupationallicensing.dmirs.wa.gov.au/onlinelicencesearch/licenceSearch.jspx"
@@ -743,37 +882,9 @@ async def wa_dmirs_lookup(search_name: str, trade: str) -> dict | None:
                 logger.info(f"[WA-DMIRS] No results for '{search_name}' ({trade})")
                 return None
 
-            # Step 4: Best match — prefer current, substring match on name
-            search_lower = search_name.lower()
-            # Strip common suffixes for matching
-            clean_search = re.sub(
-                r'\s*(PTY\.?\s*LTD\.?|LTD\.?|INC\.?)\s*$', '',
-                search_lower, flags=re.IGNORECASE,
-            ).strip()
-
-            best = None
-            for r in results:
-                if r.get("status", "").lower() != "current":
-                    continue
-                lic_name = r.get("licensee", "").lower()
-                if clean_search in lic_name or lic_name in clean_search:
-                    best = r
-                    break
-
-            # Fallback: word overlap >= 50%
-            if not best:
-                current = [r for r in results if r.get("status", "").lower() == "current"]
-                if len(current) == 1:
-                    best = current[0]
-                elif current:
-                    search_words = set(clean_search.split())
-                    for r in current:
-                        lic_words = set(r.get("licensee", "").lower().split())
-                        if search_words and lic_words:
-                            overlap = len(search_words & lic_words) / min(len(search_words), len(lic_words))
-                            if overlap >= 0.5:
-                                best = r
-                                break
+            # Step 4: Best match via consolidated matcher
+            # Trade relevance implicit — DMIRS already filters by trade type
+            best = match_licence(results, search_name)
 
             if not best:
                 logger.info(f"[WA-DMIRS] No matching current licence for '{search_name}'")
@@ -1134,7 +1245,7 @@ def _map_single_tier(
     for sc in all_subcats:
         subcat_by_name[sc["subcategory_name"]] = sc
 
-    def _resolve(name: str, confidence: str = "high") -> dict | None:
+    def _resolve(name: str, confidence: str = "high", source: str = "core") -> dict | None:
         sc = subcat_by_name.get(name)
         if not sc:
             return None
@@ -1145,27 +1256,31 @@ def _map_single_tier(
             "subcategory_name": sc["subcategory_name"],
             "subcategory_id": sc["subcategory_id"],
             "confidence": confidence,
+            "source": source,
         }
 
     services: list[dict] = []
     mapped_names: set[str] = set(already_mapped_names)
 
-    # 1. Core services — always mapped
-    for name in tier_def.get("core", []):
+    # 1. General services — always mapped (silently tagged under general heading)
+    for name in tier_def.get("general", tier_def.get("core", [])):
         if name in mapped_names:
             continue
-        svc = _resolve(name)
+        svc = _resolve(name, source="general")
         if svc:
             services.append(svc)
             mapped_names.add(name)
 
-    # 2. Evidence-based services
-    for svc_name, keywords in tier_def.get("evidence_keywords", {}).items():
+    # 2. Specialist services — evidence-based matching
+    specialist = tier_def.get("specialist", tier_def.get("evidence_keywords", {}))
+    for svc_name, spec_def in specialist.items():
         if svc_name in mapped_names:
             continue
+        # Support both new format {"keywords": [...]} and old format [...]
+        keywords = spec_def.get("keywords", spec_def) if isinstance(spec_def, dict) else spec_def
         for kw in keywords:
             if kw in evidence_lower:
-                svc = _resolve(svc_name, "evidence")
+                svc = _resolve(svc_name, "evidence", source="evidence")
                 if svc:
                     services.append(svc)
                     mapped_names.add(svc_name)
@@ -1178,7 +1293,7 @@ def _map_single_tier(
         # First check evidence text
         for sig in signals:
             if sig in evidence_lower:
-                svc = _resolve(svc_name, "evidence")
+                svc = _resolve(svc_name, "evidence", source="evidence")
                 if svc:
                     services.append(svc)
                     mapped_names.add(svc_name)
@@ -1191,7 +1306,7 @@ def _map_single_tier(
             matched = False
             for sig in signals:
                 if sig in lc_lower:
-                    svc = _resolve(svc_name, "licence")
+                    svc = _resolve(svc_name, "licence", source="licence")
                     if svc:
                         services.append(svc)
                         mapped_names.add(svc_name)
@@ -1259,9 +1374,9 @@ def compute_initial_services(
         all_services.extend(new_services)
 
         logger.info(f"[TIERS] {cat_key}: {len(new_services)} pre-mapped "
-                    f"(core={sum(1 for s in new_services if s.get('confidence') == 'high')}, "
-                    f"evidence={sum(1 for s in new_services if s.get('confidence') == 'evidence')}, "
-                    f"licence={sum(1 for s in new_services if s.get('confidence') == 'licence')})")
+                    f"(general={sum(1 for s in new_services if s.get('source') == 'general')}, "
+                    f"evidence={sum(1 for s in new_services if s.get('source') == 'evidence')}, "
+                    f"licence={sum(1 for s in new_services if s.get('source') == 'licence')})")
 
     # Specialist gaps — all subcategories NOT yet mapped across ALL tiered categories
     specialist_gaps = []
@@ -1281,6 +1396,13 @@ def compute_initial_services(
                     "category_name": cat_name,
                 })
 
+    # Collect general headings
+    general_headings = []
+    for cat_key in tiered_keys:
+        tier_def = tiers[cat_key]
+        heading = tier_def.get("general_heading", cat_key)
+        general_headings.append(heading)
+
     logger.info(f"[TIERS] Total: {len(all_services)} pre-mapped, "
                 f"{len(specialist_gaps)} specialist gaps across {cat_names}")
 
@@ -1289,6 +1411,7 @@ def compute_initial_services(
         "specialist_gaps": specialist_gaps,
         "category_name": cat_names[0],  # backward-compat: primary category
         "category_names": cat_names,
+        "general_headings": general_headings,
         "tiered": True,
     }
 
@@ -1467,45 +1590,58 @@ def get_regional_guide(state_code: str) -> str:
 _guide_cache: dict[str, str] = {}
 
 
-def find_subcategory_guide(business_name: str) -> str:
+def find_subcategory_guide(business_name: str, return_files: bool = False):
     """Find relevant subcategory guides based on business name trade type.
 
     Multi-category: scans ALL matching keywords and concatenates guides.
     Deduplicates by filename (a keyword may map to the same file).
     Cached on first read.
+
+    If return_files=True, returns (guide_text, list_of_filenames).
     """
     name_lower = business_name.lower()
 
     # Map trade keywords to guide files
     trade_guides = {
         "plumb": ["plumber-subcategory-guide.md", "plumbing_subcategories.md"],
-        "paint": ["painter_subcategories.md"],
+        "paint": ["painter-subcategory-guide.md", "painter_subcategories.md"],
         "electri": ["electrician-subcategory-guide.md", "electrical_subcategories.md"],
         "clean": ["cleaner-subcategory-guide.md"],
         "garden": ["gardener-subcategory-guide.md"],
         "carpent": ["carpentry_subcategories.md"],
         "build": ["builder-subcategory-guide.md"],
+        "handyman": ["handyman-subcategory-guide.md"],
+        "concret": ["concreter-subcategory-guide.md"],
+        "bathroom": ["bathroom_renovation-subcategory-guide.md"],
+        "upholster": ["upholsterer-subcategory-guide.md"],
+        "kitchen": ["kitchen_renovation-subcategory-guide.md"],
     }
 
     parts: list[str] = []
-    loaded_files: set[str] = set()
+    loaded_files: list[str] = []
+    loaded_set: set[str] = set()
 
     for keyword, files in trade_guides.items():
         if keyword in name_lower:
             for fname in files:
-                if fname in loaded_files:
+                if fname in loaded_set:
                     continue
-                loaded_files.add(fname)
+                loaded_set.add(fname)
                 if fname in _guide_cache:
                     parts.append(_guide_cache[fname])
+                    loaded_files.append(fname)
                 else:
                     fpath = RESOURCES_DIR / fname
                     if fpath.exists():
                         content = fpath.read_text()
                         _guide_cache[fname] = content
                         parts.append(content)
+                        loaded_files.append(fname)
 
-    return "\n\n---\n\n".join(parts) if parts else ""
+    result = "\n\n---\n\n".join(parts) if parts else ""
+    if return_files:
+        return result, loaded_files
+    return result
 
 
 # ────────── NSW FAIR TRADING LICENCE LOOKUP ──────────

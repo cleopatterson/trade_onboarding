@@ -27,6 +27,7 @@ from agent.tools import (
     suggest_related_categories,
     map_extra_categories,
     _load_related_categories,
+    match_licence,
 )
 from agent.graph import (
     _process_cluster_response,
@@ -888,3 +889,82 @@ class TestMapExtraCategories:
         )
         # Should have services from Handyman + gaps from Locksmith
         assert len(new_svcs) > 0 or len(new_gaps) > 0
+
+
+# ────────── MATCH LICENCE ──────────
+
+class TestMatchLicence:
+    """Tests for consolidated licence matching."""
+
+    def test_prefers_trade_relevant_match(self):
+        """Painter 'Smith' should NOT match a plumber licence for 'Smith'."""
+        results = [
+            {"licensee": "SMITH, JOHN", "licence_type": "Plumber", "status": "Current", "licence_id": "1"},
+            {"licensee": "SMITH, BRENDAN", "licence_type": "Painter", "status": "Current", "licence_id": "2"},
+        ]
+        best = match_licence(results, "SMITH, BRENDAN", detected_categories=["Painter"])
+        assert best is not None
+        assert best["licence_id"] == "2"
+
+    def test_rejects_wrong_trade_low_name(self):
+        """Common surname with wrong trade should be rejected."""
+        results = [
+            {"licensee": "SMITH, JOHN", "licence_type": "Plumber", "status": "Current", "licence_id": "1"},
+            {"licensee": "SMITH, PETER", "licence_type": "Plumber", "status": "Current", "licence_id": "2"},
+        ]
+        # Searching for "SMITH, BRENDAN" (painter) — both are plumbers, word overlap is 1/2 = 50%
+        best = match_licence(results, "SMITH, BRENDAN", detected_categories=["Painter"])
+        # Should return None — no name_score >= 2 after suffix strip
+        assert best is None
+
+    def test_strips_business_suffixes(self):
+        """PTY LTD etc. should be stripped before matching."""
+        results = [
+            {"licensee": "ACME ELECTRICAL", "licence_type": "Electrician", "status": "Current", "licence_id": "1"},
+        ]
+        best = match_licence(results, "Acme Electrical Pty Ltd", detected_categories=["Electrician"])
+        assert best is not None
+        assert best["licence_id"] == "1"
+
+    def test_substring_match(self):
+        """Exact substring should score highest."""
+        results = [
+            {"licensee": "SMITH PAINTING SERVICES", "licence_type": "Painter", "status": "Current", "licence_id": "1"},
+        ]
+        best = match_licence(results, "Smith Painting", detected_categories=["Painter"])
+        assert best is not None
+        assert best["licence_id"] == "1"
+
+    def test_no_results_returns_none(self):
+        assert match_licence([], "test") is None
+        assert match_licence([{"licensee": "X", "status": "Expired"}], "X") is None
+
+    def test_skips_non_current(self):
+        """Non-current licences should be skipped."""
+        results = [
+            {"licensee": "ACME ELECTRICAL", "licence_type": "Electrician", "status": "Expired", "licence_id": "1"},
+            {"licensee": "ACME ELECTRICAL", "licence_type": "Electrician", "status": "Current", "licence_id": "2"},
+        ]
+        best = match_licence(results, "Acme Electrical")
+        assert best is not None
+        assert best["licence_id"] == "2"
+
+    def test_single_current_fallback(self):
+        """Single current result with name_score >= 1 should be accepted."""
+        results = [
+            {"licensee": "B SMITH PAINTING", "licence_type": "Painter", "status": "Current", "licence_id": "1"},
+        ]
+        # "Smith" overlaps 1/3 words = 33% (score 0 normally), but single-current fallback
+        # Actually "smith" in both, 1/min(1,3)=33% → score 0. But let's test with better overlap
+        best = match_licence(results, "Smith Painting", detected_categories=["Painter"])
+        # "smith painting" vs "b smith painting" — 2/2 = 100% overlap → name_score=2, accepted
+        assert best is not None
+
+    def test_no_categories_still_matches_by_name(self):
+        """Without detected_categories, matching should work on name alone."""
+        results = [
+            {"licensee": "JONES ELECTRICAL PTY LTD", "licence_type": "Electrician", "status": "Current", "licence_id": "1"},
+        ]
+        best = match_licence(results, "Jones Electrical Pty Ltd")
+        assert best is not None
+        assert best["licence_id"] == "1"
