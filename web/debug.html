@@ -215,6 +215,32 @@
     .wizard-button-multi.selected { border-color: #0066cc; background: #f0f6ff; }
     .wizard-button-multi.selected .multi-check { background: #0066cc; border-color: #0066cc; }
     .wizard-button-multi.selected .multi-check i { opacity: 1; }
+    /* Fallback multi-select group headers */
+    .wizard-group-header { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; padding: 12px 0 4px 2px; margin-top: 4px; }
+    .wizard-group-header:first-child { margin-top: 0; }
+    /* Service Selection Form (fallback) */
+    .svc-form-wrap { background: #F8FAFC; margin: -20px -40px -40px; padding: 0 0 80px; }
+    .svc-form-intro { padding: 24px 24px 16px; background: white; }
+    .svc-form-section { padding: 0 24px; }
+    .svc-form-cat-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 8px; border-bottom: 1px solid #E2E8F0; margin-bottom: 8px; }
+    .svc-form-cat-header:first-child { padding-top: 8px; }
+    .svc-form-cat-name { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; }
+    .svc-form-select-all { font-size: 13px; font-weight: 500; color: #0066cc; cursor: pointer; border: none; background: none; padding: 4px 8px; }
+    .svc-form-select-all:hover { text-decoration: underline; }
+    .svc-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-bottom: 8px; }
+    .svc-form-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: background 0.15s ease; -webkit-tap-highlight-color: transparent; }
+    .svc-form-item:hover { background: #EFF6FF; }
+    .svc-form-item.checked { background: #EFF6FF; }
+    .svc-form-checkbox { width: 20px; height: 20px; border: 2px solid #CBD5E1; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; }
+    .svc-form-item.checked .svc-form-checkbox { background: #0066cc; border-color: #0066cc; }
+    .svc-form-item.checked .svc-form-checkbox i { opacity: 1; }
+    .svc-form-checkbox i { font-size: 11px; color: white; opacity: 0; transition: opacity 0.15s ease; }
+    .svc-form-label { font-size: 14px; font-weight: 400; color: #1E293B; line-height: 1.3; }
+    .svc-form-footer { position: fixed; bottom: 0; left: 0; width: 50%; padding: 16px 24px; background: white; border-top: 1px solid #E2E8F0; display: flex; gap: 12px; z-index: 100; }
+    .svc-form-skip-btn { flex: 1; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; border: 1px solid #E2E8F0; background: white; color: #64748B; transition: all 0.2s ease; }
+    .svc-form-skip-btn:hover { background: #F8FAFC; }
+    .svc-form-continue-btn { flex: 2; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; background: #0066cc; color: white; transition: all 0.2s ease; }
+    .svc-form-continue-btn:hover { background: #0052a3; }
     .edit-section { margin: 16px 0; }
     .edit-section-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
     .edit-chips-container { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -326,6 +352,13 @@
     .profile-cta-sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 18px; position: relative; }
     .profile-save-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; background: #1FC759; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
     .profile-save-btn:hover { background: #00BB4D; }
+    .profile-question-divider { font-size: 12px; color: rgba(255,255,255,0.5); margin: 14px 0 10px; position: relative; }
+    .profile-question-row { display: flex; gap: 8px; position: relative; }
+    .profile-question-input { flex: 1; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; font-family: inherit; background: rgba(255,255,255,0.12); color: white; outline: none; }
+    .profile-question-input::placeholder { color: rgba(255,255,255,0.45); }
+    .profile-question-input:focus { border-color: rgba(255,255,255,0.6); }
+    .profile-question-send { padding: 10px 14px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; cursor: pointer; font-size: 14px; }
+    .profile-question-send:hover { background: rgba(255,255,255,0.25); }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
@@ -834,7 +867,13 @@
       var content = document.getElementById('wizard-content');
       content.scrollTop = 0;
 
-      if ((node === 'profile' || node === 'confirmation') && !(state && state.profile_saved)) {
+      // Check for service selection form (fallback multi-select)
+      if (response && response._fallback_form && response.buttons && response.buttons.some(function(b) { return b.header || b.value === '__GROUP_HEADER__'; })) {
+        showServiceForm(content, response.buttons, response.text);
+        return;
+      }
+
+      if ((node === 'profile' || node === 'confirmation') && !(state && state.profile_saved) && !(response && response._profile_question)) {
         showProfileBuilder(content, state);
         return;
       }
@@ -911,7 +950,7 @@
         var isEditMode = buttons.some(function(b) { return b.label.startsWith('\u2715'); });
         var btnsDiv = el('div', 'wizard-buttons-container' + (isEditMode ? ' wizard-buttons-wrap' : ''));
         buttons.forEach(function(btn, i) {
-          var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these';
+          var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these' || btn.value === '__FALLBACK_ALL__' || btn.value === '__FALLBACK_SKIP__';
           var btnEl;
           if (isMultiSelect && !isActionBtn) {
             btnEl = el('button', 'wizard-button-multi');
@@ -969,7 +1008,7 @@
       buttons.forEach(function(btn, i) {
         var btnEl = document.getElementById('wizardBtn' + i);
         if (!btnEl) return;
-        var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these';
+        var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these' || btn.value === '__FALLBACK_ALL__' || btn.value === '__FALLBACK_SKIP__';
         var isEditMode2 = buttons.some(function(b) { return b.label.startsWith('\u2715'); });
 
         if (isMultiSelect && !isActionBtn) {
@@ -995,6 +1034,10 @@
             });
             if (removed.length === 0) sendMessage(btn.value);
             else sendMessage('Remove ' + removed.join(', '));
+          });
+        } else if (btn.value === 'Back to my profile' || btn.label === 'Back to my profile') {
+          btnEl.addEventListener('click', function() {
+            showProfileBuilder(document.getElementById('wizard-content'), currentState);
           });
         } else {
           btnEl.addEventListener('click', function() { sendMessage(btn.value); });
@@ -1117,7 +1160,7 @@
     }
 
     // ════════ PROFILE BUILDER ════════
-    function showProfileBuilder(content, state) {
+    function showProfileBuilder(content, state, answerText) {
       var businessName = (state && state.business_name) || '';
       var abn = (state && state.abn) || '';
       var contactName = (state && state.contact_name) || '';
@@ -1128,7 +1171,7 @@
       var regions = (state && state.service_areas && state.service_areas.regions_included) || [];
       var logoUrl = (state && state.profile_logo) || '';
       var photos = (state && state.profile_photos) || [];
-      var intro = (state && state.profile_intro) || '';
+      var intro = answerText || (state && state.profile_intro) || '';
 
       content.textContent = '';
       var container = el('div', 'wizard-question-container');
@@ -1376,6 +1419,35 @@
       var saveBtn = el('button', 'profile-save-btn', 'Publish My Profile \u2192');
       saveBtn.id = 'saveProfileBtn';
       cta.appendChild(saveBtn);
+
+      // Question input below publish
+      cta.appendChild(el('div', 'profile-question-divider', 'or ask a question'));
+      var qRow = el('div', 'profile-question-row');
+      var qInput = document.createElement('input');
+      qInput.type = 'text';
+      qInput.className = 'profile-question-input';
+      qInput.placeholder = 'e.g. How much does it cost?';
+      qInput.maxLength = 300;
+      qInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && qInput.value.trim()) {
+          sendMessage(qInput.value.trim());
+          qInput.value = '';
+        }
+      });
+      qRow.appendChild(qInput);
+      var qSend = el('button', 'profile-question-send');
+      var qIcon = document.createElement('i');
+      qIcon.className = 'fas fa-paper-plane';
+      qSend.appendChild(qIcon);
+      qSend.addEventListener('click', function() {
+        if (qInput.value.trim()) {
+          sendMessage(qInput.value.trim());
+          qInput.value = '';
+        }
+      });
+      qRow.appendChild(qSend);
+      cta.appendChild(qRow);
+
       cards.appendChild(cta);
 
       wrap.appendChild(cards);
@@ -1440,6 +1512,121 @@
       var content = document.getElementById('wizard-content');
       showProgressLoading(content, 'Publishing your profile...', ['Saving profile details', 'Preparing subscription options']);
       sendMessage('__SAVE_PROFILE__:' + description);
+    }
+
+    // ════════ SERVICE SELECTION FORM (fallback) ════════
+    function showServiceForm(content, buttons, messageText) {
+      var groups = [];
+      var currentGroup = null;
+      buttons.forEach(function(btn) {
+        if (btn.header || btn.value === '__GROUP_HEADER__') {
+          currentGroup = { name: btn.label, items: [] };
+          groups.push(currentGroup);
+        } else if (btn.value && btn.value.indexOf('__FALLBACK__:') === 0 && currentGroup) {
+          currentGroup.items.push({ label: btn.label, id: btn.value.replace('__FALLBACK__:', '') });
+        }
+      });
+
+      var container = el('div', 'wizard-question-container');
+      container.appendChild(el('div', 'wizard-question-number', 'Services'));
+      var qText = el('div', 'wizard-question-text');
+      var p = document.createElement('p');
+      p.textContent = messageText || 'Tick any specialist services you also offer.';
+      qText.appendChild(p);
+      container.appendChild(qText);
+
+      var wrap = el('div', 'svc-form-wrap');
+      var section = el('div', 'svc-form-section');
+      var allItems = [];
+
+      groups.forEach(function(group) {
+        var header = el('div', 'svc-form-cat-header');
+        header.appendChild(el('span', 'svc-form-cat-name', group.name));
+        var selectAll = document.createElement('button');
+        selectAll.className = 'svc-form-select-all';
+        selectAll.textContent = 'Select all';
+        header.appendChild(selectAll);
+        section.appendChild(header);
+
+        var grid = el('div', 'svc-form-grid');
+        var groupItems = [];
+
+        group.items.forEach(function(item) {
+          var row = el('div', 'svc-form-item');
+          row.setAttribute('data-id', item.id);
+          var checkbox = el('div', 'svc-form-checkbox');
+          var icon = document.createElement('i');
+          icon.className = 'fas fa-check';
+          checkbox.appendChild(icon);
+          row.appendChild(checkbox);
+          row.appendChild(el('span', 'svc-form-label', item.label));
+
+          row.addEventListener('click', function() {
+            row.classList.toggle('checked');
+            updateSelectAllText(selectAll, groupItems);
+            updateContinueBtn();
+          });
+
+          grid.appendChild(row);
+          groupItems.push(row);
+          allItems.push(row);
+        });
+
+        section.appendChild(grid);
+
+        selectAll.addEventListener('click', function() {
+          var allChecked = groupItems.every(function(r) { return r.classList.contains('checked'); });
+          groupItems.forEach(function(r) {
+            if (allChecked) r.classList.remove('checked');
+            else r.classList.add('checked');
+          });
+          updateSelectAllText(selectAll, groupItems);
+          updateContinueBtn();
+        });
+      });
+
+      function updateSelectAllText(btn, items) {
+        btn.textContent = items.every(function(r) { return r.classList.contains('checked'); }) ? 'Deselect all' : 'Select all';
+      }
+
+      wrap.appendChild(section);
+      container.appendChild(wrap);
+
+      var footer = el('div', 'svc-form-footer');
+      var skipBtn = document.createElement('button');
+      skipBtn.className = 'svc-form-skip-btn';
+      skipBtn.textContent = 'Skip';
+      skipBtn.addEventListener('click', function() {
+        footer.remove();
+        sendMessage('__FALLBACK_SKIP__');
+      });
+      footer.appendChild(skipBtn);
+
+      var continueBtn = document.createElement('button');
+      continueBtn.className = 'svc-form-continue-btn';
+      continueBtn.textContent = 'Continue';
+      continueBtn.addEventListener('click', function() {
+        var selectedIds = [];
+        allItems.forEach(function(r) {
+          if (r.classList.contains('checked')) selectedIds.push(r.getAttribute('data-id'));
+        });
+        footer.remove();
+        if (selectedIds.length === allItems.length) sendMessage('__FALLBACK_ALL__');
+        else if (selectedIds.length > 0) sendMessage('__FALLBACK__:' + selectedIds.join(','));
+        else sendMessage('__FALLBACK_SKIP__');
+      });
+      footer.appendChild(continueBtn);
+
+      function updateContinueBtn() {
+        var count = allItems.filter(function(r) { return r.classList.contains('checked'); }).length;
+        continueBtn.textContent = count > 0 ? 'Continue (' + count + ' selected)' : 'Continue';
+      }
+
+      content.textContent = '';
+      content.appendChild(container);
+      // Append footer to wizard pane so it's fixed within pane bounds
+      var wizardPane = document.querySelector('.wizard-pane');
+      if (wizardPane) wizardPane.appendChild(footer);
     }
 
     // ════════ COMPLETION ════════

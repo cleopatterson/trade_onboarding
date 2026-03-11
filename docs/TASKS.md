@@ -186,7 +186,7 @@
 > Scoped, ready to pick up
 
 - [x] **Specialist gap clustering**: Deterministic cluster processing + LLM `cluster_ids` output. LLM picks clusters of 2-3 related services, system processes responses programmatically. Works for all 6 tiered trades.
-- [x] **Pre-defined cluster groups**: All 7 tiered trades have `cluster_groups` in `service_tiers.json`. `get_filtered_cluster_groups()` filters by remaining gaps. LLM asks clusters in order instead of picking its own.
+- [x] ~~**Pre-defined cluster groups**~~: Replaced by LLM-driven clustering (Mar 10). LLM groups gaps intelligently instead of using pre-defined clusters.
 - [x] **Multi-category tradies**: `_detect_categories()` scans all keyword sources, returns up to 2 matches. `compute_initial_services()`, `compute_service_gaps()`, `get_filtered_cluster_groups()`, `find_subcategory_guide()` all loop over detected categories. Licence routing in `_confirm_business()` tries each category. 16 new tests, 94 total passing.
 - [ ] **Live testing session**: Run 20+ test sessions across all 6 tiered trades + 2-3 non-tiered trades. Validate: correct pre-mapping, sensible gap questions, no invented IDs, clean completion. Log results.
 
@@ -204,7 +204,7 @@
 - [ ] A/B test against traditional form
 - [ ] Referral tracking
 - [ ] Progressive profiling (capture more details over first week)
-- [ ] Use Brave Search to auto-populate business description from website
+- [x] ~~Use Brave Search to auto-populate business description from website~~ (done: website text fed into profile description LLM prompt)
 - [ ] Personal licence fallback: if company licence search returns 0, ask "Do you hold a personal trade licence?" and search under their name (common case: individual holds licence, company operates under it)
 
 ---
@@ -491,3 +491,49 @@
   - Then falls through to normal turn-1 LLM flow (cluster groups, prompt, etc.)
   - State: `_category_suggestions_shown`, `_category_suggestions` (auto-excluded from frontend by `_safe_state`)
 - **Tests**: 13 new tests (107 total) — suggest filtering/threshold/cap/sort, map tiered/non-tiered/dedup/unknown/multi
+
+### Mar 10, 2026 — Bulk Mapping Restructure, LLM Clustering, Debug Timeline
+- **Bulk mapping restructure** (`resources/service_tiers.json`, `agent/tools.py`):
+  - Replaced core/evidence/licence 3-tier system with general_heading + ask list
+  - ALL subcategories auto-mapped as `source: "general"` on detection
+  - Only `ask` items (specialist services with evidence keywords) become gaps
+  - `ask` is a dict: `{"Solar panel installation": ["solar", "cec", ...]}` — keywords scanned against reviews/website/Brave/licence
+  - Evidence-matched ask items auto-mapped as `source: "evidence"`, rest become specialist gaps
+  - 6 new tiered trades: Builder, Handyman, Concreter, Bathroom Renovation, Kitchen Renovation, Upholsterer (12 total)
+- **LLM-driven clustering** (`agent/graph.py`):
+  - Removed pre-defined `cluster_groups` from service_tiers.json and `get_filtered_cluster_groups()` from code
+  - LLM sees all remaining gaps and groups them intelligently (3-6 per question, by theme)
+  - LLM outputs `cluster_ids` — exact subcategory IDs, processed deterministically
+  - "Yes, all of these" → programmatic add of ALL cluster services (no LLM guesswork)
+- **Debug timeline** (`web/debug.html`):
+  - 31 trace points in graph.py, grouped by type: api/llm/data/guide/map/chain/info
+  - Side panel with colour-coded timeline entries
+  - Synced service form + profile builder features from landing.html
+
+### Mar 11, 2026 — Service Discovery Fallback, Service Area Refinement, Profile Enhancements
+- **Deterministic fallback for service discovery** (`agent/graph.py`):
+  - Fixed adaptive threshold "moving target" bug — gap-based thresholds recalculated each turn, never triggering
+  - Fixed constants: `MAX_GAPS_FOR_QUESTIONS = 12`, `SAFETY_CAP_TURN = 4`
+  - `_build_fallback()` helper: generates grouped checkbox form from remaining gaps
+  - Immediate fallback after category acceptance if >12 specialist gaps
+  - Hard safety cap merged into same fallback path (no longer force-confirms without UI)
+- **Grouped service form** (`web/landing.html`, `web/debug.html`):
+  - Replaced flat multi-select button list with proper grouped checkbox form
+  - Category headers with "Select all" toggles, 2-column grid, sticky footer
+  - `_fallback_form` flag triggers `showServiceForm()` instead of chat buttons
+  - Label-based matching for multi-select form submissions
+- **Evidence acknowledgement** (`agent/graph.py`):
+  - `_format_services_context()` surfaces evidence-matched specialist services to LLM
+  - Turn 1 prompt updated: 2-3 sentences, natural mention of detected specialties (e.g. solar)
+- **Service area button refinement** (`agent/graph.py`):
+  - BUTTON RULE: each button = COMPLETE coverage selection listing ALL included regions
+  - Pattern: tight (evidence-based), medium (+1-2 nearby), wide (whole metro)
+  - Replaces ambiguous incremental buttons like "Add Inner West"
+- **Profile description enrichment** (`agent/graph.py`):
+  - LLM now receives scraped website text (up to 2000 chars) for richer, more personalised descriptions
+  - Guideline: distil specific details (specialties, taglines, USPs) rather than repeating
+- **Profile question handler** (`agent/graph.py`, `server/app.py`, `web/landing.html`, `web/debug.html`):
+  - "or ask a question" input below Publish button in blue CTA card
+  - Questions answered by LLM in chat view with "Back to my profile" button
+  - Client-side back button re-renders profile builder without server round-trip
+  - `_profile_question` flag bypasses profile builder render for chat display

@@ -46,7 +46,7 @@ class TestParseJsonpResponse:
         result = _parse_jsonp_response(jsonp, "abn")
         assert result["count"] == 1
         assert result["results"][0]["abn"] == "51824753556"
-        assert result["results"][0]["entity_name"] == "Smith Plumbing Pty Ltd"
+        assert result["results"][0]["display_name"] == "Smith Plumbing Pty Ltd"
         assert result["results"][0]["legal_name"] == "SMITH PLUMBING PTY LTD"
         assert result["results"][0]["gst_registered"] is True
         assert result["results"][0]["state"] == "NSW"
@@ -59,7 +59,7 @@ class TestParseJsonpResponse:
         result = _parse_jsonp_response(jsonp, "abn")
         assert result["count"] == 1
         r = result["results"][0]
-        assert r["entity_name"] == "A Grade Carpentry Group"  # trading name for display
+        assert r["display_name"] == "A Grade Carpentry Group"  # trading name for display
         assert r["legal_name"] == "A GRADE CARPENTRY GROUP PTY LTD"  # entity name for licence
 
     def test_abn_lookup_no_result(self):
@@ -75,7 +75,7 @@ class TestParseJsonpResponse:
         assert result["count"] == 1
         r = result["results"][0]
         # Business Name should be preferred over Entity Name for display
-        assert r["entity_name"] == "Smith Plumbing"
+        assert r["display_name"] == "Smith Plumbing"
         # Entity Name preserved as legal_name
         assert r["legal_name"] == "SMITH PTY LTD"
 
@@ -85,16 +85,16 @@ class TestParseJsonpResponse:
         result = _parse_jsonp_response(jsonp, "name")
         assert result["count"] == 1
         r = result["results"][0]
-        assert r["entity_name"] == "A Grade Carpentry Group"  # trading name
+        assert r["display_name"] == "A Grade Carpentry Group"  # trading name
         assert r["legal_name"] == "A GRADE CARPENTRY GROUP PTY LTD"  # entity name
 
     def test_name_search_single_type_uses_same_for_both(self):
-        """When only Entity Name exists for an ABN, legal_name equals entity_name."""
+        """When only Entity Name exists for an ABN, legal_name equals display_name."""
         jsonp = 'c({"Names":[{"Abn":"44444444444","Name":"JONES ELECTRICAL PTY LTD","NameType":"Entity Name","State":"VIC","Postcode":"3000","Score":100}]})'
         result = _parse_jsonp_response(jsonp, "name")
         assert result["count"] == 1
         r = result["results"][0]
-        assert r["entity_name"] == "Jones Electrical Pty Ltd"
+        assert r["display_name"] == "Jones Electrical Pty Ltd"
         assert r["legal_name"] == "JONES ELECTRICAL PTY LTD"
 
     def test_name_search_multiple_abns(self):
@@ -211,6 +211,26 @@ class TestGetSuburbsInRadiusGrouped:
                 for s in suburbs:
                     assert "name" in s
                     assert "postcode" in s
+
+    def test_border_town_cross_state(self):
+        """Tweed Heads (NSW 2485) should include Coolangatta (QLD 4225) within radius."""
+        result = get_suburbs_in_radius_grouped("2485", 10.0)
+        all_suburbs = []
+        for suburbs in result.get("by_area", {}).values():
+            all_suburbs.extend(suburbs)
+        names = [s["name"] for s in all_suburbs]
+        # Coolangatta QLD is ~1km from Tweed Heads NSW — must appear
+        assert "Coolangatta" in names, f"Coolangatta not found in cross-state results: {names[:20]}"
+
+    def test_bad_coords_filtered_out(self):
+        """Suburbs with non-Australian coords should be excluded from results."""
+        from agent.tools import _is_valid_suburb_coords
+        # Antewenegerrde NT has coords in Sweden (58.45, 14.90)
+        assert not _is_valid_suburb_coords({"lat": "58.45", "lng": "14.90"})
+        # Valid Sydney suburb
+        assert _is_valid_suburb_coords({"lat": "-33.87", "lng": "151.21"})
+        # Valid Darwin suburb
+        assert _is_valid_suburb_coords({"lat": "-12.46", "lng": "130.84"})
 
 
 # ────────── find_subcategory_guide ──────────

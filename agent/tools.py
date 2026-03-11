@@ -112,7 +112,7 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
             return {
                 "results": [{
                     "abn": abn,
-                    "entity_name": _title_case(display_name),
+                    "display_name": _title_case(display_name),
                     "legal_name": raw_entity_name,
                     "_has_registered_trading_name": bool(trading_name),
                     "entity_type": entity_type,
@@ -151,7 +151,7 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
 
                 record = {
                     "abn": abn,
-                    "entity_name": _title_case(name),
+                    "display_name": _title_case(name),
                     "entity_type": name_type,
                     "gst_registered": False,
                     "state": state,
@@ -168,7 +168,7 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
 
             # Populate legal_name and trading name flag from tracked data
             for abn, record in by_abn.items():
-                record["legal_name"] = entity_names.get(abn, record["entity_name"])
+                record["legal_name"] = entity_names.get(abn, record["display_name"])
                 record["_has_registered_trading_name"] = abn in has_trading
 
             results = list(by_abn.values())[:8]
@@ -181,7 +181,7 @@ def _parse_jsonp_response(jsonp_text: str, search_type: str) -> dict:
 async def enrich_abr_with_entity_names(results: list[dict]) -> list[dict]:
     """Enrich ABR name search results with entity names via parallel ABN lookups.
 
-    For results where legal_name is missing or same as entity_name (meaning ABR
+    For results where legal_name is missing or same as display_name (meaning ABR
     name search only returned one entry for that ABN), do a parallel ABN detail
     lookup to fetch the EntityName.
     """
@@ -211,10 +211,10 @@ async def enrich_abr_with_entity_names(results: list[dict]) -> list[dict]:
         return result
 
     # Only enrich results where legal_name is missing or same as display name
-    # Case-insensitive: _title_case() changes entity_name casing but legal_name stays raw
+    # Case-insensitive: _title_case() changes display_name casing but legal_name stays raw
     needs_enrichment = [
         r for r in results
-        if not r.get("legal_name") or r["legal_name"].lower() == r.get("entity_name", "").lower()
+        if not r.get("legal_name") or r["legal_name"].lower() == r.get("display_name", "").lower()
     ]
     if not needs_enrichment:
         return results
@@ -230,12 +230,12 @@ def _mock_abr_lookup(search_term: str, search_type: str) -> dict:
     # Simulate realistic results
     if search_type == "abn":
         clean_abn = search_term.replace(" ", "")
-        entity_name = f"Business with ABN {clean_abn}"
+        name = f"Business with ABN {clean_abn}"
         return {
             "results": [{
                 "abn": clean_abn,
-                "entity_name": entity_name,
-                "legal_name": entity_name.upper() + " PTY LTD",
+                "display_name": name,
+                "legal_name": name.upper() + " PTY LTD",
                 "_has_registered_trading_name": True,
                 "entity_type": "Australian Private Company",
                 "gst_registered": True,
@@ -252,7 +252,7 @@ def _mock_abr_lookup(search_term: str, search_type: str) -> dict:
     return {
         "results": [{
             "abn": "51 824 753 556",
-            "entity_name": display_name,
+            "display_name": display_name,
             "legal_name": display_name.upper(),
             "_has_registered_trading_name": False,
             "entity_type": "Australian Private Company",
@@ -1078,7 +1078,7 @@ def map_extra_categories(
 ) -> tuple[list[dict], list[dict], set[str]]:
     """Map services + gaps for additional accepted categories.
 
-    For tiered categories: runs _map_single_tier() to get core/evidence/licence services.
+    For tiered categories: bulk-maps all subcategories (except "ask" items → gaps).
     For non-tiered categories: loads all subcategories as gaps for LLM.
     Returns (new_services, new_gaps, updated_mapped_names).
     """
@@ -1102,25 +1102,29 @@ def map_extra_categories(
 
         tier_def = tiers.get(cat_name)
         if tier_def and cat_data:
-            # Tiered: map core/evidence/licence services
+            # Tiered: bulk-map all subcategories (except "ask" items)
             new_svcs, mapped_names = _map_single_tier(
                 tier_def, cat_data, evidence_lower, licence_classes, mapped_names,
             )
             all_new_services.extend(new_svcs)
 
-            # Specialist gaps for this category (unmapped subcategories)
+            # Specialist gaps = only "ask" items not already evidence-mapped
+            ask_def = tier_def.get("ask", {})
+            ask_names = set(ask_def.keys()) if isinstance(ask_def, dict) else set(ask_def)
             cat_id = cat_data.get("category_id", 0)
             cat_display = cat_data.get("category_name", cat_name)
-            for sc in cat_data.get("subcategories", []):
-                sc_name = sc["subcategory_name"]
-                if sc_name not in mapped_names:
-                    all_new_gaps.append({
-                        "subcategory_id": sc["subcategory_id"],
-                        "subcategory_name": sc_name,
-                        "category_id": cat_id,
-                        "category_name": cat_display,
-                    })
-                    mapped_names.add(sc_name)
+            subcat_by_name = {sc["subcategory_name"]: sc for sc in cat_data.get("subcategories", [])}
+            for ask_name in ask_names:
+                if ask_name not in mapped_names:
+                    sc = subcat_by_name.get(ask_name)
+                    if sc:
+                        all_new_gaps.append({
+                            "subcategory_id": sc["subcategory_id"],
+                            "subcategory_name": ask_name,
+                            "category_id": cat_id,
+                            "category_name": cat_display,
+                        })
+                        mapped_names.add(ask_name)
         else:
             # Non-tiered: all subcategories become gaps for LLM
             cat_id = cat_data.get("category_id", 0)
@@ -1142,57 +1146,34 @@ def map_extra_categories(
 
 
 def _detect_category(business_name: str, licence_classes: list[str] | None,
-                     google_business_name: str, google_primary_type: str) -> str | None:
-    """Detect the trade category using the standard priority chain.
-
-    Same logic as compute_service_gaps but without requiring existing services.
-    Returns category key (e.g. "Electrician") or None.
-    """
-    # Priority 1: business name
-    name_lower = business_name.lower()
-    for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-        if keyword in name_lower:
-            return cat_key
-
-    # Priority 2: licence classes
-    if licence_classes:
-        for lc in licence_classes:
-            lc_lower = lc.lower()
-            for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-                if keyword in lc_lower:
-                    return cat_key
-
-    # Priority 3: Google Places business name
-    if google_business_name:
-        gname_lower = google_business_name.lower()
-        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-            if keyword in gname_lower:
-                return cat_key
-
-    # Priority 4: Google Places primary type
-    if google_primary_type:
-        gtype_lower = google_primary_type.lower()
-        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
-            if keyword in gtype_lower:
-                return cat_key
-
-    return None
+                     google_business_name: str, google_primary_type: str,
+                     google_types: list[str] | None = None,
+                     website_text: str = "") -> str | None:
+    """Detect the primary trade category. Thin wrapper around _detect_categories()."""
+    results = _detect_categories(business_name, licence_classes,
+                                 google_business_name, google_primary_type,
+                                 google_types=google_types, website_text=website_text,
+                                 max_categories=1)
+    return results[0] if results else None
 
 
 def _detect_categories(business_name: str, licence_classes: list[str] | None,
                        google_business_name: str, google_primary_type: str,
-                       max_categories: int = 2) -> list[str]:
-    """Detect ALL matching trade categories (up to max_categories) using the priority chain.
+                       google_types: list[str] | None = None,
+                       website_text: str = "",
+                       max_categories: int = 0) -> list[str]:
+    """Detect ALL matching trade categories using the priority chain.
 
-    Unlike _detect_category() which returns on first hit, this scans ALL keywords
-    across all 4 priority levels and collects unique matches. Capped at max_categories.
+    Scans keywords across 4 sources: business name, licence classes,
+    Google Places (name + primary type + types array), and website text.
+    Set max_categories > 0 to cap results (0 = unlimited).
     Returns [] if no match.
     """
     seen: set[str] = set()
     results: list[str] = []
 
     def _add(cat_key: str):
-        if cat_key not in seen and len(results) < max_categories:
+        if cat_key not in seen and (not max_categories or len(results) < max_categories):
             seen.add(cat_key)
             results.append(cat_key)
 
@@ -1224,6 +1205,21 @@ def _detect_categories(business_name: str, licence_classes: list[str] | None,
             if keyword in gtype_lower:
                 _add(cat_key)
 
+    # Priority 5: Google Places types array (catches secondary types)
+    if google_types:
+        for gtype in google_types:
+            gtype_lower = gtype.lower()
+            for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+                if keyword in gtype_lower:
+                    _add(cat_key)
+
+    # Priority 6: Website text (catches trades mentioned on their site)
+    if website_text:
+        web_lower = website_text.lower()
+        for keyword, cat_key in _TRADE_CATEGORY_MAP.items():
+            if keyword in web_lower:
+                _add(cat_key)
+
     return results
 
 
@@ -1231,91 +1227,121 @@ def _map_single_tier(
     tier_def: dict, cat_data: dict, evidence_lower: str,
     licence_classes: list[str], already_mapped_names: set[str],
 ) -> tuple[list[dict], set[str]]:
-    """Map services for one category using core/evidence/licence tiers.
+    """Map ALL subcategories for one category (bulk auto-map).
 
+    Every subcategory in the category gets auto-mapped. "ask" items are
+    also auto-mapped if evidence (reviews, website, Brave) or licence
+    classes contain matching keywords — otherwise they become specialist gaps.
     Returns (new_services, new_mapped_names) for this category.
     Skips any service name already in already_mapped_names.
     """
     cat_id = cat_data.get("category_id", 0)
     cat_name = cat_data.get("category_name", "")
     all_subcats = cat_data.get("subcategories", [])
+    ask_def = tier_def.get("ask", {})
+    # Support both dict {"name": ["kw", ...]} and list ["name", ...] formats
+    ask_names = set(ask_def.keys()) if isinstance(ask_def, dict) else set(ask_def)
 
-    # Build name→subcat lookup
-    subcat_by_name: dict[str, dict] = {}
-    for sc in all_subcats:
-        subcat_by_name[sc["subcategory_name"]] = sc
-
-    def _resolve(name: str, confidence: str = "high", source: str = "core") -> dict | None:
-        sc = subcat_by_name.get(name)
-        if not sc:
-            return None
-        return {
-            "input": name,
-            "category_name": cat_name,
-            "category_id": cat_id,
-            "subcategory_name": sc["subcategory_name"],
-            "subcategory_id": sc["subcategory_id"],
-            "confidence": confidence,
-            "source": source,
-        }
+    # Build licence text for matching
+    licence_lower = " ".join(lc.lower() for lc in licence_classes)
 
     services: list[dict] = []
     mapped_names: set[str] = set(already_mapped_names)
 
-    # 1. General services — always mapped (silently tagged under general heading)
-    for name in tier_def.get("general", tier_def.get("core", [])):
-        if name in mapped_names:
+    for sc in all_subcats:
+        sc_name = sc["subcategory_name"]
+        if sc_name in mapped_names:
             continue
-        svc = _resolve(name, source="general")
-        if svc:
-            services.append(svc)
-            mapped_names.add(name)
 
-    # 2. Specialist services — evidence-based matching
-    specialist = tier_def.get("specialist", tier_def.get("evidence_keywords", {}))
-    for svc_name, spec_def in specialist.items():
-        if svc_name in mapped_names:
-            continue
-        # Support both new format {"keywords": [...]} and old format [...]
-        keywords = spec_def.get("keywords", spec_def) if isinstance(spec_def, dict) else spec_def
-        for kw in keywords:
-            if kw in evidence_lower:
-                svc = _resolve(svc_name, "evidence", source="evidence")
-                if svc:
-                    services.append(svc)
-                    mapped_names.add(svc_name)
-                break
-
-    # 3. Licence signal services
-    for svc_name, signals in tier_def.get("licence_signals", {}).items():
-        if svc_name in mapped_names:
-            continue
-        # First check evidence text
-        for sig in signals:
-            if sig in evidence_lower:
-                svc = _resolve(svc_name, "evidence", source="evidence")
-                if svc:
-                    services.append(svc)
-                    mapped_names.add(svc_name)
-                break
-        if svc_name in mapped_names:
-            continue
-        # Then check licence classes
-        for lc in licence_classes:
-            lc_lower = lc.lower()
+        if sc_name in ask_names and isinstance(ask_def, dict):
+            # "ask" item — check evidence/licence keywords before auto-mapping
+            keywords = ask_def[sc_name]
             matched = False
-            for sig in signals:
-                if sig in lc_lower:
-                    svc = _resolve(svc_name, "licence", source="licence")
-                    if svc:
-                        services.append(svc)
-                        mapped_names.add(svc_name)
+            for kw in keywords:
+                if kw in evidence_lower or kw in licence_lower:
                     matched = True
                     break
-            if matched:
-                break
+            if not matched:
+                continue  # Leave as specialist gap — don't auto-map
+
+            # Evidence/licence match — auto-map it
+            services.append({
+                "input": sc_name,
+                "category_name": cat_name,
+                "category_id": cat_id,
+                "subcategory_name": sc_name,
+                "subcategory_id": sc["subcategory_id"],
+                "confidence": "evidence",
+                "source": "evidence",
+            })
+            mapped_names.add(sc_name)
+        else:
+            # Non-ask item — always auto-mapped
+            services.append({
+                "input": sc_name,
+                "category_name": cat_name,
+                "category_id": cat_id,
+                "subcategory_name": sc_name,
+                "subcategory_id": sc["subcategory_id"],
+                "confidence": "high",
+                "source": "general",
+            })
+            mapped_names.add(sc_name)
 
     return services, mapped_names
+
+
+async def verify_evidence_services(
+    evidence_services: list[dict],
+    evidence_text: str,
+    business_name: str,
+) -> list[dict]:
+    """Use Haiku to verify evidence-matched services are genuinely offered.
+
+    Catches false positives like "doesn't do solar" being matched by keyword "solar".
+    Returns only the services that Haiku confirms as affirmatively offered.
+    """
+    if not evidence_services or not evidence_text:
+        return evidence_services
+
+    # Build a compact verification prompt
+    svc_names = [s.get("subcategory_name", s.get("input", "")) for s in evidence_services]
+    # Trim evidence text to keep prompt small
+    trimmed = evidence_text[:3000]
+
+    prompt = (
+        f"Business: {business_name}\n\n"
+        f"Evidence text (from reviews, website, search results):\n{trimmed}\n\n"
+        f"Services detected by keyword matching:\n"
+        + "\n".join(f"- {name}" for name in svc_names)
+        + "\n\n"
+        "For each service, determine if the evidence text AFFIRMATIVELY indicates the business "
+        "offers this service. Watch for negation (\"doesn't do\", \"no longer\", \"not available\", "
+        "\"stopped offering\") and irrelevant mentions (e.g. \"solar\" in an address, competitor name, "
+        "or unrelated context).\n\n"
+        "Return ONLY a JSON array of service names that are genuinely offered. "
+        "If unsure, include the service (err on the side of inclusion).\n"
+        "Example: [\"Solar panel installation\", \"EV charging\"]\n"
+    )
+
+    try:
+        from langchain_core.messages import HumanMessage as _HM
+        response = await _llm_vision.ainvoke([_HM(content=prompt)])
+        raw = response.content.strip()
+        # Strip code fences
+        raw = re.sub(r'^```(?:json)?\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        confirmed_names = set(json.loads(raw))
+
+        verified = [s for s in evidence_services
+                    if s.get("subcategory_name", s.get("input", "")) in confirmed_names]
+        rejected = [s.get("subcategory_name") for s in evidence_services if s not in verified]
+        if rejected:
+            logger.info(f"[VERIFY] Rejected {len(rejected)} false-positive services: {rejected}")
+        return verified
+    except Exception as e:
+        logger.warning(f"[VERIFY] LLM verification failed ({e}), keeping all evidence services")
+        return evidence_services  # Fallback: keep all on error
 
 
 def compute_initial_services(
@@ -1326,6 +1352,7 @@ def compute_initial_services(
     google_reviews: list[dict],
     web_results: list[dict],
     website_text: str = "",
+    google_types: list[str] | None = None,
 ) -> dict:
     """Build initial service list using tiered mapping from guides.
 
@@ -1342,7 +1369,8 @@ def compute_initial_services(
 
     # Detect categories (multi-category)
     cat_keys = _detect_categories(business_name, licence_classes,
-                                  google_business_name, google_primary_type)
+                                  google_business_name, google_primary_type,
+                                  google_types=google_types)
     # Filter to categories that have both a tier definition and category data
     tiered_keys = [k for k in cat_keys if k in tiers and k in categories]
     if not tiered_keys:
@@ -1378,20 +1406,27 @@ def compute_initial_services(
                     f"evidence={sum(1 for s in new_services if s.get('source') == 'evidence')}, "
                     f"licence={sum(1 for s in new_services if s.get('source') == 'licence')})")
 
-    # Specialist gaps — all subcategories NOT yet mapped across ALL tiered categories
+    # Specialist gaps — only "ask" items from tier definitions (not all unmapped subcats)
     specialist_gaps = []
     seen_gap_names: set[str] = set()
     for cat_key in tiered_keys:
+        tier_def = tiers[cat_key]
         cat_data = categories[cat_key]
         cat_id = cat_data.get("category_id", 0)
         cat_name = cat_data.get("category_name", cat_key)
-        for sc in cat_data.get("subcategories", []):
-            sc_name = sc["subcategory_name"]
-            if sc_name not in all_mapped_names and sc_name not in seen_gap_names:
-                seen_gap_names.add(sc_name)
+        # Build subcat lookup for this category
+        subcat_by_name = {sc["subcategory_name"]: sc for sc in cat_data.get("subcategories", [])}
+        ask_def = tier_def.get("ask", {})
+        ask_keys = ask_def.keys() if isinstance(ask_def, dict) else ask_def
+        for ask_name in ask_keys:
+            if ask_name in all_mapped_names or ask_name in seen_gap_names:
+                continue
+            sc = subcat_by_name.get(ask_name)
+            if sc:
+                seen_gap_names.add(ask_name)
                 specialist_gaps.append({
                     "subcategory_id": sc["subcategory_id"],
-                    "subcategory_name": sc_name,
+                    "subcategory_name": ask_name,
                     "category_id": cat_id,
                     "category_name": cat_name,
                 })
@@ -1518,6 +1553,21 @@ def _haversine(lat1, lng1, lat2, lng2):
     return R * 2 * math.asin(math.sqrt(a))
 
 
+def _is_valid_suburb_coords(suburb: dict) -> bool:
+    """Check if a suburb's coordinates are plausibly within Australia.
+
+    Rejects entries with clearly wrong coords (e.g. NT suburbs mapped to Sweden/USA)
+    while allowing all legitimate Australian suburbs regardless of state.
+    Australia bounding box: lat -44 to -10, lng 112 to 154.
+    """
+    try:
+        lat = float(suburb.get("lat", 0))
+        lng = float(suburb.get("lng", 0))
+    except (ValueError, TypeError):
+        return False
+    return -44.0 <= lat <= -10.0 and 112.0 <= lng <= 154.0
+
+
 def get_suburbs_in_radius_grouped(base_postcode: str, radius_km: float = 20.0) -> dict:
     """Get suburbs within radius, grouped by area. Returns base info + grouped results."""
     base_suburbs = search_suburbs_by_postcode(base_postcode)
@@ -1538,9 +1588,9 @@ def get_suburbs_in_radius_grouped(base_postcode: str, radius_km: float = 20.0) -
 
     nearby = get_suburbs_within_radius(lat, lng, radius_km)
 
-    # Filter to same state (CSV has bad data — some NT suburbs have Sydney coords)
-    if base_state:
-        nearby = [s for s in nearby if s.get("state", "") == base_state]
+    # Filter out suburbs with clearly bad coordinates (e.g. NT suburbs with Sydney coords)
+    # but allow cross-state results for border towns (Tweed Heads/Coolangatta, Albury/Wodonga)
+    nearby = [s for s in nearby if _is_valid_suburb_coords(s)]
 
     # Group by area
     by_area = {}
@@ -2051,7 +2101,7 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             headers={
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.reviews,places.primaryType,places.types,places.photos",
+                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.websiteUri,places.googleMapsUri,places.formattedAddress,places.shortFormattedAddress,places.addressComponents,places.nationalPhoneNumber,places.reviews,places.primaryType,places.types,places.photos,places.pureServiceAreaBusiness,places.businessStatus",
             },
             json={"textQuery": query},
         )
@@ -2072,7 +2122,18 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
         website = place.get("websiteUri", "")
         maps_url = place.get("googleMapsUri", "")
         address = place.get("formattedAddress", "")
+        short_address = place.get("shortFormattedAddress", "")
         name = place.get("displayName", {}).get("text", "")
+        phone = place.get("nationalPhoneNumber", "")
+        is_service_area = place.get("pureServiceAreaBusiness", False)
+        business_status = place.get("businessStatus", "")
+
+        # Extract suburb from addressComponents (locality type)
+        suburb = ""
+        for comp in place.get("addressComponents", []):
+            if "locality" in comp.get("types", []):
+                suburb = comp.get("longText", "")
+                break
 
         # Extract review text snippets
         reviews = []
@@ -2111,13 +2172,18 @@ async def google_places_search(business_name: str, state_code: str = "") -> dict
             "website": website,
             "maps_url": maps_url,
             "address": address,
+            "short_address": short_address,
+            "suburb": suburb,
+            "phone": phone,
             "reviews": reviews[:5],
             "primary_type": primary_type,
             "types": types,
             "photos": photos,
+            "is_service_area": is_service_area,
+            "business_status": business_status,
         }
 
-        logger.info(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}, {len(photos)} photos")
+        logger.info(f"[GOOGLE] Found: {name} — {rating}★ ({review_count} reviews), website={bool(website)}, type={primary_type}, suburb={suburb}, phone={bool(phone)}, {len(photos)} photos")
         return result
 
     except httpx.TimeoutException as e:

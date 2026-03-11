@@ -88,7 +88,7 @@ async def test_one_business(biz: dict, index: int) -> str:
         results = abr.get("results", [])
         if results:
             r = results[0]
-            lines.append(f"  Entity name : {r.get('entity_name', '?')}")
+            lines.append(f"  Display name: {r.get('display_name', '?')}")
             lines.append(f"  Legal name  : {r.get('legal_name', '?')}")
             lines.append(f"  Entity type : {r.get('entity_type', '?')}")
             lines.append(f"  GST         : {'Yes' if r.get('gst_registered') else 'No'}")

@@ -1,489 +1,112 @@
 {
   "Electrician": {
     "general_heading": "Electrician",
-    "general": [
-      "Electrician",
-      "Powerpoint installation and repair",
-      "Light switch installation and repair",
-      "Ceiling Fan Installation",
-      "Exhaust Fan",
-      "Switchboards",
-      "Safety Switches",
-      "Smoke alarm installation and replacement",
-      "Rewiring",
-      "Electrical safety inspection"
-    ],
-    "specialist": {
-      "Emergency electrician": {"keywords": ["emergency", "after hours", "urgent", "24/7", "call out", "callout"]},
-      "Appliance Installation": {"keywords": ["appliance", "install", "dishwasher", "oven install", "cooktop", "range hood", "stove install"]},
-      "Appliance Repair": {"keywords": ["appliance repair", "faulty appliance", "broken appliance", "appliance not working"]},
-      "Data Cabling": {"keywords": ["data", "network", "ethernet", "cat6", "structured cabling", "NBN", "internet", "home network"]},
-      "Cabling": {"keywords": ["cabling", "cable run", "audio visual", "AV cable"]},
-      "TV Antenna Technician": {"keywords": ["antenna", "tv antenna", "aerial", "reception", "digital tv", "satellite", "signal"]},
-      "Security alarm systems": {"keywords": ["security", "alarm", "cctv", "camera", "surveillance", "intercom", "access control", "video doorbell"]},
-      "Energy efficiency checks": {"keywords": ["energy audit", "energy efficiency", "energy rating", "power bill", "thermal imaging", "power consumption"]}
-    },
-    "licence_signals": {
-      "Level 2 electricians": ["level 2", "asp"],
-      "Solar panel installation and repair": ["solar", "cec"]
-    },
-    "cluster_groups": [
-      {
-        "label": "Appliances & emergency",
-        "services": ["Appliance Installation", "Appliance Repair", "Emergency electrician"]
-      },
-      {
-        "label": "Cabling, AV & security",
-        "services": ["Data Cabling", "Cabling", "TV Antenna Technician", "Security alarm systems"]
-      },
-      {
-        "label": "Level 2, solar & energy",
-        "services": ["Level 2 electricians", "Solar panel installation and repair", "Energy efficiency checks"]
-      }
-    ]
+    "ask": {
+      "Solar panel installation and repair": ["solar", "cec", "solar panel", "solar install"],
+      "Level 2 electricians": ["level 2", "asp", "meter box", "mains connection", "power pole"],
+      "Data Cabling": ["data", "network", "ethernet", "cat6", "structured cabling", "NBN"],
+      "TV Antenna Technician": ["antenna", "tv antenna", "aerial", "reception", "satellite"],
+      "Security alarm systems": ["security", "alarm", "cctv", "camera", "surveillance", "intercom"]
+    }
   },
   "Plumber": {
     "general_heading": "General Plumbing",
-    "general": [
-      "General Plumbing",
-      "Hot Water Systems",
-      "Electric Hot Water Systems",
-      "Leaking taps",
-      "Toilet Repairs",
-      "Toilet Installation",
-      "Pipe repair",
-      "Water leaks",
-      "Blocked toilet",
-      "Clogged and blocked sink",
-      "Clogged and block drain",
-      "Sink Installation",
-      "Plumbing Installation"
-    ],
-    "specialist": {
-      "Emergency Plumbing": {"keywords": ["emergency", "after hours", "urgent", "24/7", "call out", "callout"]},
-      "Overflowing drain": {"keywords": ["overflow", "flooding", "flood", "burst pipe", "blocked drain"]},
-      "Drain Repairs": {"keywords": ["drain repair", "drain relining", "drainage", "drain camera"]},
-      "Stormwater Pits & Drains": {"keywords": ["stormwater", "storm water", "pit", "sewer", "downpipe", "gutter drain"]},
-      "Solar Hot Water Systems": {"keywords": ["solar hot water", "solar thermal", "solar plumbing"]},
-      "Rain Water Tank Installation": {"keywords": ["rain water tank", "rainwater", "water tank", "tank install", "water storage"]},
-      "Commercial plumbing": {"keywords": ["commercial", "office plumbing", "restaurant", "strata", "body corporate", "maintenance contract"]},
-      "Water Recycling": {"keywords": ["grey water", "greywater", "recycled water", "water recycling"]},
-      "Reticulation system": {"keywords": ["reticulation", "garden irrigation", "sprinkler system"]},
-      "Gas fitting": {"keywords": ["gas fitting", "gas installation", "lpg", "natural gas", "gas appliance", "gas line"]},
-      "Gas Hot Water Systems": {"keywords": ["gas hot water", "gas heater", "gas water heater", "gas boiler"]}
-    },
-    "licence_signals": {
-      "Gas fitting": ["gasfitter", "gas fitter", "gas fitting"],
-      "Gas Hot Water Systems": ["gasfitter", "gas fitter", "gas fitting"],
-      "Drain Repairs": ["drainer", "drainage"],
-      "Stormwater Pits & Drains": ["drainer", "drainage"]
-    },
-    "cluster_groups": [
-      {
-        "label": "Gas work",
-        "services": ["Gas fitting", "Gas Hot Water Systems"]
-      },
-      {
-        "label": "Drainage & stormwater",
-        "services": ["Drain Repairs", "Stormwater Pits & Drains", "Overflowing drain"]
-      },
-      {
-        "label": "Emergency & commercial",
-        "services": ["Emergency Plumbing", "Commercial plumbing"]
-      },
-      {
-        "label": "Water systems",
-        "services": ["Solar Hot Water Systems", "Rain Water Tank Installation", "Water Recycling", "Reticulation system"]
-      }
-    ]
+    "ask": {
+      "Gas fitting": ["gas fitting", "gas installation", "lpg", "natural gas", "gas appliance", "gas line"],
+      "Gas Hot Water Systems": ["gas hot water", "gas heater", "gas water heater"],
+      "Drain Repairs": ["drain repair", "drain relining", "drainage", "drain camera"],
+      "Stormwater Pits & Drains": ["stormwater", "storm water", "sewer", "downpipe"],
+      "Commercial plumbing": ["commercial", "strata", "body corporate", "maintenance contract"],
+      "Rain Water Tank Installation": ["rain water tank", "rainwater", "water tank", "tank install"]
+    }
   },
   "Painter": {
     "general_heading": "House Painting",
-    "general": [
-      "House Painting",
-      "Interior House Painting",
-      "Exterior House Painting",
-      "Fence Painting"
-    ],
-    "specialist": {
-      "Floor Painting": {"keywords": ["floor paint", "epoxy", "garage floor paint", "warehouse floor"]},
-      "Concrete Painting": {"keywords": ["concrete", "garage floor", "concrete seal"]},
-      "Paint Removal": {"keywords": ["strip", "removal", "lead paint", "sandblast", "prep work"]},
-      "Roof Painting": {"keywords": ["roof paint", "colorbond", "tile roof", "roof restoration", "roof coat", "roof seal"]},
-      "Wallpapering": {"keywords": ["wallpaper", "feature wall", "wall covering", "wallpaper removal"]},
-      "Commercial Painting": {"keywords": ["commercial", "office", "warehouse", "strata", "factory", "body corporate", "strata painting"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Specialist surfaces",
-        "services": ["Floor Painting", "Concrete Painting", "Paint Removal"]
-      },
-      {
-        "label": "Roof, wallpaper & commercial",
-        "services": ["Roof Painting", "Wallpapering", "Commercial Painting"]
-      }
-    ]
+    "ask": {
+      "Roof Painting": ["roof paint", "colorbond", "tile roof", "roof restoration", "roof coat"],
+      "Commercial Painting": ["commercial", "office", "warehouse", "strata", "factory"],
+      "Wallpapering": ["wallpaper", "feature wall", "wall covering"]
+    }
   },
   "Carpenter": {
     "general_heading": "General carpentry",
-    "general": [
-      "General carpentry",
-      "Timber Decking",
-      "Pergolas",
-      "Shelving",
-      "Patio Building",
-      "Handrails",
-      "Skirting",
-      "Architraves",
-      "Timber fencing",
-      "Wardrobes",
-      "Cabinetmaking"
-    ],
-    "specialist": {
-      "Staircases": {"keywords": ["staircase", "stairs", "stair", "balustrade", "stair renovation"]},
-      "Timber Retaining Walls": {"keywords": ["retaining wall", "timber wall", "garden wall", "timber sleeper"]},
-      "Internal Walls": {"keywords": ["internal wall", "partition", "stud wall", "room divider", "plasterboard"]},
-      "Furniture Repair": {"keywords": ["furniture repair", "furniture restoration", "restore furniture", "fix furniture", "restoration", "heritage", "period home"]},
-      "Frames & Trusses": {"keywords": ["truss", "roof truss", "timber frame", "roof frame"]},
-      "Custom Built Furniture": {"keywords": ["custom furniture", "bespoke", "entertainment unit", "bench seat", "window seat", "outdoor seating", "outdoor furniture", "custom built", "made to order"]},
-      "House Framing": {"keywords": ["house frame", "wall frame", "framing", "new build", "house extension", "renovation", "extension"]},
-      "Joinery": {"keywords": ["joinery", "shop fit", "fitout", "shopfitting", "commercial joinery", "door hang", "bifold"]},
-      "Vanities": {"keywords": ["vanity", "bathroom vanity", "basin cabinet", "bathroom renovation", "ensuite"]},
-      "Weatherboard cladding": {"keywords": ["weatherboard", "cladding", "timber cladding", "fascia", "soffit", "timber repair"]},
-      "Retaining wall": {"keywords": ["retaining wall", "block wall", "sleeper wall", "garden bed wall"]},
-      "Commercial fit-outs": {"keywords": ["commercial fit", "shop fit-out", "office fit-out", "retail fitout", "hospitality fitout"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Custom furniture & joinery",
-        "services": ["Custom Built Furniture", "Joinery", "Vanities", "Furniture Repair"]
-      },
-      {
-        "label": "Structural & framing",
-        "services": ["House Framing", "Frames & Trusses", "Internal Walls", "Staircases"]
-      },
-      {
-        "label": "Exterior & cladding",
-        "services": ["Weatherboard cladding", "Retaining wall", "Timber Retaining Walls", "Commercial fit-outs"]
-      }
-    ]
+    "ask": {
+      "House Framing": ["house frame", "wall frame", "framing", "new build", "extension"],
+      "Joinery": ["joinery", "shop fit", "fitout", "shopfitting", "door hang", "bifold"],
+      "Custom Built Furniture": ["custom furniture", "bespoke", "entertainment unit", "custom built", "made to order"],
+      "Commercial fit-outs": ["commercial fit", "shop fit-out", "office fit-out", "retail fitout"],
+      "Staircases": ["staircase", "stairs", "balustrade", "stair renovation"]
+    }
   },
   "Cleaner": {
     "general_heading": "House Cleaning",
-    "general": [
-      "House Cleaning",
-      "Routine cleaning",
-      "Room cleaning",
-      "Bathroom cleaning",
-      "Kitchen cleaning",
-      "Toilet cleaning",
-      "Vacuum carpet",
-      "Interior window cleaning",
-      "Unit and apartment cleaning",
-      "Shower cleaning",
-      "Stove clean",
-      "End of lease bond refund clean",
-      "Oven cleaning",
-      "Fridge clean"
-    ],
-    "specialist": {
-      "Garage clean": {"keywords": ["garage", "storage clean", "shed clean"]},
-      "Tidying and Decluttering": {"keywords": ["declutter", "tidy", "organis", "spring clean", "hoarder"]},
-      "Outdoor Cleaning": {"keywords": ["outdoor", "patio clean", "driveway clean", "balcony", "courtyard"]},
-      "Curtains & Blinds": {"keywords": ["curtain", "blind", "drape", "venetian", "curtain clean"]},
-      "Upholstery & Fabric Cleaning": {"keywords": ["upholstery", "couch", "sofa", "fabric clean", "lounge", "mattress clean", "leather clean"]},
-      "High Pressure Cleaning": {"keywords": ["pressure clean", "pressure wash", "high pressure", "jet wash", "concrete clean", "path clean"]},
-      "Tile & Grout Cleaning": {"keywords": ["tile", "grout", "tile clean", "stone clean", "floor tile"]},
-      "Grease Trap Cleaning": {"keywords": ["grease trap", "kitchen grease", "exhaust clean"]},
-      "Swimming Pool Cleaning": {"keywords": ["pool clean", "swimming pool", "pool maintenance", "pool service"]},
-      "Mould Cleaning": {"keywords": ["mould", "mold", "mould removal", "mildew", "damp", "black mould"]},
-      "Office cleaner": {"keywords": ["office", "commercial clean", "workplace", "business clean", "retail clean", "shop clean"]},
-      "Medical Cleaning": {"keywords": ["medical", "dental", "clinic", "surgery", "healthcare", "aged care", "childcare"]},
-      "End of Lease Commercial Cleaning": {"keywords": ["commercial lease", "commercial bond", "commercial vacate"]},
-      "Industrial Cleaning": {"keywords": ["industrial", "warehouse", "factory clean", "workshop clean"]},
-      "Post Construction Cleaning": {"keywords": ["construction clean", "builder clean", "renovation clean", "post build", "new build clean"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Common extras",
-        "services": ["Garage clean", "Outdoor Cleaning", "Tidying and Decluttering"]
-      },
-      {
-        "label": "Deep cleaning",
-        "services": ["High Pressure Cleaning", "Tile & Grout Cleaning", "Mould Cleaning", "Upholstery & Fabric Cleaning", "Curtains & Blinds"]
-      },
-      {
-        "label": "Commercial",
-        "services": ["Office cleaner", "Medical Cleaning", "Industrial Cleaning", "End of Lease Commercial Cleaning"]
-      },
-      {
-        "label": "Specialist",
-        "services": ["Swimming Pool Cleaning", "Grease Trap Cleaning", "Post Construction Cleaning"]
-      }
-    ]
+    "ask": {
+      "High Pressure Cleaning": ["pressure clean", "pressure wash", "high pressure", "jet wash"],
+      "Office cleaner": ["office", "commercial clean", "workplace", "business clean"],
+      "Medical Cleaning": ["medical", "dental", "clinic", "surgery", "aged care", "childcare"],
+      "Industrial Cleaning": ["industrial", "warehouse", "factory clean", "workshop clean"],
+      "Post Construction Cleaning": ["construction clean", "builder clean", "renovation clean"],
+      "Swimming Pool Cleaning": ["pool clean", "swimming pool", "pool maintenance"]
+    }
   },
   "Gardener": {
     "general_heading": "General Gardening",
-    "general": [
-      "General Gardening",
-      "Garden maintenance",
-      "Lawn mowing",
-      "Hedge Trimming and Cutting",
-      "Weeding",
-      "Mulching",
-      "Fertilising",
-      "Garden Clean Ups",
-      "Garden and green rubbish removal"
-    ],
-    "specialist": {
-      "Lawn restoration and repair": {"keywords": ["lawn repair", "lawn restoration", "turf", "reseed", "top dressing", "aeration", "dethatching"]},
-      "Sprinklers": {"keywords": ["sprinkler", "irrigation", "watering system", "pop up", "sprinkler repair", "reticulation"]},
-      "Gravel": {"keywords": ["gravel", "pebble", "crushed rock", "decorative stone", "river rock"]},
-      "Artificial Turf Installation & Repair": {"keywords": ["artificial turf", "synthetic grass", "fake grass", "astroturf", "synthetic lawn", "artificial grass"]},
-      "Drip Irrigation Systems": {"keywords": ["drip irrigation", "drip system", "drip line"]},
-      "Grey Water Systems": {"keywords": ["grey water", "greywater"]},
-      "Water Feature Installation": {"keywords": ["water feature", "fountain", "pond", "garden pond", "waterfall"]},
-      "Garden irrigation systems": {"keywords": ["irrigation system", "garden watering", "automatic watering", "smart irrigation", "watering timer"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Lawn & turf",
-        "services": ["Lawn restoration and repair", "Artificial Turf Installation & Repair"]
-      },
-      {
-        "label": "Irrigation & water",
-        "services": ["Sprinklers", "Drip Irrigation Systems", "Garden irrigation systems", "Grey Water Systems"]
-      },
-      {
-        "label": "Landscaping extras",
-        "services": ["Gravel", "Water Feature Installation"]
-      }
-    ]
+    "ask": {
+      "Artificial Turf Installation & Repair": ["artificial turf", "synthetic grass", "fake grass", "artificial grass"],
+      "Sprinklers": ["sprinkler", "irrigation", "watering system", "reticulation"],
+      "Garden irrigation systems": ["irrigation system", "garden watering", "automatic watering", "smart irrigation"],
+      "Water Feature Installation": ["water feature", "fountain", "pond", "waterfall"]
+    }
   },
   "Builder": {
     "general_heading": "General Building",
-    "general": [
-      "General Building",
-      "Home renovations",
-      "Kitchen Renovations",
-      "Fixtures & Fittings",
-      "Walls & Cladding",
-      "Garages, sheds and carports",
-      "Verandahs"
-    ],
-    "specialist": {
-      "New Home Builders": {"keywords": ["new home", "new build", "custom home", "house and land", "house build", "dream home", "build your home"]},
-      "Home extensions": {"keywords": ["extension", "second storey", "2nd storey", "add a room", "house extension", "home addition"]},
-      "Granny Flat": {"keywords": ["granny flat", "secondary dwelling", "backyard dwelling", "ancillary dwelling", "DPU"]},
-      "Stumps": {"keywords": ["restump", "reblock", "stump", "subfloor", "underpinning", "pier replacement"]},
-      "Drainage & Sewers": {"keywords": ["drainage", "stormwater", "sewer connection", "site drainage", "civil drainage"]},
-      "Cool Rooms & Cellars": {"keywords": ["cool room", "wine cellar", "cold room", "temperature controlled"]},
-      "Building Supplies": {"keywords": ["building supplies", "materials supply", "supply only"]},
-      "Project Management": {"keywords": ["project management", "owner builder", "supervise", "coordination", "build management"]},
-      "Building Designs": {"keywords": ["building design", "design and build", "design & build", "house plans", "drafting"]},
-      "Cost planning and estimation": {"keywords": ["cost estimate", "quantity survey", "budget", "cost plan", "quotation service"]},
-      "Soil Testing": {"keywords": ["soil test", "geotechnical", "soil report", "foundation test"]}
-    },
-    "licence_signals": {
-      "New Home Builders": ["building", "builder", "open builder", "unlimited builder"],
-      "Home extensions": ["building", "builder"],
-      "Granny Flat": ["building", "builder"]
-    },
-    "cluster_groups": [
-      {
-        "label": "New builds & extensions",
-        "services": ["New Home Builders", "Home extensions", "Granny Flat"]
-      },
-      {
-        "label": "Specialist & structural",
-        "services": ["Stumps", "Drainage & Sewers", "Cool Rooms & Cellars"]
-      },
-      {
-        "label": "Design, planning & management",
-        "services": ["Building Designs", "Cost planning and estimation", "Project Management", "Building Supplies", "Soil Testing"]
-      }
-    ]
+    "ask": {
+      "New Home Builders": ["new home", "new build", "custom home", "house and land", "house build"],
+      "Home extensions": ["extension", "second storey", "2nd storey", "house extension", "home addition"],
+      "Granny Flat": ["granny flat", "secondary dwelling", "backyard dwelling"],
+      "Building Designs": ["building design", "design and build", "house plans", "drafting"],
+      "Project Management": ["project management", "owner builder", "supervise", "build management"]
+    }
   },
   "Handyman": {
     "general_heading": "Home Handiwork",
-    "general": [
-      "Home Handiwork",
-      "Odd Jobs",
-      "Property Maintenance",
-      "Flat Pack Assembly",
-      "Furniture Assembly",
-      "Mounting Shelves",
-      "TV Mounting",
-      "Patching Holes",
-      "Door Repair",
-      "Picture Hanging & Art Installation",
-      "Picture & Mirror Hanging"
-    ],
-    "specialist": {
-      "Curtain Repair": {"keywords": ["curtain", "blind", "roller blind", "curtain rod", "curtain rail"]},
-      "Lock Repair": {"keywords": ["lock", "deadbolt", "door lock", "locksmith", "rekey"]},
-      "Tap repair and replacement": {"keywords": ["tap repair", "leaking tap", "faucet", "tap replacement", "mixer tap"]},
-      "Gutter cleaning": {"keywords": ["gutter clean", "gutter", "leaf guard", "downpipe"]},
-      "IKEA kitchen installation": {"keywords": ["ikea", "flatpack kitchen", "kitchen install", "kitchen assembly"]},
-      "Shade Sail Installation": {"keywords": ["shade sail", "sail", "sun shade", "outdoor shade"]},
-      "Mailbox and letterboxes": {"keywords": ["mailbox", "letterbox", "post box"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Bathroom & plumbing fixes",
-        "services": ["Shower Door Installation", "Shower Base Repair", "Broken sink repair and replacement"]
-      },
-      {
-        "label": "Specialist items",
-        "services": ["Pool Table Repair", "Picture Framing"]
-      }
-    ]
+    "ask": {
+      "IKEA kitchen installation": ["ikea", "flatpack kitchen", "kitchen install", "kitchen assembly"],
+      "Shade Sail Installation": ["shade sail", "sun shade", "outdoor shade"],
+      "Gutter cleaning": ["gutter clean", "gutter", "leaf guard"]
+    }
   },
   "Concreter": {
     "general_heading": "Concreting",
-    "general": [
-      "Concreting",
-      "Concrete Slabs",
-      "Concrete driveways & paths",
-      "Foundations",
-      "Concrete Footpaths",
-      "Concrete Repair",
-      "Concrete Removal",
-      "Concrete Formwork",
-      "Concrete Foundations",
-      "Concrete Retaining Walls"
-    ],
-    "specialist": {
-      "Polished Concrete": {"keywords": ["polished", "polish", "grind and polish", "honed"]},
-      "Decorative Concreting": {"keywords": ["decorative", "stamped", "stencil", "pattern"]},
-      "Exposed Aggregate Concrete": {"keywords": ["exposed aggregate", "aggregate", "pebble finish"]},
-      "Coloured Concrete": {"keywords": ["coloured", "colored", "oxide", "pigment", "colour"]},
-      "Spray On Concreting": {"keywords": ["spray on", "spray concrete", "shotcrete", "gunite"]},
-      "Concrete Flooring": {"keywords": ["floor", "indoor floor", "warehouse floor", "garage floor"]},
-      "Concrete Paving": {"keywords": ["paving", "paver", "stepping stone"]},
-      "Concrete Sealing": {"keywords": ["seal", "sealing", "sealer", "protective coat"]},
-      "Concrete Grinding": {"keywords": ["grinding", "grind", "surface prep", "levelling"]},
-      "Concrete Cutting": {"keywords": ["cutting", "saw cut", "concrete saw"]},
-      "Concrete Core Drilling": {"keywords": ["core drill", "core hole", "penetration"]},
-      "Concrete Edging": {"keywords": ["edging", "garden edge", "mow strip", "border"]},
-      "Acrylic Rendering": {"keywords": ["render", "acrylic render", "cement render"]},
-      "Bagging": {"keywords": ["bagging", "bag and paint", "bag render"]},
-      "Car Park Kerb Installation": {"keywords": ["kerb", "curb", "car park", "wheel stop", "bollard"]},
-      "Bollards": {"keywords": ["bollard", "safety bollard", "concrete bollard"]},
-      "Concrete Cladding": {"keywords": ["cladding", "concrete panel", "precast"]},
-      "Concrete Fencing": {"keywords": ["concrete fence", "precast fence", "retaining fence"]},
-      "Concrete Resurfacing": {"keywords": ["resurface", "resurfacing", "overlay", "concrete overlay"]},
-      "Resealing Concrete": {"keywords": ["reseal", "resealing", "re-seal"]},
-      "Recolour Concrete": {"keywords": ["recolour", "recolor", "colour restore", "stain"]},
-      "Concrete Restoration": {"keywords": ["restoration", "restore", "repair and restore"]},
-      "Driveway Restoration": {"keywords": ["driveway restore", "driveway repair", "driveway restoration"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Decorative & specialty finishes",
-        "services": ["Polished Concrete", "Decorative Concreting", "Exposed Aggregate Concrete", "Coloured Concrete", "Spray On Concreting", "Concrete Resurfacing", "Recolour Concrete"]
-      },
-      {
-        "label": "Structural & heavy work",
-        "services": ["Concrete Flooring", "Concrete Paving", "Concrete Cutting", "Concrete Core Drilling", "Concrete Grinding", "Concrete Cladding", "Concrete Fencing", "Acrylic Rendering", "Bagging"]
-      },
-      {
-        "label": "Maintenance & restoration",
-        "services": ["Concrete Sealing", "Resealing Concrete", "Concrete Restoration", "Driveway Restoration", "Concrete Edging", "Car Park Kerb Installation", "Bollards"]
-      }
-    ]
+    "ask": {
+      "Polished Concrete": ["polished", "polish", "grind and polish", "honed"],
+      "Decorative Concreting": ["decorative", "stamped", "stencil", "pattern"],
+      "Exposed Aggregate Concrete": ["exposed aggregate", "aggregate", "pebble finish"],
+      "Spray On Concreting": ["spray on", "spray concrete", "shotcrete", "gunite"],
+      "Acrylic Rendering": ["render", "acrylic render", "cement render"]
+    }
   },
   "Bathroom Renovation Company": {
     "general_heading": "Bathroom Renovations",
-    "general": [
-      "Bathroom Renovations",
-      "Bathroom Tiling",
-      "Bathroom vanity installation",
-      "Bathroom tap installation"
-    ],
-    "specialist": {
-      "Bathtub Resurfacing": {"keywords": ["resurface", "resurfacing", "re-enamel", "bathtub repair", "bath repair"]},
-      "Bathroom design": {"keywords": ["design", "bathroom design", "layout", "planning", "3d render"]},
-      "Bathtub installation": {"keywords": ["bathtub install", "freestanding bath", "bath install", "new bath", "bath replacement"]},
-      "Bathroom ceilings": {"keywords": ["ceiling", "bathroom ceiling", "exhaust", "ventilation", "moisture"]},
-      "Bathroom lighting": {"keywords": ["lighting", "bathroom light", "led", "vanity light", "downlight"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Bathtub & finishing",
-        "services": ["Bathtub Resurfacing", "Bathtub installation", "Bathroom ceilings", "Bathroom lighting"]
-      },
-      {
-        "label": "Design & planning",
-        "services": ["Bathroom design"]
-      }
-    ]
+    "ask": {
+      "Bathroom design": ["design", "bathroom design", "layout", "planning", "3d render"],
+      "Bathtub Resurfacing": ["resurface", "resurfacing", "re-enamel", "bathtub repair", "bath repair"]
+    }
   },
   "Upholsterer": {
     "general_heading": "Upholstery Repair",
-    "general": [
-      "Upholstery Repair",
-      "Lounge Suites",
-      "Dining Chairs",
-      "Recliners"
-    ],
-    "specialist": {
-      "Sofa Beds": {"keywords": ["sofa bed", "sofabed", "pull out", "fold out"]},
-      "Wingback Chairs": {"keywords": ["wingback", "wing back", "armchair", "accent chair"]},
-      "Bar Stools": {"keywords": ["bar stool", "stool", "counter stool"]},
-      "Bedheads": {"keywords": ["bedhead", "headboard", "bed head", "upholstered bed"]},
-      "Ottomans": {"keywords": ["ottoman", "footstool", "foot stool", "pouf"]},
-      "Antique Restoration": {"keywords": ["antique", "restoration", "vintage", "heritage", "period"]},
-      "Timber re-polishing": {"keywords": ["timber", "wood polish", "re-polish", "french polish", "timber restoration"]},
-      "Outdoor cushions": {"keywords": ["outdoor", "patio cushion", "outdoor fabric", "sunbrella", "weather resistant"]},
-      "Custom made furniture": {"keywords": ["custom", "bespoke", "made to order", "custom design", "one-off"]},
-      "Leather Cleaning and Repair": {"keywords": ["leather", "leather repair", "leather clean", "leather restoration", "leather dye"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Seating & lounge",
-        "services": ["Sofa Beds", "Wingback Chairs", "Bar Stools", "Bedheads", "Ottomans"]
-      },
-      {
-        "label": "Specialty & restoration",
-        "services": ["Antique Restoration", "Timber re-polishing", "Outdoor cushions", "Custom made furniture", "Leather Cleaning and Repair"]
-      }
-    ]
+    "ask": {
+      "Antique Restoration": ["antique", "restoration", "vintage", "heritage", "period"],
+      "Custom made furniture": ["custom", "bespoke", "made to order", "custom design"],
+      "Leather Cleaning and Repair": ["leather", "leather repair", "leather clean", "leather restoration"]
+    }
   },
   "Kitchen Renovation Company": {
     "general_heading": "Kitchen Renovations",
-    "general": [
-      "Kitchen cabinet installation",
-      "Kitchen Benchtops",
-      "Kitchen sink installation",
-      "Kitchen Tiling"
-    ],
-    "specialist": {
-      "Custom cabinets": {"keywords": ["custom cabinet", "bespoke cabinet", "custom joinery", "made to measure"]},
-      "Flat pack kitchen installation": {"keywords": ["flat pack", "flatpack", "ikea", "kaboodle", "bunnings kitchen"]},
-      "New kitchen planning": {"keywords": ["kitchen planning", "kitchen design", "new kitchen", "layout", "kitchen plan"]},
-      "Budget kitchen renovation": {"keywords": ["budget", "affordable", "cost effective", "cheap kitchen", "budget reno"]},
-      "Kitchen backsplash": {"keywords": ["backsplash", "splashback", "kitchen splashback", "tile splashback"]},
-      "Kitchen flooring": {"keywords": ["kitchen floor", "flooring", "vinyl", "tile floor", "timber floor"]}
-    },
-    "licence_signals": {},
-    "cluster_groups": [
-      {
-        "label": "Cabinets & installation",
-        "services": ["Custom cabinets", "Flat pack kitchen installation"]
-      },
-      {
-        "label": "Design, surfaces & finishes",
-        "services": ["New kitchen planning", "Budget kitchen renovation", "Kitchen backsplash", "Kitchen flooring"]
-      }
-    ]
+    "ask": {
+      "Custom cabinets": ["custom cabinet", "bespoke cabinet", "custom joinery", "made to measure"],
+      "Flat pack kitchen installation": ["flat pack", "flatpack", "ikea", "kaboodle", "bunnings kitchen"],
+      "New kitchen planning": ["kitchen planning", "kitchen design", "new kitchen", "kitchen plan"]
+    }
   }
 }

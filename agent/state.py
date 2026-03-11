@@ -69,10 +69,12 @@ class OnboardingState(TypedDict):
     google_rating: float              # e.g. 4.8
     google_review_count: int          # e.g. 47
     google_reviews: list[dict]        # [{text: "...", rating: 5}, ...]
-    facebook_url: str                 # e.g. "https://facebook.com/SmithPlumbing"
     business_website: str             # from Google Places websiteUri
     google_business_name: str         # display name from Google Places
     google_primary_type: str          # e.g. "electrician", "plumber"
+    google_types: list[str]           # e.g. ["electrician", "contractor", "establishment"]
+    business_suburb: str              # suburb from Google Places addressComponents
+    google_address: str               # short formatted address from Google Places
 
     # Pricing / Subscription
     pricing_shown: bool

@@ -344,8 +344,10 @@ async def create_session(req: StartRequest, request: Request):
         "google_reviews": [],
         "google_business_name": "",
         "google_primary_type": "",
-        "facebook_url": "",
+        "google_types": [],
         "business_website": "",
+        "business_suburb": "",
+        "google_address": "",
         "licence_info": {},
         "licence_classes": [],
         "contact_name": "",
@@ -471,6 +473,13 @@ async def chat(req: MessageRequest):
     }
     if multiselect:
         resp["_multiselect"] = True
+    fallback_form = state.pop("_fallback_form", False)
+    if fallback_form:
+        resp["_fallback_form"] = True
+        logger.info(f"[RESP] Fallback form flag set, buttons have headers: {any(b.get('header') for b in buttons if isinstance(b, dict))}")
+    profile_question = state.pop("_profile_question", False)
+    if profile_question:
+        resp["_profile_question"] = True
 
     return {
         "session_id": req.session_id,
@@ -654,32 +663,31 @@ def _get_buttons_for_state(state: dict) -> list:
                 # so we can add entity type to disambiguate
                 name_stems = {}
                 for r in abr_results[:8]:
-                    stem = re.sub(r'\s*(pty|ltd|limited|inc)\.?\s*', '', r.get("entity_name", "").lower()).strip()
+                    stem = re.sub(r'\s*(pty|ltd|limited|inc)\.?\s*', '', r.get("display_name", "").lower()).strip()
                     name_stems.setdefault(stem, []).append(r.get("abn", ""))
                 has_similar = any(len(abns) > 1 for abns in name_stems.values())
 
                 buttons = []
                 for r in abr_results[:8]:
-                    name = r.get("entity_name", "Unknown")
+                    name = r.get("display_name", "Unknown")
                     legal = r.get("legal_name", "")
                     abn = r.get("abn", "")
                     location = r.get("state", "")
                     if r.get("postcode"):
                         location = f"{location} {r['postcode']}"
                     # Consistent format: Name (Location · disambiguator)
-                    # Disambiguator: legal name if different, otherwise ABN tail
+                    # Disambiguator: ABN tail (always useful), plus legal name or type hint
+                    abn_tail = f"ABN ...{abn[-5:]}" if len(abn) >= 5 else ""
                     legal_display = legal.title() if legal.isupper() else legal
-                    if legal and legal.lower() != name.lower():
-                        detail = legal_display
-                    elif len(abn) >= 5:
-                        detail = f"ABN ...{abn[-5:]}"
-                    else:
-                        detail = ""
-                    # When near-duplicate names exist, show sole trader vs company
-                    if has_similar and not (legal and legal.lower() != name.lower()):
+                    if has_similar:
+                        # Multiple similar names — show type hint + ABN
                         is_pty = bool(re.search(r'\bpty\b', name.lower()))
                         type_hint = "Company" if is_pty else "Sole Trader"
-                        detail = f"{type_hint} · {detail}" if detail else type_hint
+                        detail = f"{type_hint} · {abn_tail}" if abn_tail else type_hint
+                    elif legal and legal.lower() != name.lower():
+                        detail = f"{legal_display} · {abn_tail}" if abn_tail else legal_display
+                    else:
+                        detail = abn_tail
                     parts = [p for p in [location, detail] if p]
                     label = f"{name} ({' · '.join(parts)})" if parts else name
                     if len(label) > 70:
@@ -743,7 +751,6 @@ def _safe_state(state: dict) -> dict:
         "profile_saved": state.get("profile_saved", False),
         "google_rating": state.get("google_rating", 0.0),
         "google_review_count": state.get("google_review_count", 0),
-        "facebook_url": state.get("facebook_url", ""),
         "pricing_shown": state.get("pricing_shown", False),
         "subscription_plan": state.get("subscription_plan", ""),
     }
