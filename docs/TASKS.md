@@ -537,3 +537,48 @@
   - Questions answered by LLM in chat view with "Back to my profile" button
   - Client-side back button re-renders profile builder without server round-trip
   - `_profile_question` flag bypasses profile builder render for chat display
+
+### Mar 12, 2026 — Business Verification Edge Cases, Data Validation, Verified Image Sourcing
+- **ABR active-status filtering** (`agent/graph.py`, `agent/tools.py`):
+  - `enrich_abr_with_entity_names()` now pulls real `status` + `entity_type` from ABN detail lookups
+  - Active filter runs immediately after enrichment, before postcode filter and sole trader check
+  - All downstream code (sole trader check, card buttons, format message) operates on active-only list
+  - Zero active results → "couldn't find any active businesses" message
+- **ABR card format everywhere** (`agent/graph.py`, `server/app.py`):
+  - Removed single-result bullet-point detail view from `_format_abr_results`
+  - Removed single-result "Yes, that's me"/"No" simple buttons from `_get_buttons_for_state`
+  - All ABR results now show as structured cards: name (bold), state/postcode + ABN, entity type + registered name
+  - Cards in both `web/landing.html` and `web/debug.html` (3-line format with arrow)
+- **Sole trader detection fix** (`agent/graph.py`):
+  - `_is_sole_trader_personal_name` now checks `_has_registered_trading_name` flag instead of comparing display vs legal name strings
+  - Old check failed after enrichment: "Mike Smith" != "SMITH, MIKE" → wrongly thought trading name existed
+- **Welcome prompt broadened** (`agent/graph.py`):
+  - Changed from "tradies" to "trade and service professionals" — supports all 80+ SS categories
+  - System prompts use "business"/"user"/"professional" for instructions, "tradie" kept conversational for trade businesses
+  - Removed "are you a tradie or consultant?" question — wizard figures it out from category detection
+- **Google Places validation** (`agent/graph.py`):
+  - State validation: Google result must match ABR state (checks both abbreviation and full name)
+  - Closed business silent discard: `CLOSED_PERMANENTLY` → discard Google result (ABN is source of truth)
+  - Quality check: no name overlap + 0 reviews + no website → discard (prevents wrong-business data)
+  - Postcode added to Google query for better matching
+- **Brave search validation** (`agent/graph.py`):
+  - Two-tier validation: generic personal names (Mike Smith) require name + postcode match; distinctive names only need name match
+  - Google-verified website domain always trusted
+  - Common name detection: checks if all significant words are in `_COMMON_NAMES` set
+- **Licence search improvements** (`agent/graph.py`):
+  - Removed trading name fallback for licence search (prevented false positives: "Petes Plumbing" matching "Pete's Precise Plumbing Pty Ltd")
+  - Trust/company entity detection: asks user "What name is the licence under?" instead of guessing
+  - Merged duplicate "I'll add it later"/"Skip" buttons into single "Skip for now"
+- **Verified-only image sourcing** (`agent/graph.py`):
+  - Removed blind scraping of unverified Brave URLs, Facebook/Instagram pages, and Brave thumbnails
+  - Distinctive name word filter: excludes generic trade words (painter, plumber, etc.) — "masterpainters.com.au" no longer scraped for "SSR Painters"
+  - Google Places social handling: if `websiteUri` is a Facebook/Instagram URL, uses `scrape_social_images()` instead of generic website scraper
+  - Image source chain: Google Places > domain discovery > distinctive Brave match > user-confirmed social > monogram
+- **Social profile discovery** (`agent/graph.py`):
+  - No-website gate in profile node: when no Google website found, searches Brave for `site:instagram.com OR site:facebook.com`
+  - Name-validated candidates presented to user: "I found these — are any of them yours?"
+  - User confirms → scrape that URL for logo/photos. User skips → monogram + upload
+  - Requires distinctive name word AND another name word in URL path or title (filters false positives)
+- **Google Places retry** (`agent/graph.py`):
+  - If initial search fails, retries with legal name and "Pty Ltd" variant
+  - Known limitation: pure service-area businesses (no physical address) often invisible to Places Text Search API

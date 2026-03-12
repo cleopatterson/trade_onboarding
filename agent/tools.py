@@ -206,20 +206,16 @@ async def enrich_abr_with_entity_names(results: list[dict]) -> list[dict]:
                 result["legal_name"] = detail["legal_name"]
             if detail.get("_has_registered_trading_name"):
                 result["_has_registered_trading_name"] = True
+            if detail.get("status"):
+                result["status"] = detail["status"]
+            if detail.get("entity_type") and result.get("entity_type") in ("Entity Name", "Trading Name", "Business Name", "Other Name"):
+                result["entity_type"] = detail["entity_type"]
         except Exception as e:
             logger.warning(f"ABN detail lookup failed for {abn}: {e}")
         return result
 
-    # Only enrich results where legal_name is missing or same as display name
-    # Case-insensitive: _title_case() changes display_name casing but legal_name stays raw
-    needs_enrichment = [
-        r for r in results
-        if not r.get("legal_name") or r["legal_name"].lower() == r.get("display_name", "").lower()
-    ]
-    if not needs_enrichment:
-        return results
-
-    await asyncio.gather(*[_lookup_entity_name(r) for r in needs_enrichment])
+    # Enrich all results: fetch entity name, real status, and entity type
+    await asyncio.gather(*[_lookup_entity_name(r) for r in results])
     return results
 
 

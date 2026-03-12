@@ -517,6 +517,40 @@
     }
     .wizard-button:hover i { opacity: 1; transform: translateX(0); }
 
+    .wizard-abr-card {
+      padding: 14px 16px;
+      background: white;
+      border: 2px solid #EDEDED;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .wizard-abr-card:hover {
+      border-color: #167DD5;
+      background: #f8faff;
+    }
+    .wizard-abr-card:hover .abr-arrow { opacity: 1; transform: translateX(0); }
+    .abr-arrow {
+      opacity: 0; transform: translateX(-10px);
+      transition: all 0.2s ease; color: #0066cc;
+      flex-shrink: 0; margin-left: 12px;
+    }
+    .abr-card-info { flex: 1; min-width: 0; }
+    .abr-card-name {
+      font-size: 16px; font-weight: 600; color: #202020;
+      letter-spacing: -0.018em; line-height: 1.3;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .abr-card-line {
+      margin-top: 3px; font-size: 13px; font-weight: 400; color: #666;
+      line-height: 1.4;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
     .wizard-button.wizard-button-confirm {
       border-color: #00BB4D;
       background: #f0fff4;
@@ -1766,7 +1800,25 @@
         buttons.forEach((btn, i) => {
           const isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these' || btn.value === '__FALLBACK_ALL__' || btn.value === '__FALLBACK_SKIP__';
           const isHeader = btn.header === true || btn.value === '__GROUP_HEADER__';
-          if (isHeader) {
+          if (btn.type === 'abr_result') {
+            // ABR result card with structured data
+            const line2Parts = [];
+            if (btn.location) line2Parts.push(escapeHtml(btn.location));
+            if (btn.abn) line2Parts.push('ABN: ' + escapeHtml(btn.abn));
+            const line3Parts = [];
+            if (btn.entity_type) line3Parts.push(escapeHtml(btn.entity_type));
+            if (btn.legal_name) line3Parts.push('Registered: ' + escapeHtml(btn.legal_name));
+            html += `
+              <button class="wizard-abr-card" id="wizardBtn${i}" data-value="${escapeHtml(btn.value)}">
+                <div class="abr-card-info">
+                  <div class="abr-card-name">${escapeHtml(btn.label)}</div>
+                  <div class="abr-card-line">${line2Parts.join(' \u00b7 ')}</div>
+                  <div class="abr-card-line">${line3Parts.join(' \u00b7 ')}</div>
+                </div>
+                <i class="fas fa-arrow-right abr-arrow"></i>
+              </button>
+            `;
+          } else if (isHeader) {
             // Category group header (non-clickable divider)
             html += `<div class="wizard-group-header">${escapeHtml(btn.label)}</div>`;
           } else if (isMultiSelect && !isActionBtn) {

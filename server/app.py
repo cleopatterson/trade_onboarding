@@ -653,50 +653,46 @@ def _get_buttons_for_state(state: dict) -> list:
     if node == "business_verification":
         abr_results = state.get("abr_results", [])
         if abr_results and not state.get("business_verified"):
-            if len(abr_results) == 1:
-                return [
-                    {"label": "Yes, that's me", "value": "Yes, that's my business"},
-                    {"label": "No, that's not right", "value": "No, that's not my business"},
-                ]
-            else:
-                # Detect near-duplicate names (e.g. "Foo Electrical" + "Foo Electrical Pty Ltd")
-                # so we can add entity type to disambiguate
-                name_stems = {}
-                for r in abr_results[:8]:
-                    stem = re.sub(r'\s*(pty|ltd|limited|inc)\.?\s*', '', r.get("display_name", "").lower()).strip()
-                    name_stems.setdefault(stem, []).append(r.get("abn", ""))
-                has_similar = any(len(abns) > 1 for abns in name_stems.values())
+            # Detect near-duplicate names (e.g. "Foo Electrical" + "Foo Electrical Pty Ltd")
+            # so we can add entity type to disambiguate
+            name_stems = {}
+            for r in abr_results[:8]:
+                stem = re.sub(r'\s*(pty|ltd|limited|inc)\.?\s*', '', r.get("display_name", "").lower()).strip()
+                name_stems.setdefault(stem, []).append(r.get("abn", ""))
+            has_similar = any(len(abns) > 1 for abns in name_stems.values())
 
-                buttons = []
-                for r in abr_results[:8]:
-                    name = r.get("display_name", "Unknown")
-                    legal = r.get("legal_name", "")
-                    abn = r.get("abn", "")
-                    location = r.get("state", "")
-                    if r.get("postcode"):
-                        location = f"{location} {r['postcode']}"
-                    # Consistent format: Name (Location · disambiguator)
-                    # Disambiguator: ABN tail (always useful), plus legal name or type hint
-                    abn_tail = f"ABN ...{abn[-5:]}" if len(abn) >= 5 else ""
-                    legal_display = legal.title() if legal.isupper() else legal
-                    if has_similar:
-                        # Multiple similar names — show type hint + ABN
-                        is_pty = bool(re.search(r'\bpty\b', name.lower()))
-                        type_hint = "Company" if is_pty else "Sole Trader"
-                        detail = f"{type_hint} · {abn_tail}" if abn_tail else type_hint
-                    elif legal and legal.lower() != name.lower():
-                        detail = f"{legal_display} · {abn_tail}" if abn_tail else legal_display
-                    else:
-                        detail = abn_tail
-                    parts = [p for p in [location, detail] if p]
-                    label = f"{name} ({' · '.join(parts)})" if parts else name
-                    if len(label) > 70:
-                        max_name = 30 if detail else 50
-                        parts = [p for p in [location, detail[:20]] if p]
-                        label = f"{name[:max_name]}... ({' · '.join(parts)})" if parts else f"{name[:50]}..."
-                    buttons.append({"label": label, "value": f"Yes, it's {name} (ABN: {abn})"})
-                buttons.append({"label": "None of these", "value": "No, none of those are my business"})
-                return buttons
+            buttons = []
+            for r in abr_results[:8]:
+                # Skip inactive/cancelled ABNs
+                if r.get("status", "Active") != "Active":
+                    continue
+                name = r.get("display_name", "Unknown")
+                legal = r.get("legal_name", "")
+                abn = r.get("abn", "")
+                location = r.get("state", "")
+                if r.get("postcode"):
+                    location = f"{location} {r['postcode']}"
+                entity_type = r.get("entity_type", "")
+                # Determine entity label
+                if has_similar:
+                    is_pty = bool(re.search(r'\bpty\b', name.lower()))
+                    entity_label = "Company" if is_pty else "Sole Trader"
+                elif entity_type:
+                    entity_label = entity_type
+                else:
+                    entity_label = ""
+                legal_display = legal.title() if legal.isupper() else legal
+                buttons.append({
+                    "label": name,
+                    "value": f"Yes, it's {name} (ABN: {abn})",
+                    "type": "abr_result",
+                    "location": location,
+                    "abn": abn,
+                    "entity_type": entity_label,
+                    "legal_name": legal_display if legal and legal.lower() != name.lower() else "",
+                })
+            buttons.append({"label": "None of these", "value": "No, none of those are my business"})
+            return buttons
 
     return []
 

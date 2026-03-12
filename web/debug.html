@@ -197,6 +197,13 @@
     .wizard-button i { opacity: 0; transform: translateX(-10px); transition: all 0.2s ease; color: #0066cc; }
     .wizard-button:hover { border-color: #167DD5; background: #f8faff; transform: translateX(5px); }
     .wizard-button:hover i { opacity: 1; transform: translateX(0); }
+    .wizard-abr-card { padding: 14px 16px; background: white; border: 2px solid #EDEDED; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; text-align: left; display: flex; align-items: center; justify-content: space-between; }
+    .wizard-abr-card:hover { border-color: #167DD5; background: #f8faff; }
+    .wizard-abr-card:hover .abr-arrow { opacity: 1; transform: translateX(0); }
+    .abr-arrow { opacity: 0; transform: translateX(-10px); transition: all 0.2s ease; color: #0066cc; flex-shrink: 0; margin-left: 12px; }
+    .abr-card-info { flex: 1; min-width: 0; }
+    .abr-card-name { font-size: 16px; font-weight: 600; color: #202020; letter-spacing: -0.018em; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .abr-card-line { margin-top: 3px; font-size: 13px; font-weight: 400; color: #666; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .wizard-button.wizard-button-confirm { border-color: #00BB4D; background: #f0fff4; }
     .wizard-button.wizard-button-confirm:hover { border-color: #009B40; background: #d5f5e3; }
     .wizard-button.wizard-button-confirm i { color: #00BB4D; }
@@ -952,7 +959,24 @@
         buttons.forEach(function(btn, i) {
           var isActionBtn = btn.value === '__CAT_SKIP__' || btn.value === '__CLUSTER_SKIP__' || btn.value === 'Yes, all of these' || btn.value === '__FALLBACK_ALL__' || btn.value === '__FALLBACK_SKIP__';
           var btnEl;
-          if (isMultiSelect && !isActionBtn) {
+          if (btn.type === 'abr_result') {
+            btnEl = el('button', 'wizard-abr-card');
+            btnEl.id = 'wizardBtn' + i;
+            btnEl.dataset.value = btn.value;
+            var info = el('div', 'abr-card-info');
+            info.appendChild(el('div', 'abr-card-name', btn.label));
+            var line2Parts = [];
+            if (btn.location) line2Parts.push(btn.location);
+            if (btn.abn) line2Parts.push('ABN: ' + btn.abn);
+            info.appendChild(el('div', 'abr-card-line', line2Parts.join(' \u00b7 ')));
+            var line3Parts = [];
+            if (btn.entity_type) line3Parts.push(btn.entity_type);
+            if (btn.legal_name) line3Parts.push('Registered: ' + btn.legal_name);
+            info.appendChild(el('div', 'abr-card-line', line3Parts.join(' \u00b7 ')));
+            btnEl.appendChild(info);
+            var arrowI = el('i', 'fas fa-arrow-right abr-arrow');
+            btnEl.appendChild(arrowI);
+          } else if (isMultiSelect && !isActionBtn) {
             btnEl = el('button', 'wizard-button-multi');
             btnEl.id = 'wizardBtn' + i;
             btnEl.dataset.value = btn.value;

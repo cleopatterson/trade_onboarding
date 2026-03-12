@@ -83,7 +83,8 @@ def _trace(state: dict, name: str, duration: float, result_summary: str, data: d
 async def welcome_node(state: OnboardingState) -> dict:
     """Greet the user and ask for business name/ABN."""
     response = await llm_fast.ainvoke([
-        SystemMessage(content="""You are the Service Seeking onboarding assistant. You help Australian tradies get set up on the platform.
+        SystemMessage(content="""You are the Service Seeking onboarding assistant. You help Australian trade and service professionals get set up on the platform.
+Service Seeking covers tradies (plumbers, electricians, builders, etc.) AND professional services (photographers, accountants, designers, IT, etc.). Most users are tradies, but welcome everyone.
 You are warm, friendly, and speak in natural Australian English.
 
 Write a welcome message that:
@@ -92,7 +93,8 @@ Write a welcome message that:
 - Mentions you'll do most of the heavy lifting by pulling in their details automatically (ABN, licences, etc)
 - Asks for their **business name** or **ABN** to kick things off — use bold markdown on these two terms so they stand out as the clear call-to-action
 - Feels like a real person, not a corporate form. Keep it concise — 3-4 short sentences.
-- If they include a postcode with their business name (e.g. "dans plumbing 2155") you can match them faster"""),
+- If they include a postcode with their business name (e.g. "dans plumbing 2155") you can match them faster
+- Do NOT ask what type of business they are (tradie vs consultant etc.) — just ask for their business name or ABN and you'll figure the rest out"""),
         HumanMessage(content="Hi, I'd like to get set up on Service Seeking."),
     ])
 
@@ -114,8 +116,8 @@ def _is_sole_trader_personal_name(abr: dict) -> bool:
     legal_name = abr.get("legal_name", "")
     entity_type = abr.get("entity_type", "")
 
-    # Already has a different trading name — no need to ask
-    if legal_name and dn.lower() != legal_name.lower():
+    # Has a registered trading/business name (e.g. "Watertight Plumbing" vs "SMITH, JACK") — no need to ask
+    if abr.get("_has_registered_trading_name"):
         return False
 
     # Entity type check (reliable for ABN direct lookup)
@@ -196,6 +198,20 @@ async def business_verification_node(state: OnboardingState) -> dict:
             _trace(state, "ABR Enrich Names", time.time() - t_enrich,
                    f"Enriched {len(abr_results)} results with entity names",
                    {"results": [{"entity": r.get("display_name"), "legal": r.get("legal_name")} for r in abr_results[:5]]})
+
+        # Filter to active results only (enrichment pulls real status from ABN detail lookups)
+        abr_results = [r for r in abr_results if r.get("status", "Active") == "Active"]
+        results["results"] = abr_results
+        results["count"] = len(abr_results)
+
+        if not abr_results:
+            return {
+                "current_node": "business_verification",
+                "business_name_input": search_term,
+                "abn_input": "",
+                "abr_results": [],
+                "messages": [AIMessage(content=f"I couldn't find any active businesses matching '{search_term}' on the ABR. Could you try a different name, or enter your ABN directly?")],
+            }
 
         # If user provided a postcode, filter results and auto-confirm if single match
         if user_postcode and abr_results:
@@ -299,7 +315,7 @@ async def business_verification_node(state: OnboardingState) -> dict:
             for r in abr_results[:8]
         ])
         response = await llm_fast.ainvoke([
-            SystemMessage(content=f"""You are interpreting a tradie's response during business verification for Service Seeking onboarding.
+            SystemMessage(content=f"""You are interpreting a user's response during business verification for Service Seeking onboarding.
 
 CURRENT ABR SEARCH RESULTS SHOWN TO USER:
 {abr_summary}
@@ -529,7 +545,7 @@ def _format_services_context(services: list[dict], general_headings: list[str]) 
     """Format services for the LLM context.
 
     Shows categories active (not individual services) to prevent the LLM
-    from listing counts or individual services to the tradie.
+    from listing counts or individual services to the user.
     Evidence-matched specialist services ARE shown so the LLM can acknowledge
     what makes this business specific (e.g. solar, data cabling).
     """
@@ -603,7 +619,7 @@ def _build_service_prompt(
         if licence_info.get("compliance_clean") is False:
             licence_context += "\n⚠️ Compliance issues on record"
     elif gaps:
-        licence_context = f"\nNO LICENCE ON FILE — trade detected from business profile. Map all subcategories as a starting point and let the tradie confirm."
+        licence_context = f"\nNO LICENCE ON FILE — category detected from business profile. Map all subcategories as a starting point and let the user confirm."
 
     web_context = ""
     if web_results:
@@ -647,13 +663,14 @@ def _build_service_prompt(
     if related_suggestions:
         sug_names = [s["category"] for s in related_suggestions]
         suggestions_hint = (
-            f"RELATED CATEGORIES: Data shows most tradies in this field also list under "
-            f"{', '.join(sug_names)} to get more leads. After summarising the pre-mapped services "
+            f"RELATED CATEGORIES: Data shows most businesses in this field also list under "
+            f"{', '.join(sug_names)} to get more leads. After confirming the category setup "
             f"and acknowledging the licence (if any), mention these extra categories naturally and "
             f"ask if they'd like to add any. Keep it casual — e.g. \"Most {sug_names[0].lower()} "
-            f"tradies also list under {' and '.join(sug_names[:2])} for extra leads — want me to add any of those?\" "
-            f"Do NOT ask about specialist clusters this turn — just the related categories. "
-            f"The buttons will be provided separately so do NOT list them in your response."
+            f"businesses also list under {' and '.join(sug_names[:2])} for extra leads — want me to add any of those?\" "
+            f"IMPORTANT: This turn is ONLY about related categories ({', '.join(sug_names)}). "
+            f"Do NOT ask about any specialist services, gaps, or specific work types (e.g. gas fitting, solar, etc). "
+            f"The category buttons will be provided separately so do NOT list them or number them in your response."
         )
 
     # ── Multi-category note ──
@@ -687,13 +704,13 @@ def _build_service_prompt(
             evidence_ack = (
                 f"If SPECIALIST SERVICES DETECTED are listed, acknowledge them to show you understand "
                 f"the business — e.g. \"I can see you specialise in {evidence_names[0].lower()}\" or "
-                f"\"your reviews mention {evidence_names[0].lower()}\". This makes the tradie feel understood. "
+                f"\"your reviews mention {evidence_names[0].lower()}\". This makes the user feel understood. "
             )
 
         if related_suggestions and suggestions_hint:
             # Turn 1 with related category suggestions — LLM handles naturally
             turn1_rule = (
-                f"- TURN 1 RULE: You're setting this tradie up as {general_heading_text}. "
+                f"- TURN 1 RULE: You're setting this business up as {general_heading_text}. "
                 f"Your response MUST be 2-3 SHORT sentences max. Confirm the category heading "
                 f"and briefly mention the licence if found. "
                 f"{evidence_ack}"
@@ -706,7 +723,7 @@ def _build_service_prompt(
             )
         elif gaps:
             turn1_rule = (
-                f"- TURN 1 RULE: You're setting this tradie up as {general_heading_text}. "
+                f"- TURN 1 RULE: You're setting this business up as {general_heading_text}. "
                 f"Your response MUST be 2-3 SHORT sentences max. Confirm the category heading "
                 f"and briefly mention the licence if found. "
                 f"{evidence_ack}"
@@ -719,7 +736,7 @@ def _build_service_prompt(
             )
         else:
             turn1_rule = (
-                f"- TURN 1 RULE: You're setting this tradie up as {general_heading_text} "
+                f"- TURN 1 RULE: You're setting this business up as {general_heading_text} "
                 f"and all specialist areas are covered. "
                 f"Confirm the category heading and mention the licence if found. "
                 f"{evidence_ack}"
@@ -731,15 +748,15 @@ def _build_service_prompt(
         turn1_rule = (
             "- TURN 1 RULE (FULL TAXONOMY): No tier guide exists for this trade. Use the full "
             "CATEGORY TAXONOMY to map services based on the business name, licence, and Google data. "
-            "Map aggressively — most tradies do most things in their trade. Add ALL subcategories "
+            "Map aggressively — most professionals do most things in their field. Add ALL subcategories "
             "from the REMAINING GAPS list using their exact IDs. Then ask a short confirmation: "
             "\"I have added all [N] services — anything you do not do that I should remove?\""
         )
 
     # ── Static context ──
-    static_context = f"""You are the Service Seeking onboarding assistant helping a tradie set up their services.
+    static_context = f"""You are the Service Seeking onboarding assistant helping a business set up their services.
 
-GOAL: Map this tradie's services as completely as possible. Every missed subcategory is leads they'll never see. It's better to include a service they occasionally do than to miss one they do regularly.
+GOAL: Map this business's services as completely as possible. Every missed subcategory is leads they'll never see. It's better to include a service they occasionally do than to miss one they do regularly.
 
 SUBCATEGORY GUIDE:
 {guide[:4000] if guide else "No specific guide available for this trade."}
@@ -749,14 +766,14 @@ CATEGORY TAXONOMY:
 
 GUIDELINES:
 - This flows directly from business confirmation — the conversation is already going. Don't re-introduce yourself.
-- Be conversational and Australian. Keep it short — tradies are busy.
-- Licence classes are your strongest signal — they tell you exactly what this tradie is licensed for.
+- Be conversational and Australian. Keep it short — people are busy. Say "tradie" for trade businesses, but adapt your language for professional services (photographers, designers, accountants, etc.).
+- Licence classes are your strongest signal for trades — they tell you exactly what they're licensed for. Professional services may not have trade licences, and that's fine.
 {turn1_rule}
 - Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate mapping.
 - FOLLOW-UP RULE: Services from the user's previous answer have already been added to SERVICES MAPPED SO FAR (check JUST ADDED note). Your job: acknowledge what was added in one sentence, then look at the REMAINING GAPS and pick the most relevant group of 3-6 services to ask about next. Group them by theme — e.g. "cabling work" (Data Cabling, Cabling, TV Antenna), "solar and energy" (Solar panel installation, Energy efficiency checks). Pick high-value, commonly-offered services first. One question per turn. If no gaps remain, set step_complete=true. Your output "services" array should contain ONLY newly added services from this turn — existing services are preserved automatically.
 - BUTTON RULE: Buttons are multi-select toggles — the user can tap individual services to select/deselect them, then send their selection. ALWAYS include "Yes, all of these" as the FIRST button and a clear decline as the LAST button — use "None of these" or "Not for us". In between, include one button per service in the cluster using the exact subcategory name (no "Just" prefix). NEVER use ambiguous options like "Occasionally", "Not regularly", "Sometimes", "Rarely" — we need a clear yes or no, not frequency. NEVER use "Skip these". Aim for 4-7 buttons total (all + services + decline).
-- COMPLETION RULE: Set step_complete=true when there are no REMAINING GAPS left, OR the tradie says they are done / wants to move on. Do NOT drag it out — ask the most important gaps efficiently, then wrap up.
-- FALLBACK RULE: Look at the REMAINING GAPS list. If the gaps are too numerous or too scattered across unrelated categories to cover naturally in 1-2 more questions, set "fallback_to_list": true. The system will show a multi-select checklist instead — much faster for the tradie than answering questions one by one. Use this when: there are 10+ diverse gaps, OR the gaps span categories that don't relate to each other, OR you've already asked 2+ cluster questions and gaps remain. Do NOT try to force-fit unrelated services into one question — fallback is the better UX.
+- COMPLETION RULE: Set step_complete=true when there are no REMAINING GAPS left, OR the user says they are done / wants to move on. Do NOT drag it out — ask the most important gaps efficiently, then wrap up.
+- FALLBACK RULE: Look at the REMAINING GAPS list. If the gaps are too numerous or too scattered across unrelated categories to cover naturally in 1-2 more questions, set "fallback_to_list": true. The system will show a multi-select checklist instead — much faster than answering questions one by one. Use this when: there are 10+ diverse gaps, OR the gaps span categories that don't relate to each other, OR you've already asked 2+ cluster questions and gaps remain. Do NOT try to force-fit unrelated services into one question — fallback is the better UX.
 - The response text is a conversational summary. Keep it to 1-2 sentences: mention the total count and groups, not every service. No headers, no bullet points, no line breaks.
 - Don't announce what you're doing, just do it.
 
@@ -993,14 +1010,65 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                 ],
                 "messages": [AIMessage(content=(
                     f"It looks like {business_name} is listed as a {type_label} on Google. "
-                    f"Service Seeking is specifically for trade and home services — things like plumbing, electrical, building, cleaning, and similar. "
-                    f"Unfortunately we can't help with other business types. "
-                    f"If you have a different business that offers trade services, I can help you get that one set up."
+                    f"Service Seeking is for trade and service professionals — things like plumbing, electrical, building, cleaning, photography, design, and similar. "
+                    f"Unfortunately we can't set up retail shops, restaurants, or medical practices. "
+                    f"If you have a different business that offers trade or professional services, I can help you get that one set up."
                 ))],
             }
 
-    # ── Licence self-report (QLD ESO, VIC regulated trades) ──
+    # ── Licence holder name lookup (trusts/companies where legal name didn't match) ──
     _eso_updates: dict = {}
+    if state.get("_needs_licence_holder_name") and svc_turn == 1:
+        return {
+            "current_node": "service_discovery",
+            "_svc_turn": 2,
+            "buttons": [
+                {"label": "Skip for now", "value": "Skip licence"},
+            ],
+            "messages": [AIMessage(content=(
+                f"I couldn't find a trade licence under {state.get('legal_name', 'the registered entity')} — "
+                f"licences are usually registered under a person's name. "
+                f"What name is the licence under? Or skip if you'd rather sort it out later."
+            ))],
+        }
+    if state.get("_needs_licence_holder_name") and svc_turn == 2:
+        _is_eso_reentry = True
+        if last_msg and last_msg.lower() not in ("skip licence", "skip", "skip for now"):
+            # User gave us a name — search for their licence
+            holder_name = last_msg.strip()
+            logger.info(f"[BIZ] Licence holder name search: '{holder_name}'")
+            if business_state == "NSW":
+                holder_results = await nsw_licence_browse(holder_name)
+                matches = holder_results.get("results", [])
+                if matches:
+                    pre_detected = _detect_categories(business_name, [],
+                                                      state.get("google_biz_name", ""),
+                                                      state.get("google_primary_type", ""))
+                    best_match, _ = match_licence(matches, holder_name,
+                                                  detected_categories=pre_detected,
+                                                  return_details=True)
+                    if best_match:
+                        lid = best_match.get("licence_id", "")
+                        if lid:
+                            details = await nsw_licence_details(lid)
+                            if not details.get("error"):
+                                classes = [c["name"] for c in details.get("classes", []) if c.get("active")]
+                                if classes:
+                                    state["licence_classes"] = classes
+                                    state["licence_info"] = details
+                                    state["contact_name"] = details.get("contact_name", holder_name)
+                                    logger.info(f"[BIZ] Licence found under '{holder_name}': {classes}")
+            elif business_state == "QLD":
+                result = qbcc_licence_lookup("", holder_name)
+                if result:
+                    classes = [c["name"] for c in result.get("classes", []) if c.get("active")]
+                    if classes:
+                        state["licence_classes"] = classes
+                        state["licence_info"] = result
+                        logger.info(f"[BIZ] QBCC licence found under '{holder_name}': {classes}")
+        state["_needs_licence_holder_name"] = False
+
+    # ── Licence self-report (QLD ESO, VIC regulated trades) ──
     self_report = state.get("_licence_self_report", {})
     if needs_licence and svc_turn == 1:
         # First entry into service discovery — ask for licence number
@@ -1025,8 +1093,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "current_node": "service_discovery",
             "_svc_turn": 2,
             "buttons": [
-                {"label": "I'll add it later", "value": "I'll add my licence later"},
-                {"label": "Skip", "value": "Skip licence"},
+                {"label": "Skip for now", "value": "Skip licence"},
             ],
             "messages": [AIMessage(content=prompt_msg)],
         }
@@ -1363,7 +1430,7 @@ async def service_area_node(state: OnboardingState) -> dict:
 
     NO SCRIPTING. The LLM gets goals, regional guides, and suburb data.
     It figures out the conversation — asks about barriers, corridors,
-    congestion zones relevant to THIS tradie's location.
+    congestion zones relevant to THIS business's location.
 
     Model selection:
     - Turn 1 → Haiku (regional guide provides intelligence, prompt is prescriptive)
@@ -1469,7 +1536,7 @@ async def service_area_node(state: OnboardingState) -> dict:
         # Collect all region names from grouped data for exclude list
         all_regions = [area for area, suburbs in (grouped.get("by_area", {})).items() if len(suburbs) >= 3]
 
-        prompt = f"""You are finalizing a tradie's service area on Service Seeking.
+        prompt = f"""You are finalizing a business's service area on Service Seeking.
 
 BASE: {grouped.get("base_suburb", "Unknown")} ({postcode})
 ALL REGIONS WITHIN 20KM: {json.dumps(all_regions)}
@@ -1506,9 +1573,9 @@ Return ONLY the JSON object."""
                {"state": business_state, "guide_file": _state_city_map.get(business_state, "none") + "_regions.md" if regional_guide else "none",
                 "chars": len(regional_guide)})
 
-        static_context = f"""You are the Service Seeking onboarding assistant helping a tradie define their service area.
+        static_context = f"""You are the Service Seeking onboarding assistant helping a business define their service area.
 
-GOAL: Figure out which REGIONS this tradie covers. Real coverage isn't a perfect circle — it's a blob shaped by traffic, barriers, and preferences. Your job is to identify which regions they include and which they exclude.
+GOAL: Figure out which REGIONS this business covers. Real coverage isn't a perfect circle — it's a blob shaped by traffic, barriers, and preferences. Your job is to identify which regions they include and which they exclude.
 
 REGIONS WITHIN 20KM OF BASE:
 {region_list or "No region data available"}
@@ -1519,9 +1586,9 @@ REGIONAL GUIDE (barriers, congestion, corridors):
 
 GUIDELINES:
 - This step flows directly from the service confirmation — the conversation is already going. Don't re-introduce yourself or rehash what you already know. The user's last message was about services, not areas.
-- Be conversational and Australian. Keep it short — tradies are busy.
+- Be conversational and Australian. Keep it short — people are busy.
 - Talk in terms of regions/areas, not individual suburbs
-- Use the regional guide to understand natural boundaries, but don't explain the geography to the tradie — they already know it. Just ask which areas they cover.
+- Use the regional guide to understand natural boundaries, but don't explain the geography — they already know it. Just ask which areas they cover.
 - If LOCATION EVIDENCE is provided, use it to inform your button suggestions — the business already advertises in those areas, so they're likely inclusions. You can reference what you've seen (e.g. "Your website mentions Northern Beaches — do you cover there too?") but keep it brief.
 - Present the nearby regions and ask which ones they cover. One simple question, no preamble. Offer buttons for likely groupings.
 - When they tell you their areas, lock it in and move on. Two turns max — be decisive, don't ask for confirmation of what they just told you.
@@ -1537,7 +1604,7 @@ Return a JSON object:
 {{"response": "your conversational message", "service_areas": {{"base_suburb": "", "base_postcode": "", "base_lat": 0, "base_lng": 0, "radius_km": 20, "regions_included": ["region names they cover"], "regions_excluded": ["region names within radius they don't cover"], "barriers": ["relevant barriers from regional guide"], "travel_notes": "brief note on coverage shape"}}, "buttons": ["3-4 complete coverage options"], "step_complete": true/false}}
 
 Use REAL region names from the grouped data above for regions_included and regions_excluded.
-step_complete = true when the tradie has indicated which regions they cover.
+step_complete = true when the user has indicated which regions they cover.
 
 Return ONLY the JSON object."""
 
@@ -1681,7 +1748,7 @@ async def profile_node(state: OnboardingState) -> dict:
         business_name = state.get("business_name", "")
         contact_name = state.get("contact_name", "")
         response = await llm_fast.ainvoke([
-            SystemMessage(content=f"""You are the Service Seeking onboarding assistant. The tradie is viewing their profile preview and has typed a question or comment instead of publishing.
+            SystemMessage(content=f"""You are the Service Seeking onboarding assistant. The user is viewing their profile preview and has typed a question or comment instead of publishing.
 
 BUSINESS: {business_name}
 {f'CONTACT: {contact_name}' if contact_name else ''}
@@ -1707,6 +1774,116 @@ Answer their question helpfully and briefly (1-3 sentences). Be conversational a
         return {
             "current_node": "profile",
         }
+
+    # ── No-website gate: search for social profiles, ask user to verify ──
+    google_website = state.get("business_website", "")
+    if not google_website and not state.get("_website_asked"):
+        business_name = state.get("business_name", "")
+        business_state = state.get("business_state", "")
+
+        # Search Brave for social profiles
+        social_results = await brave_web_search(
+            f"{business_name} site:instagram.com OR site:facebook.com", count=5)
+
+        # Filter: require distinctive name words + at least one other name word in URL path or title
+        _GENERIC_TRADE_WORDS = {
+            "painter", "painters", "painting", "plumber", "plumbing", "electrician", "electrical",
+            "carpenter", "carpentry", "builder", "builders", "building", "cleaner", "cleaners",
+            "cleaning", "gardener", "gardening", "landscaping", "handyman", "roofer", "roofing",
+            "services", "service", "solutions",
+        }
+        name_words = {w.lower() for w in re.split(r'[\s\-&]+', business_name) if len(w) >= 2}
+        name_words -= {"pty", "ltd", "limited", "the", "and", "group", "co"}
+        distinctive = name_words - _GENERIC_TRADE_WORDS
+        other_words = name_words - distinctive
+
+        candidates = []
+        seen_domains = set()
+        for sr in social_results:
+            url = sr.get("url", "")
+            title = sr.get("title", "")
+            is_fb = "facebook.com" in url
+            is_ig = "instagram.com" in url
+            if not is_fb and not is_ig:
+                continue
+            # Deduplicate by platform
+            platform = "facebook" if is_fb else "instagram"
+            if platform in seen_domains:
+                continue
+            # Check name match in URL path and title
+            url_path = url.split(".com/")[-1].lower() if ".com/" in url else ""
+            check_text = url_path + " " + title.lower()
+            has_distinctive = any(w in check_text for w in distinctive) if distinctive else False
+            has_other = any(w in check_text for w in other_words) if other_words else True
+            if has_distinctive and has_other:
+                seen_domains.add(platform)
+                label = f"Instagram: @{url_path.strip('/')}" if is_ig and "/" not in url_path.strip("/") else f"{'Facebook' if is_fb else 'Instagram'}: {title}"
+                candidates.append({"url": url, "label": label, "platform": platform})
+
+        if candidates:
+            logger.info(f"[PROFILE] Social search found {len(candidates)} candidates: {[c['url'] for c in candidates]}")
+        else:
+            logger.info(f"[PROFILE] Social search: no matching profiles for '{business_name}'")
+
+        buttons = []
+        if candidates:
+            # Offer candidates as buttons for user confirmation
+            for c in candidates:
+                buttons.append({"label": f"Yes — {c['label']}", "value": c["url"]})
+            buttons.append({"label": "No, I'll paste my link", "value": "__PASTE_LINK__"})
+            buttons.append({"label": "Skip", "value": "__SKIP_WEBSITE__"})
+            candidate_list = "\n".join(f"- **{c['label']}**" for c in candidates)
+            msg = (
+                f"I found these social profiles — are any of them yours?\n\n"
+                f"{candidate_list}\n\n"
+                f"If not, you can paste your own link below."
+            )
+        else:
+            # Nothing found — ask for their link
+            buttons.append({"label": "Skip", "value": "__SKIP_WEBSITE__"})
+            msg = (
+                f"I couldn't find a website or social page for {business_name}. "
+                f"Got a website, Facebook, or Instagram I can grab your logo and photos from?\n\n"
+                f"Just paste the link below, or skip and you can upload photos yourself."
+            )
+
+        return {
+            "current_node": "profile",
+            "_website_asked": True,
+            "buttons": buttons,
+            "messages": [AIMessage(content=msg)],
+        }
+
+    # ── Handle website/social URL response ──
+    if state.get("_website_asked") and not state.get("_website_url_processed") and last_msg:
+        if last_msg == "__PASTE_LINK__":
+            # User said "no that's not mine" — ask them to paste their own link
+            return {
+                "current_node": "profile",
+                "buttons": [{"label": "Skip", "value": "__SKIP_WEBSITE__"}],
+                "messages": [AIMessage(content="No worries! Paste your website, Facebook, or Instagram link below — or skip to upload photos yourself.")],
+            }
+        if last_msg != "__SKIP_WEBSITE__":
+            # Extract URL from message
+            url_match = re.search(r'https?://[^\s<>"]+', last_msg)
+            if url_match:
+                user_url = url_match.group(0)
+                logger.info(f"[PROFILE] User provided URL: {user_url}")
+                is_social = "facebook.com" in user_url or "instagram.com" in user_url
+                if is_social:
+                    social_result = await scrape_social_images([user_url])
+                    if social_result.get("logo"):
+                        state["business_website"] = user_url
+                        state["_user_social_logo"] = social_result["logo"]
+                        state["_user_social_photos"] = social_result.get("photos", [])
+                        logger.info(f"[PROFILE] Social scrape: logo={'yes' if social_result.get('logo') else 'no'}, {len(social_result.get('photos', []))} photos")
+                else:
+                    scraped_user = await scrape_website_images(user_url)
+                    if scraped_user.get("logo") or scraped_user.get("photos"):
+                        state["business_website"] = user_url
+                        state["_user_website_scraped"] = scraped_user
+                        logger.info(f"[PROFILE] Website scrape: logo={'yes' if scraped_user.get('logo') else 'no'}, {len(scraped_user.get('photos', []))} photos")
+        state["_website_url_processed"] = True
 
     # ── First call: compute years, generate description, scrape website images ──
     years = _compute_years_in_business(state)
@@ -1740,7 +1917,7 @@ Answer their question helpfully and briefly (1-3 sentences). Be conversational a
 
     # ── Run LLM description + intro in parallel with scrape ──
     llm_task = llm_fast_json.ainvoke([
-        SystemMessage(content=f"""You're helping a tradie set up their Service Seeking profile. Do two things:
+        SystemMessage(content=f"""You're helping a business set up their Service Seeking profile. Do two things:
 
 1. Write a short "intro" message (1 sentence) presenting their profile preview and inviting them to make changes. Speak as one person (not "we"), conversational and Australian, use their first name if known. Like "Here's your profile [name] — let me know if you want to change anything." Vary the wording naturally. Don't give specific UI instructions.
 2. Write a "description" (2-3 sentences) for their profile listing.
@@ -1766,30 +1943,46 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         HumanMessage(content="Generate the intro and profile description."),
     ])
 
-    # Separate web results into: business site, social media, junk
+    # Separate web results into: business site (only if verified), junk
     scrape_url = ""
-    social_urls = []
     _directory_domains = [
         "yelp.com", "yellowpages", "truelocal", "hipages.com", "oneflare.com",
         "airtasker.com", "serviceseeking.com", "productreview.com", "localsearch.com",
         "hotfrog.com", "startlocal.com", "word-of-mouth.com", "mylocaltrades",
         ".gov.au", "wikipedia.org", "linkedin.com", "gumtree.com", "sgpgrid.com",
         "housetohomepros.com", "finditnowdirectory.com", "businessified.com",
-        "companydirectory.com",
+        "companydirectory.com", "facebook.com", "instagram.com",
     ]
+    # Build distinctive name words (exclude generic trade terms that match unrelated businesses)
+    _GENERIC_TRADE_WORDS = {
+        "painter", "painters", "painting", "plumber", "plumbing", "electrician", "electrical",
+        "carpenter", "carpentry", "builder", "builders", "building", "cleaner", "cleaners",
+        "cleaning", "gardener", "gardening", "landscaping", "landscaper", "handyman",
+        "roofer", "roofing", "concreter", "concreting", "tiler", "tiling", "fencing",
+        "services", "service", "solutions", "group", "company", "pro", "pros",
+    }
+    _bname_words = {w.lower() for w in re.split(r'[\s\-&]+', business_name) if len(w) >= 2}
+    _bname_words -= {"pty", "ltd", "limited", "the", "and", "group", "co"}
+    _distinctive_words = _bname_words - _GENERIC_TRADE_WORDS
     for wr in web_results:
         url = wr.get("url", "")
-        if "facebook.com" in url or "instagram.com" in url:
-            social_urls.append(url)
-        elif not scrape_url and not any(d in url for d in _directory_domains):
-            scrape_url = url
-
+        if not scrape_url and not any(d in url for d in _directory_domains):
+            # Only use Brave result if title or URL contains distinctive business name words
+            title_lower = wr.get("title", "").lower()
+            url_lower = url.lower()
+            if _distinctive_words and any(w in title_lower or w in url_lower for w in _distinctive_words):
+                scrape_url = url
+            else:
+                logger.info(f"[PROFILE] Skipping Brave URL (no distinctive name match): {url}")
 
     # Google Places website is the most reliable source — use it as primary scrape URL
     google_website = state.get("business_website", "")
-    if google_website:
+    google_is_social = google_website and ("facebook.com" in google_website or "instagram.com" in google_website)
+    if google_website and not google_is_social:
         scrape_url = google_website
         logger.info(f"[PROFILE] Using Google Places website: {google_website}")
+    elif google_is_social:
+        logger.info(f"[PROFILE] Google Places website is social: {google_website}")
 
     # ── Run everything in parallel: LLM + domain discovery (fallback) + scrape + social ──
     t0 = time.time()
@@ -1799,14 +1992,14 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         "llm": llm_task,
         "discover": discover_business_website(business_name) if not google_website else _noop(),
         "scrape": scrape_website_images(scrape_url) if scrape_url else _noop_dict(),
-        "social": scrape_social_images(social_urls),
+        "social": scrape_social_images([google_website]) if google_is_social else _noop_dict(),
     }
     results = dict(zip(tasks.keys(), await asyncio.gather(*tasks.values())))
 
     response = results["llm"]
     discovered_url = results["discover"] if not google_website else ""
     brave_scraped = results["scrape"]
-    social_result = results["social"]
+    google_social_result = results.get("social", {"logo": "", "photos": []})
 
     if discovered_url:
         _trace(state, "Website Discovery", time.time() - t0,
@@ -1849,7 +2042,7 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         description = raw.strip('"')
         logger.info(f"[PROFILE] JSON parse failed, using raw as description")
 
-    # ── Merge images: Google Places > website > social > Brave thumbnails ──
+    # ── Merge images: Google Places > verified website > user-provided URL only ──
     logo = scraped.get("logo", "")
 
     # Google Business photos are highest quality — real work photos from owner/customers
@@ -1858,35 +2051,38 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
     if google_photos:
         logger.info(f"[PROFILE] {len(google_photos)} Google Business photos available")
 
-    # Layer in website scraped images
+    # Layer in website scraped images (only from verified sources: Google website or domain discovery)
     for p in scraped.get("photos", []):
         if p not in photos and p != logo and len(photos) < 8:
             photos.append(p)
 
-    # Layer in social media images
-    if social_result:
-        if not logo and social_result.get("logo"):
-            logo = social_result["logo"]
-        social_added = 0
-        for p in social_result.get("photos", []):
+    # Layer in Google Places social result (when website is a Facebook/Instagram page)
+    if google_is_social and google_social_result:
+        if not logo and google_social_result.get("logo"):
+            logo = google_social_result["logo"]
+            logger.info(f"[PROFILE] Using Google-verified social logo from {google_website}")
+        for p in google_social_result.get("photos", []):
             if p not in photos and p != logo and len(photos) < 8:
                 photos.append(p)
-                social_added += 1
-        if social_added or social_result.get("logo"):
-            _trace(state, "Social Images", 0,
-                   f"logo={'yes' if social_result.get('logo') else 'no'}, {social_added} photos from social",
-                   {"urls": social_urls[:3]})
 
-    # Brave thumbnails as last resort — only from non-junk sources
-    _skip_thumb_domains = _directory_domains + ["facebook.com", "instagram.com"]
-    for wr in web_results:
-        thumb = wr.get("thumbnail", "")
-        wr_url = wr.get("url", "")
-        if thumb and thumb not in photos and thumb != logo:
-            if not any(d in wr_url for d in _skip_thumb_domains):
-                photos.append(thumb)
-        if len(photos) >= 8:
-            break
+    # Layer in user-provided URL results (social or website they gave us)
+    user_social_logo = state.get("_user_social_logo", "")
+    user_social_photos = state.get("_user_social_photos", [])
+    user_website_scraped = state.get("_user_website_scraped", {})
+    if user_social_logo and not logo:
+        logo = user_social_logo
+    for p in user_social_photos:
+        if p not in photos and p != logo and len(photos) < 8:
+            photos.append(p)
+    if user_website_scraped:
+        if not logo and user_website_scraped.get("logo"):
+            logo = user_website_scraped["logo"]
+        for p in user_website_scraped.get("photos", []):
+            if p not in photos and p != logo and len(photos) < 8:
+                photos.append(p)
+
+    if not logo and not photos:
+        logger.info(f"[PROFILE] No verified logo or photos found — monogram will be shown")
 
     _trace(state, "LLM: Profile Description", llm_time,
            f"Generated {len(description)} char description",
@@ -2207,6 +2403,24 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     postcode = abr.get("postcode", "")
     business_state = abr.get("state", "")
 
+    # Gate: inactive/cancelled ABN
+    abn_status = abr.get("status", "Active")
+    if abn_status and abn_status != "Active":
+        logger.warning(f"[BIZ] ABN {abn} status is '{abn_status}' — blocking onboarding")
+        return {
+            "current_node": "business_verification",
+            "abr_results": [],
+            "business_verified": False,
+            "messages": [AIMessage(content=(
+                f"It looks like the ABN for {business_name} is currently **{abn_status.lower()}** on the Australian Business Register. "
+                f"You'll need an active ABN to join Service Seeking. "
+                f"If you have a different business with an active ABN, I can help you set that one up."
+            ))],
+            "buttons": [
+                {"label": "Try a different business", "value": MSG_RESTART_BIZ},
+            ],
+        }
+
     # Run licence + Brave + Google Places in parallel
     # Licence search: use legal_name (entity registration name) — that's what NSW Fair Trading has
     licence_search_name = legal_name
@@ -2230,13 +2444,31 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
             return {"results": [], "count": 0}
         licence_task = _no_licence()
 
-    web_task = brave_web_search(f"{business_name} {business_state} tradesperson")
-    google_task = google_places_search(business_name, business_state)
+    brave_location = f"{postcode} {business_state}" if postcode else business_state
+    web_task = brave_web_search(f"{business_name} {brave_location}")
+    google_query_suffix = f"{postcode} {business_state}" if postcode else business_state
+    google_task = google_places_search(business_name, google_query_suffix)
     licence_results, web_results, google_place = await asyncio.gather(
         licence_task, web_task, google_task,
     )
     t1 = time.time()
     logger.info(f"[BIZ] Licence + Brave + Google Places: {t1 - t0:.1f}s (parallel)")
+
+    # Google Places retry: if no result, try with legal name / Pty Ltd variant
+    # e.g. "Ssr Painters" → "SSR Painters Pty Ltd" (Google listing often uses the company name)
+    if not google_place:
+        retry_names = []
+        if legal_name and legal_name.lower() != business_name.lower():
+            retry_names.append(legal_name.title() if legal_name.isupper() else legal_name)
+        if not any("pty" in n.lower() for n in [business_name] + retry_names):
+            retry_names.append(f"{business_name} Pty Ltd")
+        for retry_name in retry_names:
+            google_place = await google_places_search(retry_name, google_query_suffix)
+            if google_place:
+                logger.info(f"[BIZ] Google Places retry found result with '{retry_name}'")
+                break
+        if not google_place:
+            logger.info(f"[BIZ] Google Places: no result after retries")
 
     # NSW: if no results and name has apostrophe, retry without it
     search_name = licence_search_name
@@ -2245,9 +2477,13 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         licence_results = await nsw_licence_browse(search_name)
         logger.info(f"[BIZ] Licence retry without apostrophe: {len(licence_results.get('results', []))} results")
 
-    # Note: we do NOT fall back to trading name for licence search.
-    # Licences are registered under the legal/entity name. Searching generic trading
-    # names (e.g. "Sydney Cleaning") returns other businesses' licences — false positives.
+    # Licence fallback for trusts/companies: legal name (e.g. "KENDOBAY PTY. LIMITED") won't
+    # match a personal-name licence. Don't try trading name — too risky for false positives
+    # (e.g. "Petes Plumbing" matches "Pete's Precise Plumbing Pty Ltd"). Instead, ask the user.
+    _ENTITY_PATTERNS = re.compile(r'\b(pty|ltd|limited|trust|trustee|holdings|group)\b', re.IGNORECASE)
+    if business_state in ("NSW", "QLD") and not licence_results.get("results") and _ENTITY_PATTERNS.search(legal_name):
+        logger.info(f"[BIZ] Legal name '{legal_name}' is a company/trust — will ask user for licence holder name")
+        state["_needs_licence_holder_name"] = True
 
     licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse"}.get(business_state, "")
     if licence_source_label:
@@ -2264,6 +2500,87 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                {"title": r.get("title"), "url": r.get("url")}
                for r in (web_results or [])[:3]
            ]})
+
+    # Validate Brave results: keep only those that plausibly belong to this business.
+    # "Daniel Scope Electrical" → unique name, easy match. "Mike Smith" → common name, need location too.
+    if web_results:
+        _bname_words = set(re.sub(r'[^\w\s]', '', business_name.lower()).split())
+        _GENERIC_WORDS = {"pty", "ltd", "limited", "the", "and", "of", "services", "service",
+                          "group", "australia", "company", "trust", "trustee", "inc"}
+        _bname_words -= _GENERIC_WORDS
+        significant_words = {w for w in _bname_words if len(w) >= 3}
+
+        # Detect if the business name is generic/personal (all short common words like "Mike Smith")
+        # vs distinctive (has a unique word like "Scope" or "Kendobay")
+        _COMMON_NAMES = {"mike", "smith", "john", "david", "peter", "paul", "mark", "james",
+                         "chris", "dan", "daniel", "matt", "matthew", "andrew", "steve", "steven",
+                         "tom", "thomas", "ben", "sam", "jason", "ryan", "luke", "adam", "scott",
+                         "tony", "rob", "robert", "joe", "craig", "nick", "shane", "brett",
+                         "brown", "jones", "williams", "wilson", "taylor", "johnson", "white",
+                         "martin", "anderson", "thompson", "walker", "harris", "clark", "lewis",
+                         "lee", "king", "hall", "allen", "young", "hill", "moore", "green"}
+        is_generic_name = significant_words and significant_words.issubset(_COMMON_NAMES)
+
+        # Google-verified website domain as trusted anchor
+        google_website_domain = re.sub(r'https?://(www\.)?', '', google_place.get("website", "")).split("/")[0].lower()
+
+        validated = []
+        for wr in web_results:
+            haystack = f"{wr.get('title', '')} {wr.get('url', '')} {wr.get('description', '')}".lower()
+            has_name = any(w in haystack for w in significant_words) if significant_words else False
+            has_location = postcode in haystack if postcode else False
+
+            if google_website_domain and google_website_domain in wr.get("url", "").lower():
+                # URL matches Google-verified business website — always trust
+                validated.append(wr)
+            elif is_generic_name:
+                # Common personal name — require BOTH name AND location (postcode)
+                if has_name and has_location:
+                    validated.append(wr)
+            else:
+                # Distinctive business name — name match is enough
+                if has_name:
+                    validated.append(wr)
+
+        if len(validated) < len(web_results):
+            logger.info(f"[BRAVE] Filtered {len(web_results)} → {len(validated)} results "
+                        f"(name='{business_name}', generic={is_generic_name}, words={significant_words})")
+        web_results = validated
+
+    # Validate Google Place is in the right state (common name businesses return wrong locations)
+    _STATE_NAMES = {"NSW": "New South Wales", "VIC": "Victoria", "QLD": "Queensland",
+                    "WA": "Western Australia", "SA": "South Australia", "TAS": "Tasmania",
+                    "ACT": "Australian Capital Territory", "NT": "Northern Territory"}
+    google_address = google_place.get("address", "")
+    if google_place and business_state and google_address:
+        state_name = _STATE_NAMES.get(business_state, business_state)
+        if business_state not in google_address and state_name not in google_address:
+            logger.warning(f"[GOOGLE] Place '{google_place.get('name', '')}' is in '{google_address}' — expected {business_state}. Discarding wrong-state result.")
+            google_place = {}
+
+    # Quality check: discard low-confidence Google results (wrong name + no useful data)
+    if google_place:
+        g_name = google_place.get("name", "").lower().strip()
+        b_name = business_name.lower().strip()
+        g_reviews = google_place.get("review_count", 0) or 0
+        g_website = google_place.get("website", "")
+        # Check name similarity: do the core words overlap?
+        g_words = set(re.sub(r'[^\w\s]', '', g_name).split())
+        b_words = set(re.sub(r'[^\w\s]', '', b_name).split())
+        _STOP_WORDS = {"pty", "ltd", "limited", "the", "and", "of", "services", "service", "group", "australia"}
+        g_words -= _STOP_WORDS
+        b_words -= _STOP_WORDS
+        name_overlap = bool(g_words & b_words) if g_words and b_words else g_name in b_name or b_name in g_name
+        if not name_overlap and g_reviews == 0 and not g_website:
+            logger.warning(f"[GOOGLE] Low-confidence result: '{google_place.get('name', '')}' doesn't match '{business_name}', 0 reviews, no website. Discarding.")
+            google_place = {}
+
+    # Discard Google Places data if business is listed as permanently closed
+    # ABN is the source of truth — if it's Active, proceed. Just don't use stale Google data.
+    google_status = google_place.get("business_status", "")
+    if google_status == "CLOSED_PERMANENTLY":
+        logger.info(f"[GOOGLE] '{google_place.get('name', '')}' is CLOSED_PERMANENTLY — discarding Google data (ABN is active)")
+        google_place = {}
 
     # Extract Google rating + reviews from Places API
     google_rating = google_place.get("rating", 0.0)
@@ -2517,31 +2834,14 @@ def _format_conversation(messages: list, max_turns: int = 6) -> str:
 
 def _format_abr_results(results: dict, search_term: str) -> str:
     """Format ABR results for display."""
-    entries = results.get("results", [])
+    entries = [r for r in results.get("results", []) if r.get("status", "Active") == "Active"]
 
     if not entries:
         return f"I couldn't find a business matching '{search_term}' on the ABR. Could you try a different name, or enter your ABN directly?"
 
-    if len(entries) == 1:
-        r = entries[0]
-        gst = "Yes" if r.get("gst_registered") else "No"
-        location = f"{r.get('state', '')}" + (f" {r.get('postcode', '')}" if r.get('postcode') else "")
-        legal = r.get("legal_name", "")
-        display = r.get("display_name", "Unknown")
-        registered_line = ""
-        if legal and legal.lower() != display.lower():
-            registered_line = f"\n- Registered as: {legal}"
-        return f"""I found a match on the ABR:
-
-- Business: {display}{registered_line}
-- ABN: {r.get('abn', '')}
-- Type: {r.get('entity_type', 'Unknown')}
-- GST Registered: {gst}
-- Location: {location}
-
-Is this your business?"""
-
-    # Multiple results — buttons handle selection, suggest postcode if many matches
+    # All results shown as cards — buttons handle the detail display
+    label = "match" if len(entries) == 1 else f"{len(entries)} matches"
+    msg = f"I found {label} for '{search_term}'. Which one is yours?"
     if len(entries) >= 5:
-        return f"I found {len(entries)} matches for '{search_term}'. Which one is yours? If you don't see your business, try adding your postcode (e.g. \"{search_term} 2088\")."
-    return f"I found {len(entries)} matches for '{search_term}'. Which one is yours?"
+        msg += f" If you don't see your business, try adding your postcode (e.g. \"{search_term} 2088\")."
+    return msg
