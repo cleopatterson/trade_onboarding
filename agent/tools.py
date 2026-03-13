@@ -201,11 +201,21 @@ async def enrich_abr_with_entity_names(results: list[dict]) -> list[dict]:
             if resp.status_code != 200:
                 return result
             parsed = _parse_jsonp_response(resp.text, "abn")
+            if not isinstance(parsed, dict):
+                logger.warning(f"ABN detail parse returned {type(parsed).__name__} for {abn}")
+                return result
             detail = (parsed.get("results") or [{}])[0]
+            if not isinstance(detail, dict):
+                logger.warning(f"ABN detail result entry is {type(detail).__name__} for {abn}")
+                return result
             if detail.get("legal_name"):
                 result["legal_name"] = detail["legal_name"]
             if detail.get("_has_registered_trading_name"):
                 result["_has_registered_trading_name"] = True
+                # If we found a trading name and current display is the entity name, swap it
+                if detail.get("display_name") and detail["display_name"] != detail.get("legal_name", ""):
+                    result["registered_name"] = result["display_name"]  # preserve original for card subtitle
+                    result["display_name"] = detail["display_name"]
             if detail.get("status"):
                 result["status"] = detail["status"]
             if detail.get("entity_type") and result.get("entity_type") in ("Entity Name", "Trading Name", "Business Name", "Other Name"):
@@ -332,7 +342,9 @@ _TRADE_CATEGORY_MAP = {
     "air con": "Air Conditioning & Heating Technician",
     "aircon": "Air Conditioning & Heating Technician",
     "hvac": "Air Conditioning & Heating Technician",
-    "pest": "Exterminator",
+    "pest": "Carpet Cleaning & Pest Control Company",
+    "termite": "Carpet Cleaning & Pest Control Company",
+    "fumigat": "Carpet Cleaning & Pest Control Company",
     "waterproof": "Waterproofing Company",
     "insul": "Insulation Company",
     "floor": "Flooring Company",
@@ -349,9 +361,53 @@ _TRADE_CATEGORY_MAP = {
 # context_keywords, optional, default_classes. WA DMIRS trades get extra dmirs_search_code.
 
 _STATE_LICENCE_CONFIG = {
+    # Source: https://www.serviceseeking.com.au/industry-insights/blog/licence-information
+    # Licensed trades: Building, Plumbing/Drainage/Gasfitting, Electrical, Pest Control,
+    #                  Air Conditioning/Refrigeration (national ARC licence)
+    # NSW building/plumbing/electrical handled via Fair Trading API (not here)
+    # QLD building/plumbing handled via QBCC CSV, electrical via ESO (not here)
+    # NSW + QLD pest control and air con use web extraction (below)
+    "NSW": {
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "NSW Environment Protection Authority (EPA)",
+            "label": "pest management technician licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
+        },
+    },
+    "QLD": {
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "Queensland Department of Health",
+            "label": "pest management licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
+        },
+    },
+    #                  Air Conditioning/Refrigeration (national ARC licence)
+    # NSW and QLD handled via API/CSV — config here is for web extraction + self-report states
     "VIC": {
         "Electrician": {
-            "regulator": "Electrical Safety Office (ESV)",
+            "regulator": "Energy Safe Victoria (ESV)",
             "label": "REC or ESV licence number",
             "patterns": [r"REC\s?\d{4,6}", r"ESV\s?\d{4,6}"],
             "context_keywords": None,
@@ -367,39 +423,38 @@ _STATE_LICENCE_CONFIG = {
             "default_classes": ["Plumbing and Drainage"],
         },
         "Builder": {
-            "regulator": "Building Practitioners Board (BPC)",
-            "label": "BPC registration number",
+            "regulator": "Victorian Building Authority (VBA)",
+            "label": "VBA registration number",
             "patterns": [r"DB-U\s?\d{3,6}", r"CDB\s?\d{3,6}", r"CB\s?\d{3,6}", r"DB-L\s?\d{3,6}"],
             "context_keywords": None,
             "optional": False,
             "default_classes": ["Building Work"],
         },
-        "Painter": {
-            "regulator": "Building Practitioners Board (BPC)",
-            "label": "BPC registration number",
-            "patterns": [r"DB-L\s?\d{3,6}"],
-            "context_keywords": None,
-            "optional": True,
-            "default_classes": ["Painting"],
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "VIC Department of Health",
+            "label": "pest management technician licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
         },
-        "Carpenter": {
-            "regulator": "Building Practitioners Board (BPC)",
-            "label": "BPC registration number",
-            "patterns": [r"DB-L\s?\d{3,6}"],
-            "context_keywords": None,
-            "optional": True,
-            "default_classes": ["Carpentry"],
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
         },
     },
     "WA": {
         "Electrician": {
-            "regulator": "WA Department of Mines, Industry Regulation and Safety (DMIRS)",
+            "regulator": "WA Electrical Licensing Board",
             "label": "EC licence number",
             "patterns": [r"EC\s?\d{4,8}"],
             "context_keywords": None,
             "optional": False,
             "default_classes": ["Electrical Work"],
-            "dmirs_search_code": "EC",
         },
         "Plumber": {
             "regulator": "WA Department of Mines, Industry Regulation and Safety (DMIRS)",
@@ -408,7 +463,6 @@ _STATE_LICENCE_CONFIG = {
             "context_keywords": ["plumb", "registered plumber", "plumbing"],
             "optional": False,
             "default_classes": ["Plumbing and Drainage"],
-            "dmirs_search_code": "PL",
         },
         "Gas Fitter": {
             "regulator": "WA Department of Mines, Industry Regulation and Safety (DMIRS)",
@@ -417,12 +471,35 @@ _STATE_LICENCE_CONFIG = {
             "context_keywords": None,
             "optional": False,
             "default_classes": ["Gas Fitting"],
-            "dmirs_search_code": "GF",
+        },
+        "Builder": {
+            "regulator": "WA Department of Commerce",
+            "label": "builder registration number",
+            "patterns": [r"BR?\s?\d{4,8}", r"BC\s?\d{4,8}"],
+            "context_keywords": ["registered builder", "building contractor"],
+            "optional": False,
+            "default_classes": ["Building Work"],
+        },
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "WA Department of Health",
+            "label": "pest management technician licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
         },
     },
     "SA": {
         "Electrician": {
-            "regulator": "SA Office of the Technical Regulator (OTR)",
+            "regulator": "SA Consumer and Business Services",
             "label": "PGE licence number",
             "patterns": [r"PGE\s?\d{4,8}"],
             "context_keywords": None,
@@ -430,7 +507,7 @@ _STATE_LICENCE_CONFIG = {
             "default_classes": ["Electrical Work"],
         },
         "Plumber": {
-            "regulator": "SA Office of the Technical Regulator (OTR)",
+            "regulator": "SA Consumer and Business Services",
             "label": "plumber licence number",
             "patterns": [r"PGP\s?\d{4,8}"],
             "context_keywords": ["plumb", "registered plumber"],
@@ -438,7 +515,7 @@ _STATE_LICENCE_CONFIG = {
             "default_classes": ["Plumbing and Drainage"],
         },
         "Gas Fitter": {
-            "regulator": "SA Office of the Technical Regulator (OTR)",
+            "regulator": "SA Consumer and Business Services",
             "label": "gas fitter licence number",
             "patterns": [r"PGG\s?\d{4,8}"],
             "context_keywords": None,
@@ -452,6 +529,22 @@ _STATE_LICENCE_CONFIG = {
             "context_keywords": None,
             "optional": False,
             "default_classes": ["Building Work"],
+        },
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "SA Controlled Substances Licensing",
+            "label": "pest management licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
         },
     },
     "TAS": {
@@ -479,6 +572,22 @@ _STATE_LICENCE_CONFIG = {
             "optional": False,
             "default_classes": ["Building Work"],
         },
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "TAS Department of Primary Industries, Parks, Water and Environment",
+            "label": "pest operator licence number",
+            "patterns": [r"PMT\s?\d{4,6}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
+        },
     },
     "ACT": {
         "Electrician": {
@@ -505,10 +614,26 @@ _STATE_LICENCE_CONFIG = {
             "optional": False,
             "default_classes": ["Building Work"],
         },
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "ACT Health",
+            "label": "pest management licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
+        },
     },
     "NT": {
         "Electrician": {
-            "regulator": "NT Licensing Commission",
+            "regulator": "NT Electrical Contractors & Licensing Board",
             "label": "electrician licence number",
             "patterns": [r"C\d{4,8}"],
             "context_keywords": ["electric", "electrical contractor"],
@@ -516,7 +641,7 @@ _STATE_LICENCE_CONFIG = {
             "default_classes": ["Electrical Work"],
         },
         "Plumber": {
-            "regulator": "NT Licensing Commission",
+            "regulator": "NT Plumbers and Drainers Licensing Board",
             "label": "plumber licence number",
             "patterns": [r"C\d{4,8}"],
             "context_keywords": ["plumb"],
@@ -530,6 +655,22 @@ _STATE_LICENCE_CONFIG = {
             "context_keywords": None,
             "optional": False,
             "default_classes": ["Building Work"],
+        },
+        "Carpet Cleaning & Pest Control Company": {
+            "regulator": "NT Department of Health",
+            "label": "pest control operator licence number",
+            "patterns": [r"PMT\s?\d{4,8}"],
+            "context_keywords": ["pest", "termite", "fumigat"],
+            "optional": False,
+            "default_classes": ["Pest Control"],
+        },
+        "Air Conditioning & Heating Technician": {
+            "regulator": "Australian Refrigeration Council (ARC)",
+            "label": "ARC licence number",
+            "patterns": [r"AU\s?\d{4,8}", r"ARC\s?\d{4,8}", r"RHL\s?\d{4,8}"],
+            "context_keywords": ["arc", "refriger", "split system"],
+            "optional": False,
+            "default_classes": ["Refrigerant Handling"],
         },
     },
 }
@@ -665,12 +806,10 @@ def match_licence(
                     trade_keywords.add(kw)
 
     scored: list[tuple[int, int, dict]] = []
+    expired_scored: list[tuple[int, int, dict]] = []  # Non-current but name-matched
     all_candidates: list[dict] = []  # For debug details
     for lic in results:
-        if lic.get("status", "").lower() not in ("current", ""):
-            # Skip non-current (but allow empty status for WA DMIRS)
-            if lic.get("status", ""):
-                continue
+        is_current = lic.get("status", "").lower() in ("current", "")
 
         lic_name = (lic.get("licensee") or lic.get("name", "")).lower()
         lic_clean = _BUSINESS_SUFFIX_RE.sub('', lic_name).strip()
@@ -714,13 +853,32 @@ def match_licence(
         if name_score < 1:
             continue
 
-        scored.append((trade_rel, name_score, lic))
+        if is_current:
+            scored.append((trade_rel, name_score, lic))
+        else:
+            expired_scored.append((trade_rel, name_score, lic))
+
+    # Helper to attach best expired match info to details dict
+    def _add_expired_info(details: dict) -> dict:
+        if expired_scored:
+            expired_scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+            exp_rel, exp_name, exp_lic = expired_scored[0]
+            if exp_name >= 2:
+                details["expired_match"] = {
+                    "licensee": exp_lic.get("licensee") or exp_lic.get("name", ""),
+                    "licence_type": exp_lic.get("licence_type", ""),
+                    "licence_number": exp_lic.get("licence_number", ""),
+                    "status": exp_lic.get("status", ""),
+                    "expiry_date": exp_lic.get("expiry_date", ""),
+                }
+        return details
 
     if not scored:
         if return_details:
-            return None, {"reason": "no candidates scored ≥1", "search_clean": clean,
+            return None, _add_expired_info({"reason": "no current candidates scored ≥1", "search_clean": clean,
                           "detected_categories": detected_categories or [],
-                          "candidates": all_candidates}
+                          "candidates": all_candidates})
+        # Still return None as match, but caller can check expired_scored via details
         return None
 
     # Sort descending by (trade_relevance, name_score)
@@ -730,10 +888,10 @@ def match_licence(
     # Require name_score ≥ 2 for primary match
     if best_name >= 2:
         if return_details:
-            return best, {"reason": f"primary match (name={_NAME_LABELS[best_name]}, trade={_TRADE_LABELS[best_rel]})",
+            return best, _add_expired_info({"reason": f"primary match (name={_NAME_LABELS[best_name]}, trade={_TRADE_LABELS[best_rel]})",
                           "search_clean": clean, "detected_categories": detected_categories or [],
                           "winner": (best.get("licensee") or best.get("name", "")),
-                          "candidates": all_candidates}
+                          "candidates": all_candidates})
         return best
 
     # Single-current fallback: if only one current licence and name_score ≥ 1
@@ -741,16 +899,16 @@ def match_licence(
     if len(current) == 1 and current[0][1] >= 1:
         if return_details:
             fb = current[0][2]
-            return fb, {"reason": f"single-current fallback (name={_NAME_LABELS[current[0][1]]})",
+            return fb, _add_expired_info({"reason": f"single-current fallback (name={_NAME_LABELS[current[0][1]]})",
                         "search_clean": clean, "detected_categories": detected_categories or [],
                         "winner": (fb.get("licensee") or fb.get("name", "")),
-                        "candidates": all_candidates}
+                        "candidates": all_candidates})
         return current[0][2]
 
     if return_details:
-        return None, {"reason": f"best name_score={best_name} < 2, {len(current)} current candidates",
+        return None, _add_expired_info({"reason": f"best name_score={best_name} < 2, {len(current)} current candidates",
                       "search_clean": clean, "detected_categories": detected_categories or [],
-                      "candidates": all_candidates}
+                      "candidates": all_candidates})
     return None
 
 

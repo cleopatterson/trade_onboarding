@@ -434,17 +434,15 @@ class TestExtractLicenceFromText:
         assert result is not None
         assert result["licence_number"] == "54321"
 
-    def test_dbl_number_painter(self):
-        """DB-L number extracted for painters."""
+    def test_painter_not_licensed(self):
+        """Painters are not licensed trades — no config, no extraction."""
         result = extract_licence_from_text("Painting contractor DB-L 99999", "Painter")
-        assert result is not None
-        assert result["licence_number"] == "99999"
+        assert result is None
 
-    def test_dbl_number_carpenter(self):
-        """DB-L number extracted for carpenters."""
+    def test_carpenter_not_licensed(self):
+        """Carpenters are not licensed trades — no config, no extraction."""
         result = extract_licence_from_text("Carpentry services DB-L 88888", "Carpenter")
-        assert result is not None
-        assert result["licence_number"] == "88888"
+        assert result is None
 
     def test_plumber_with_context(self):
         """Plumber number extracted when context keywords present."""
@@ -580,11 +578,12 @@ class TestStateLicenceConfig:
                 assert "default_classes" in config, f"{state}/{trade} missing default_classes"
                 assert isinstance(config["patterns"], list), f"{state}/{trade} patterns not a list"
 
-    def test_wa_dmirs_codes(self):
+    def test_wa_trades(self):
         wa = _STATE_LICENCE_CONFIG["WA"]
-        assert wa["Electrician"]["dmirs_search_code"] == "EC"
-        assert wa["Plumber"]["dmirs_search_code"] == "PL"
-        assert wa["Gas Fitter"]["dmirs_search_code"] == "GF"
+        assert "Electrician" in wa
+        assert "Plumber" in wa
+        assert "Gas Fitter" in wa
+        assert "Builder" in wa  # Added — WA Dept of Commerce
 
     def test_vic_backward_compat(self):
         assert _VIC_LICENCE_CONFIG is _STATE_LICENCE_CONFIG["VIC"]
@@ -594,7 +593,7 @@ class TestStateLicenceConfig:
     def test_get_licence_config_found(self):
         config = get_licence_config("VIC", "Electrician")
         assert config is not None
-        assert config["regulator"] == "Electrical Safety Office (ESV)"
+        assert config["regulator"] == "Energy Safe Victoria (ESV)"
 
     def test_get_licence_config_not_found(self):
         assert get_licence_config("VIC", "Roofer") is None

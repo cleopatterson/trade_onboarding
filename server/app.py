@@ -453,7 +453,7 @@ async def chat(req: MessageRequest):
         "turn_time": turn_time,
         "user_message": req.message,
         "ai_response": response_text,
-        "buttons": [b.get("label", "") for b in buttons],
+        "buttons": [b.get("label", "") if isinstance(b, dict) else b for b in buttons],
         "business_name": state.get("business_name", ""),
         "business_verified": state.get("business_verified", False),
         "services_count": len(state.get("services", [])),

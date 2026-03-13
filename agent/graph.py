@@ -78,6 +78,97 @@ def _trace(state: dict, name: str, duration: float, result_summary: str, data: d
     })
 
 
+# ────────── LLM BUSINESS CLASSIFIER ──────────
+
+_SS_CATEGORIES = [
+    "Accountant","Air Conditioning & Heating Technician","App Developer","Arborist",
+    "Asbestos Removalist","Asphalting Company","Auto Electrician","Auto Tuner",
+    "Automatic Door & Gate Company","Automotive Glass Repair Company",
+    "Bathroom Renovation Company","Blinds & Shutter Installer","Bookkeeper",
+    "Bricklayer","Builder","Building Designer","Building Inspector","Car detailer",
+    "Carpenter","Carpet Cleaner","Carpet Installer","Celebrant","Cleaner",
+    "Computer Repairer & IT Service Provider","Concreter","Crane Hire Company",
+    "Demolition Company","Dishwasher Installation & Repair Company",
+    "Door Installation Company","Draftsman","Ducting and Ventiliation Company",
+    "Earthworks contractor","Electrician","Exterminator","Fencing & Gate Company",
+    "Financial Planner","Flooring Company","Fridge & Freezer Repair & Installation Company",
+    "Gardener","Gas Fitter","Glass Repair Company","Graphic Designer","Hair Stylist",
+    "Handyman","High pressure cleaning company","Home theatre installation company",
+    "Housekeeper","Insulation Company","Insurance","Interior Designer",
+    "Kitchen Renovation Company","Labourer","Landscaper",
+    "Lawyers and legal professionals","Lighting installation company","Locksmith",
+    "Make Up Artist","Mechanic","Musician & Entertainer","Oven Installation & Repairs",
+    "Painter","Paver","Photographer","Plasterer","Plumber","Pool & Spa Company",
+    "Printer","Removalist","Rendering Company","Roofer","Rubbish Removalist",
+    "Scaffolding Company","Security Company","Shades and Sails Company","Sign Company",
+    "Skylight Installation Company","Smash Repair Company","Solar Company","Stonemason",
+    "Structural Engineer","Surveyor","TV Antenna Technician","TV repair technician",
+    "Test and tag company","Tiler","Upholsterer","Videographer",
+    "Washing Machine and Dryer Technician","Waterproofing Company",
+    "Website Developers and Designers","Wedding & Event Supplier",
+    "Welders and Boilermakers","Window Cleaner","Window and Glass Installation Company",
+]
+
+async def classify_business_from_web(
+    business_name: str,
+    google_name: str = "",
+    google_type: str = "",
+    google_reviews: list[dict] = None,
+    website_text: str = "",
+) -> dict:
+    """Use Haiku to classify a business from its web presence.
+
+    Returns {"is_trade": bool, "categories": [...], "reason": "..."}.
+    Replaces keyword matching for Google/website signals.
+    """
+    # Build context from available signals
+    signals = []
+    if google_name:
+        signals.append(f"Google Places listing: {google_name}")
+    if google_type:
+        signals.append(f"Google business type: {google_type}")
+    if google_reviews:
+        review_text = " | ".join(r.get("text", "")[:200] for r in google_reviews[:3])
+        if review_text:
+            signals.append(f"Customer reviews: {review_text}")
+    if website_text:
+        signals.append(f"Website content (excerpt): {website_text[:1500]}")
+
+    if not signals:
+        return {"is_trade": True, "categories": [], "reason": "No web data to classify"}
+
+    signals_str = "\n".join(signals)
+    cat_list = ", ".join(_SS_CATEGORIES)
+
+    try:
+        response = await llm_fast.ainvoke([
+            SystemMessage(content=f"""You are classifying an Australian business for Service Seeking, a marketplace for trade and service professionals.
+
+BUSINESS NAME: {business_name}
+
+WEB PRESENCE DATA:
+{signals_str}
+
+SERVICE SEEKING CATEGORIES:
+{cat_list}
+
+Analyse the web presence and determine:
+1. Is this a trade or service business that belongs on Service Seeking? (plumbers, electricians, builders, cleaners, photographers, accountants, designers, etc.)
+   - NOT suitable: retail shops, restaurants, auction houses, real estate agencies, medical practices, recruitment agencies, mining companies, equipment dealers
+2. If it IS a trade/service business, which Service Seeking categories match? Use EXACT category names from the list above. Only include categories where the web evidence clearly shows they offer that service.
+
+Respond with JSON only:
+{{"is_trade": true/false, "categories": ["Category Name", ...], "reason": "one sentence explanation"}}"""),
+            HumanMessage(content="Classify this business."),
+        ])
+        parsed = json.loads(_extract_json(response.content))
+        logger.info(f"[CLASSIFY] {business_name}: is_trade={parsed.get('is_trade')}, categories={parsed.get('categories', [])}, reason={parsed.get('reason', '')}")
+        return parsed
+    except Exception as e:
+        logger.warning(f"[CLASSIFY] Failed for {business_name}: {e}")
+        return {"is_trade": True, "categories": [], "reason": f"Classification failed: {e}"}
+
+
 # ────────── NODE FUNCTIONS ──────────
 
 async def welcome_node(state: OnboardingState) -> dict:
@@ -618,6 +709,16 @@ def _build_service_prompt(
             licence_context += f"\nLicence #{licence_info['licence_number']} — Status: {licence_info.get('status', 'Unknown')}{expiry_text}"
         if licence_info.get("compliance_clean") is False:
             licence_context += "\n⚠️ Compliance issues on record"
+    elif licence_info.get("_expired"):
+        # Expired/cancelled licence — still useful signal for the AI
+        expiry = licence_info.get("expiry_date", "")
+        licence_context = (
+            f"\n⚠️ EXPIRED LICENCE: {licence_info.get('licence_type', 'Trade')} licence #{licence_info.get('licence_number', '?')} "
+            f"— Status: {licence_info.get('status', 'Unknown')}"
+            f"{f', Expired: {expiry}' if expiry else ''}. "
+            f"This tells us what trade they're in, but they may need to renew before taking jobs. "
+            f"Mention this conversationally — don't block them."
+        )
     elif gaps:
         licence_context = f"\nNO LICENCE ON FILE — category detected from business profile. Map all subcategories as a starting point and let the user confirm."
 
@@ -625,6 +726,31 @@ def _build_service_prompt(
     if web_results:
         web_lines = [f"- {r.get('title', '')}: {r.get('url', '')}" for r in web_results[:3]]
         web_context = f"\nWEB PRESENCE:\n" + "\n".join(web_lines)
+
+    # Data confidence summary — tells the LLM what we found AND what we didn't
+    has_licence = bool(licence_classes)
+    has_google = bool(state.get("google_rating") or state.get("google_reviews"))
+    has_category = bool(services or gaps)
+    confidence_parts = []
+    if has_licence:
+        confidence_parts.append("licence found")
+    else:
+        confidence_parts.append("no licence found")
+    if has_google:
+        confidence_parts.append(f"Google Places verified ({state.get('google_rating', 0)}★)")
+    else:
+        confidence_parts.append("no Google Places match")
+    if has_category:
+        confidence_parts.append("trade category detected")
+    else:
+        confidence_parts.append("no trade category detected")
+    if web_results:
+        confidence_parts.append(f"{len(web_results)} web results (may or may not be this business)")
+    else:
+        confidence_parts.append("no web results")
+    data_confidence = f"\nDATA CONFIDENCE: {' · '.join(confidence_parts)}"
+    if not has_licence and not has_google and not has_category:
+        data_confidence += "\n⚠️ LOW CONFIDENCE — we know very little about this business. Do NOT make assumptions from web results. Simply ask what services they offer."
 
     google_reviews = state.get("google_reviews", [])
     reviews_context = ""
@@ -770,6 +896,7 @@ GUIDELINES:
 - Licence classes are your strongest signal for trades — they tell you exactly what they're licensed for. Professional services may not have trade licences, and that's fine.
 {turn1_rule}
 - Google reviews are a strong signal — if customers mention specific work, that confirms those services. Use reviews to validate mapping.
+- READ THE DATA CONFIDENCE LINE. When confidence is low (no licence, no Google, no category), web results are unreliable — they may be about a completely different person or business with the same name. In low-confidence situations, ignore web results and simply ask what services they offer.
 - FOLLOW-UP RULE: Services from the user's previous answer have already been added to SERVICES MAPPED SO FAR (check JUST ADDED note). Your job: acknowledge what was added in one sentence, then look at the REMAINING GAPS and pick the most relevant group of 3-6 services to ask about next. Group them by theme — e.g. "cabling work" (Data Cabling, Cabling, TV Antenna), "solar and energy" (Solar panel installation, Energy efficiency checks). Pick high-value, commonly-offered services first. One question per turn. If no gaps remain, set step_complete=true. Your output "services" array should contain ONLY newly added services from this turn — existing services are preserved automatically.
 - BUTTON RULE: Buttons are multi-select toggles — the user can tap individual services to select/deselect them, then send their selection. ALWAYS include "Yes, all of these" as the FIRST button and a clear decline as the LAST button — use "None of these" or "Not for us". In between, include one button per service in the cluster using the exact subcategory name (no "Just" prefix). NEVER use ambiguous options like "Occasionally", "Not regularly", "Sometimes", "Rarely" — we need a clear yes or no, not frequency. NEVER use "Skip these". Aim for 4-7 buttons total (all + services + decline).
 - COMPLETION RULE: Set step_complete=true when there are no REMAINING GAPS left, OR the user says they are done / wants to move on. Do NOT drag it out — ask the most important gaps efficiently, then wrap up.
@@ -800,7 +927,7 @@ Return ONLY the JSON object."""
     dynamic_context = f"""BUSINESS: {business_name}
 {f'CONTACT: {contact}' if contact else ''}
 {_format_services_context(services, general_headings)}
-{licence_context}
+{licence_context}{data_confidence}
 {web_context}{reviews_context}{gaps_text}{cluster_context}
 
 CONVERSATION SO FAR:
@@ -998,10 +1125,10 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     needs_licence = state.get("_needs_licence_number", False)
 
     # ── Non-trade business gate (turn 1 only, skip on ESO re-entry) ──
+    # Uses LLM classification from _confirm_business (replaces brittle _NON_TRADE_TYPES keyword set)
     if svc_turn == 1 and not services and not licence_classes and not _is_eso_reentry:
-        google_type = state.get("google_primary_type", "")
-        if google_type and google_type in _NON_TRADE_TYPES:
-            type_label = google_type.replace("_", " ")
+        is_trade = state.get("_is_trade_business", True)
+        if not is_trade:
             return {
                 "current_node": "service_discovery",
                 "services": [],
@@ -1009,9 +1136,8 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                     {"label": "Try a different business", "value": MSG_RESTART_BIZ},
                 ],
                 "messages": [AIMessage(content=(
-                    f"It looks like {business_name} is listed as a {type_label} on Google. "
+                    f"It looks like {business_name} isn't a trade or service business based on what I found online. "
                     f"Service Seeking is for trade and service professionals — things like plumbing, electrical, building, cleaning, photography, design, and similar. "
-                    f"Unfortunately we can't set up retail shops, restaurants, or medical practices. "
                     f"If you have a different business that offers trade or professional services, I can help you get that one set up."
                 ))],
             }
@@ -2445,7 +2571,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         licence_task = _no_licence()
 
     brave_location = f"{postcode} {business_state}" if postcode else business_state
-    web_task = brave_web_search(f"{business_name} {brave_location}")
+    web_task = brave_web_search(f"{business_name} {brave_location} Australia")
     google_query_suffix = f"{postcode} {business_state}" if postcode else business_state
     google_task = google_places_search(business_name, google_query_suffix)
     licence_results, web_results, google_place = await asyncio.gather(
@@ -2501,52 +2627,6 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                for r in (web_results or [])[:3]
            ]})
 
-    # Validate Brave results: keep only those that plausibly belong to this business.
-    # "Daniel Scope Electrical" → unique name, easy match. "Mike Smith" → common name, need location too.
-    if web_results:
-        _bname_words = set(re.sub(r'[^\w\s]', '', business_name.lower()).split())
-        _GENERIC_WORDS = {"pty", "ltd", "limited", "the", "and", "of", "services", "service",
-                          "group", "australia", "company", "trust", "trustee", "inc"}
-        _bname_words -= _GENERIC_WORDS
-        significant_words = {w for w in _bname_words if len(w) >= 3}
-
-        # Detect if the business name is generic/personal (all short common words like "Mike Smith")
-        # vs distinctive (has a unique word like "Scope" or "Kendobay")
-        _COMMON_NAMES = {"mike", "smith", "john", "david", "peter", "paul", "mark", "james",
-                         "chris", "dan", "daniel", "matt", "matthew", "andrew", "steve", "steven",
-                         "tom", "thomas", "ben", "sam", "jason", "ryan", "luke", "adam", "scott",
-                         "tony", "rob", "robert", "joe", "craig", "nick", "shane", "brett",
-                         "brown", "jones", "williams", "wilson", "taylor", "johnson", "white",
-                         "martin", "anderson", "thompson", "walker", "harris", "clark", "lewis",
-                         "lee", "king", "hall", "allen", "young", "hill", "moore", "green"}
-        is_generic_name = significant_words and significant_words.issubset(_COMMON_NAMES)
-
-        # Google-verified website domain as trusted anchor
-        google_website_domain = re.sub(r'https?://(www\.)?', '', google_place.get("website", "")).split("/")[0].lower()
-
-        validated = []
-        for wr in web_results:
-            haystack = f"{wr.get('title', '')} {wr.get('url', '')} {wr.get('description', '')}".lower()
-            has_name = any(w in haystack for w in significant_words) if significant_words else False
-            has_location = postcode in haystack if postcode else False
-
-            if google_website_domain and google_website_domain in wr.get("url", "").lower():
-                # URL matches Google-verified business website — always trust
-                validated.append(wr)
-            elif is_generic_name:
-                # Common personal name — require BOTH name AND location (postcode)
-                if has_name and has_location:
-                    validated.append(wr)
-            else:
-                # Distinctive business name — name match is enough
-                if has_name:
-                    validated.append(wr)
-
-        if len(validated) < len(web_results):
-            logger.info(f"[BRAVE] Filtered {len(web_results)} → {len(validated)} results "
-                        f"(name='{business_name}', generic={is_generic_name}, words={significant_words})")
-        web_results = validated
-
     # Validate Google Place is in the right state (common name businesses return wrong locations)
     _STATE_NAMES = {"NSW": "New South Wales", "VIC": "Victoria", "QLD": "Queensland",
                     "WA": "Western Australia", "SA": "South Australia", "TAS": "Tasmania",
@@ -2570,9 +2650,16 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         _STOP_WORDS = {"pty", "ltd", "limited", "the", "and", "of", "services", "service", "group", "australia"}
         g_words -= _STOP_WORDS
         b_words -= _STOP_WORDS
-        name_overlap = bool(g_words & b_words) if g_words and b_words else g_name in b_name or b_name in g_name
-        if not name_overlap and g_reviews == 0 and not g_website:
-            logger.warning(f"[GOOGLE] Low-confidence result: '{google_place.get('name', '')}' doesn't match '{business_name}', 0 reviews, no website. Discarding.")
+        common = g_words & b_words
+        # Require meaningful overlap: at least 50% of the shorter name's words must match
+        # (1 word out of 3 is not enough — "Smith Broughton Auctioneers" ≠ "Broughton Construction Company")
+        if g_words and b_words:
+            min_words = min(len(g_words), len(b_words))
+            name_overlap = len(common) >= max(1, (min_words + 1) // 2)  # ceil(50%)
+        else:
+            name_overlap = g_name in b_name or b_name in g_name
+        if not name_overlap:
+            logger.warning(f"[GOOGLE] Name mismatch: '{google_place.get('name', '')}' doesn't match '{business_name}' (overlap: {len(common)}/{min_words if g_words and b_words else 0} words). Discarding.")
             google_place = {}
 
     # Discard Google Places data if business is listed as permanently closed
@@ -2669,6 +2756,39 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                             "expiry": details.get("expiry_date"),
                             "classes": licence_classes})
 
+        # Use expired licence for category signal when no current match found
+        expired_match = match_details.get("expired_match")
+        if not best_match and expired_match:
+            expired_type = expired_match.get("licence_type", "")
+            expired_status = expired_match.get("status", "")
+            expired_expiry = expired_match.get("expiry_date", "")
+            expired_number = expired_match.get("licence_number", "")
+            logger.info(f"[BIZ] Expired licence found: #{expired_number} ({expired_type}) — {expired_status}, expired {expired_expiry}")
+            # Store expired licence info so the AI can mention it
+            licence_info = {
+                "licence_number": expired_number,
+                "licence_type": expired_type,
+                "status": expired_status,
+                "expiry_date": expired_expiry,
+                "licence_source": "nsw",
+                "_expired": True,
+            }
+            # Extract trade category from licence type (e.g. "Contractor Licence" → "Builder")
+            _LICENCE_TYPE_TO_CATEGORY = {
+                "contractor": "Builder", "builder": "Builder",
+                "electrician": "Electrician", "electrical": "Electrician",
+                "plumber": "Plumber", "plumbing": "Plumber",
+                "trade": "Builder",  # generic trade licence
+            }
+            for kw, cat in _LICENCE_TYPE_TO_CATEGORY.items():
+                if kw in expired_type.lower():
+                    if cat not in pre_detected:
+                        pre_detected.append(cat)
+                    break
+            _trace(state, "Expired Licence", 0,
+                   f"#{expired_number} ({expired_type}) — {expired_status}, expired {expired_expiry}",
+                   expired_match)
+
         # Await website text if it wasn't consumed in the licence parallel block
         if website_text_task:
             website_text = await website_text_task
@@ -2700,24 +2820,51 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     if contact_phone:
         logger.info(f"[BIZ] Contact phone: {contact_phone}")
 
-    # Re-detect with licence classes + website text now available (may find additional categories)
+    # Re-detect categories: keyword matching for name + licence (high signal),
+    # then LLM classification for web presence (replaces brittle keyword scanning of website text)
     detected_categories = _detect_categories(business_name, licence_classes,
-                                             google_place.get("name", ""), google_type,
-                                             google_types=google_types,
-                                             website_text=website_text) if (licence_classes or website_text) else pre_detected
+                                             "", "",  # skip Google/website keywords — LLM handles those
+                                             max_categories=0)
+
+    # LLM classification of web presence (Google + website text)
+    # Only call if we have web data to classify AND keyword detection didn't find enough
+    llm_categories = []
+    is_trade = True
+    if google_place or website_text:
+        t_classify = time.time()
+        classification = await classify_business_from_web(
+            business_name,
+            google_name=google_place.get("name", ""),
+            google_type=google_type,
+            google_reviews=google_reviews,
+            website_text=website_text,
+        )
+        classify_time = time.time() - t_classify
+        is_trade = classification.get("is_trade", True)
+        llm_categories = classification.get("categories", [])
+        _trace(state, "LLM Business Classifier", classify_time,
+               f"{'Trade' if is_trade else 'NOT TRADE'}: {', '.join(llm_categories) if llm_categories else 'no categories'} — {classification.get('reason', '')}",
+               {"is_trade": is_trade, "categories": llm_categories, "reason": classification.get("reason", "")})
+
+        # Merge LLM categories with keyword-detected ones (deduplicated, keyword-detected first)
+        seen = set(detected_categories)
+        for cat in llm_categories:
+            if cat in _SS_CATEGORIES and cat not in seen:
+                detected_categories.append(cat)
+                seen.add(cat)
+
     detected_category = detected_categories[0] if detected_categories else None
     if detected_categories:
         _trace(state, "Category Detection", 0,
                f"Detected: {', '.join(detected_categories)}",
                {"categories": detected_categories,
-                "inputs": {"business_name": business_name,
-                            "licence_classes": licence_classes[:5],
-                            "google_name": google_place.get("name", ""),
-                            "google_type": google_type}})
+                "sources": {"keyword": _detect_categories(business_name, licence_classes, "", ""),
+                            "llm": llm_categories}})
 
     # Web extraction: try to extract licence from Brave descriptions, then full website scan
-    # Applies to VIC, WA, SA, TAS, ACT, NT — any state with patterns in _STATE_LICENCE_CONFIG
-    if business_state in {"VIC", "WA", "SA", "TAS", "ACT", "NT"} and not licence_info and detected_categories:
+    # Applies to any state/trade combo with patterns in _STATE_LICENCE_CONFIG
+    # (NSW/QLD have entries for pest control + air con only — building/plumbing/electrical use API/CSV)
+    if not licence_info and detected_categories:
         brave_text = " ".join(r.get("description", "") for r in (web_results or [])[:3])
         for try_cat in detected_categories:
             state_config = get_licence_config(business_state, try_cat)
@@ -2808,6 +2955,8 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "business_suburb": google_place.get("suburb", ""),
         "google_address": google_place.get("short_address", "") or google_place.get("address", ""),
         "abn_registration_date": abr.get("entity_start_date", ""),
+        "_is_trade_business": is_trade,
+        "_detected_categories": detected_categories,
         "messages": [AIMessage(content=f"Great, {business_name} is confirmed!")],
     }
 
