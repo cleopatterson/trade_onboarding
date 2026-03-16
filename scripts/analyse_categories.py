@@ -118,6 +118,10 @@ def main():
         "--column", default=None,
         help="Column name for industry/category (auto-detected if omitted)"
     )
+    parser.add_argument(
+        "--max-industries", type=int, default=6,
+        help="Exclude businesses listing more than N categories (spam filter, default: 6)"
+    )
     args = parser.parse_args()
 
     csv_path = Path(args.csv_path)
@@ -141,6 +145,7 @@ def main():
             sys.exit(1)
         print(f"Using column: '{col_name}'")
 
+        spam_filtered = 0
         for row in reader:
             raw = row.get(col_name, "").strip()
             if not raw:
@@ -148,9 +153,12 @@ def main():
                 continue
             cats = parse_categories(raw)
             if len(cats) >= 1:
+                if args.max_industries and len(cats) > args.max_industries:
+                    spam_filtered += 1
+                    continue
                 rows.append(cats)
 
-    print(f"Loaded {len(rows)} businesses ({skipped} skipped, no industry)")
+    print(f"Loaded {len(rows)} businesses ({skipped} skipped no industry, {spam_filtered} filtered as spam >{args.max_industries} industries)")
 
     # Build co-occurrence
     cooccurrence, category_counts = build_cooccurrence(rows)

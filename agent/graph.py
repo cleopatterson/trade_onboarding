@@ -1284,7 +1284,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             logger.info(f"[SVC] {sr_trade} licence skipped")
             # Flag that a required licence was not provided — for output JSON + soft warning
             sr_regulator = self_report.get("regulator", "the relevant authority")
-            sr_state = self_report.get("state", business_state)
+            sr_state = self_report.get("state", state.get("business_state", ""))
             _eso_updates["_licence_required_but_missing"] = {
                 "trade": sr_trade,
                 "state": sr_state,
