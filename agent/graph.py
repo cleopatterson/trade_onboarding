@@ -790,6 +790,19 @@ def _build_service_prompt(
         else:
             licence_ack = "Mention briefly that you found their NSW trade licence on file. "
 
+    # ── Licence required but missing warning ──
+    licence_missing = state.get("_licence_required_but_missing", {})
+    if licence_missing and not licence_ack:
+        _lm_trade = licence_missing.get("trade", "this trade")
+        _lm_state = licence_missing.get("state", "your state")
+        _lm_regulator = licence_missing.get("regulator", "the relevant authority")
+        licence_ack = (
+            f"IMPORTANT: Note that {_lm_trade}s in {_lm_state} require a licence from {_lm_regulator}. "
+            f"Mention this briefly and helpfully — e.g. \"Just a heads-up — you'll need a {_lm_regulator} licence "
+            f"to work as a {_lm_trade.lower()} in {_lm_state}. You can add it to your profile later.\" "
+            f"Keep it light and non-blocking — they may be in the process of getting one. "
+        )
+
     # ── Related category suggestions hint ──
     suggestions_hint = ""
     if related_suggestions:
@@ -1269,6 +1282,14 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             logger.info(f"[SVC] {sr_trade} licence self-reported: {lic_num}")
         else:
             logger.info(f"[SVC] {sr_trade} licence skipped")
+            # Flag that a required licence was not provided — for output JSON + soft warning
+            sr_regulator = self_report.get("regulator", "the relevant authority")
+            sr_state = self_report.get("state", business_state)
+            _eso_updates["_licence_required_but_missing"] = {
+                "trade": sr_trade,
+                "state": sr_state,
+                "regulator": sr_regulator,
+            }
         svc_turn = 1
         is_follow_up = False
 
@@ -2463,7 +2484,15 @@ async def complete_node(state: OnboardingState) -> dict:
             "status": licence_info.get("status", ""),
             "expiry": licence_info.get("expiry_date", ""),
             "classes": state.get("licence_classes", []),
+            "source": licence_info.get("licence_source", ""),
         } if licence_info else None,
+        "licence_warning": {
+            "required": True,
+            "status": "not_provided",
+            "trade": state.get("_licence_required_but_missing", {}).get("trade", ""),
+            "state": state.get("_licence_required_but_missing", {}).get("state", ""),
+            "regulator": state.get("_licence_required_but_missing", {}).get("regulator", ""),
+        } if state.get("_licence_required_but_missing") else None,
         "services": services_output,
         "service_areas": {
             "base": {
@@ -2681,9 +2710,14 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     # Licence fallback for trusts/companies: legal name (e.g. "KENDOBAY PTY. LIMITED") won't
     # match a personal-name licence. Don't try trading name — too risky for false positives
     # (e.g. "Petes Plumbing" matches "Pete's Precise Plumbing Pty Ltd"). Instead, ask the user.
-    _ENTITY_PATTERNS = re.compile(r'\b(pty|ltd|limited|trust|trustee|holdings|group)\b', re.IGNORECASE)
-    if business_state in ("NSW", "QLD", "VIC") and not licence_results.get("results") and _ENTITY_PATTERNS.search(legal_name):
-        logger.info(f"[BIZ] Legal name '{legal_name}' is a company/trust — will ask user for licence holder name")
+    _ENTITY_PATTERNS = re.compile(r'\b(pty|ltd|limited|trust|trustee|holdings|group|partnership)\b', re.IGNORECASE)
+    _is_entity = _ENTITY_PATTERNS.search(legal_name)
+    # Also check ABR entity_type for partnerships (name may just be "SMITH AND JONES")
+    _abr_entity_type = abr.get("entity_type", "")
+    if not _is_entity and "partner" in _abr_entity_type.lower():
+        _is_entity = True
+    if business_state in ("NSW", "QLD", "VIC") and not licence_results.get("results") and _is_entity:
+        logger.info(f"[BIZ] Legal name '{legal_name}' is a company/trust/partnership — will ask user for licence holder name")
         state["_needs_licence_holder_name"] = True
 
     licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse", "VIC": "VBA/ESV Search"}.get(business_state, "")
