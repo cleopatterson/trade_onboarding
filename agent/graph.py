@@ -28,7 +28,7 @@ from agent.tools import (
     discover_business_website, scrape_social_images, ai_filter_photos,
     google_places_search, compute_service_gaps, compute_initial_services,
     scrape_website_text,
-    qbcc_licence_lookup, _detect_category, _detect_categories,
+    qbcc_licence_lookup, vic_vba_lookup, esv_rec_lookup, _detect_category, _detect_categories,
     extract_licence_from_text, scan_website_for_licence, _VIC_LICENCE_CONFIG,
     get_licence_config, match_licence,
     suggest_related_categories, map_extra_categories,
@@ -699,6 +699,8 @@ def _build_service_prompt(
         source = licence_info.get("licence_source", "nsw")
         label = {
             "qbcc_csv": "QBCC LICENCE",
+            "vba": "VBA REGISTRATION",
+            "esv": "ESV REC REGISTRATION",
             "web_extracted": "LICENCE NUMBER (FROM WEBSITE — UNVERIFIED)",
             "self_reported": "LICENCE NUMBER (SELF-REPORTED — UNVERIFIED)",
         }.get(source, "NSW FAIR TRADING LICENCE")
@@ -777,6 +779,10 @@ def _build_service_prompt(
         source = licence_info.get("licence_source", "nsw")
         if source == "qbcc_csv":
             licence_ack = "Mention briefly that you found their QBCC licence on file (e.g. \"I found your QBCC licence, so...\"). "
+        elif source == "vba":
+            licence_ack = "Mention briefly that you found their VBA registration on file (e.g. \"I found your VBA registration, so...\"). "
+        elif source == "esv":
+            licence_ack = "Mention briefly that you found their ESV electrical contractor registration on file (e.g. \"I found your REC registration, so...\"). "
         elif source == "web_extracted":
             licence_ack = "Mention you spotted a licence number on their website and have noted it down — do NOT say it has been verified. "
         elif source == "self_reported":
@@ -1192,6 +1198,23 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                         state["licence_classes"] = classes
                         state["licence_info"] = result
                         logger.info(f"[BIZ] QBCC licence found under '{holder_name}': {classes}")
+            elif business_state == "VIC":
+                # Retry VBA search with the personal name the user provided
+                vic_trade = next((c for c in state.get("detected_categories", [])
+                                  if c in ("Plumber", "Builder", "Carpenter",
+                                           "Bathroom Renovation Company", "Kitchen Renovation Company")), None)
+                if vic_trade:
+                    vba_result = await vic_vba_lookup(holder_name, vic_trade)
+                    vba_matches = vba_result.get("results", [])
+                    if vba_matches:
+                        best, _ = match_licence(vba_matches, holder_name, return_details=True)
+                        if best:
+                            classes = [c["name"] for c in best.get("classes", []) if c.get("active")]
+                            if classes:
+                                best["licence_source"] = "vba"
+                                state["licence_classes"] = classes
+                                state["licence_info"] = best
+                                logger.info(f"[BIZ] VBA licence found under '{holder_name}': {classes}")
         state["_needs_licence_holder_name"] = False
 
     # ── Licence self-report (QLD ESO, VIC regulated trades) ──
@@ -2564,8 +2587,42 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         licence_task = _qbcc_as_browse()
     elif business_state == "NSW":
         licence_task = nsw_licence_browse(licence_search_name)
+    elif business_state == "VIC":
+        # VBA covers Plumber + Builder — pre-detect trade to route correctly
+        _vic_pre = _detect_categories(business_name, [], "", "")
+        _vic_trade = next((c for c in _vic_pre if c in ("Plumber", "Builder", "Carpenter",
+                          "Bathroom Renovation Company", "Kitchen Renovation Company")), None)
+        if _vic_trade:
+            # VBA Building register uses company names; Plumbing uses personal names.
+            # Try business name first, then legal name as fallback (handles sole traders
+            # where trading name = "Plumb Medic" but VBA has "Driton Qorraj").
+            async def _vba_with_fallback():
+                _vba_name = business_name or licence_search_name
+                result = await vic_vba_lookup(_vba_name, _vic_trade)
+                if not result.get("results") and legal_name and legal_name.lower() != _vba_name.lower():
+                    # ABR sole traders: "SURNAME, FIRSTNAME" → flip to "Firstname Surname"
+                    _legal_clean = legal_name
+                    if "," in _legal_clean:
+                        parts = [p.strip() for p in _legal_clean.split(",", 1)]
+                        _legal_clean = f"{parts[1]} {parts[0]}".strip()
+                    logger.info(f"[VBA] No results for '{_vba_name}', retrying with '{_legal_clean}'")
+                    result = await vic_vba_lookup(_legal_clean, _vic_trade)
+                    # If full name fails, try surname only (broader search)
+                    if not result.get("results"):
+                        _surname = legal_name.split(",")[0].strip() if "," in legal_name else legal_name.split()[0]
+                        logger.info(f"[VBA] No results for '{_legal_clean}', retrying with surname '{_surname}'")
+                        result = await vic_vba_lookup(_surname, _vic_trade)
+                return result
+            licence_task = _vba_with_fallback()
+        elif "Electrician" in _vic_pre:
+            # ESV covers electricians (REC register) — search by business name
+            licence_task = esv_rec_lookup(business_name or licence_search_name)
+        else:
+            async def _no_licence():
+                return {"results": [], "count": 0}
+            licence_task = _no_licence()
     else:
-        # WA, VIC, SA, TAS, ACT, NT — no licence API, rely on web extraction + self-report
+        # WA, SA, TAS, ACT, NT — no licence API, rely on web extraction + self-report
         async def _no_licence():
             return {"results": [], "count": 0}
         licence_task = _no_licence()
@@ -2580,19 +2637,37 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     t1 = time.time()
     logger.info(f"[BIZ] Licence + Brave + Google Places: {t1 - t0:.1f}s (parallel)")
 
-    # Google Places retry: if no result, try with legal name / Pty Ltd variant
-    # e.g. "Ssr Painters" → "SSR Painters Pty Ltd" (Google listing often uses the company name)
-    if not google_place:
+    # Google Places retry: if no result OR low-quality result, try variants.
+    # ABR names often have "Pty Ltd" which Google listings omit, causing wrong matches.
+    # e.g. "Millerwatts Electricians Pty Ltd" → wrong "Millerwatts Electrical" (1 review)
+    #       but "Millerwatts Electricians" → correct listing (569 reviews)
+    _low_quality_google = (google_place and google_place.get("review_count", 0) or 0) < 5
+    if not google_place or _low_quality_google:
         retry_names = []
+        # Strip Pty/Ltd suffixes for cleaner search
+        _suffix_re = re.compile(r'\s*(PTY\.?\s*LTD\.?|LTD\.?|INC\.?|P/L)\s*$', re.IGNORECASE)
+        _clean_biz = _suffix_re.sub('', business_name).strip()
+        if _clean_biz.lower() != business_name.lower():
+            retry_names.append(_clean_biz)
         if legal_name and legal_name.lower() != business_name.lower():
-            retry_names.append(legal_name.title() if legal_name.isupper() else legal_name)
-        if not any("pty" in n.lower() for n in [business_name] + retry_names):
+            _clean_legal = _suffix_re.sub('', legal_name).strip()
+            retry_names.append(_clean_legal.title() if _clean_legal.isupper() else _clean_legal)
+        if not google_place and not any("pty" in n.lower() for n in [business_name] + retry_names):
             retry_names.append(f"{business_name} Pty Ltd")
         for retry_name in retry_names:
-            google_place = await google_places_search(retry_name, google_query_suffix)
-            if google_place:
-                logger.info(f"[BIZ] Google Places retry found result with '{retry_name}'")
-                break
+            retry_result = await google_places_search(retry_name, google_query_suffix)
+            if retry_result:
+                # Accept retry if it's better than what we have (more reviews)
+                retry_reviews = retry_result.get("review_count", 0) or 0
+                current_reviews = (google_place.get("review_count", 0) or 0) if google_place else 0
+                if retry_reviews > current_reviews:
+                    logger.info(f"[BIZ] Google Places retry with '{retry_name}': {retry_reviews} reviews (was {current_reviews})")
+                    google_place = retry_result
+                    break
+                elif not google_place:
+                    google_place = retry_result
+                    logger.info(f"[BIZ] Google Places retry found result with '{retry_name}'")
+                    break
         if not google_place:
             logger.info(f"[BIZ] Google Places: no result after retries")
 
@@ -2607,11 +2682,11 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     # match a personal-name licence. Don't try trading name — too risky for false positives
     # (e.g. "Petes Plumbing" matches "Pete's Precise Plumbing Pty Ltd"). Instead, ask the user.
     _ENTITY_PATTERNS = re.compile(r'\b(pty|ltd|limited|trust|trustee|holdings|group)\b', re.IGNORECASE)
-    if business_state in ("NSW", "QLD") and not licence_results.get("results") and _ENTITY_PATTERNS.search(legal_name):
+    if business_state in ("NSW", "QLD", "VIC") and not licence_results.get("results") and _ENTITY_PATTERNS.search(legal_name):
         logger.info(f"[BIZ] Legal name '{legal_name}' is a company/trust — will ask user for licence holder name")
         state["_needs_licence_holder_name"] = True
 
-    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse"}.get(business_state, "")
+    licence_source_label = {"QLD": "QBCC CSV", "NSW": "NSW Licence Browse", "VIC": "VBA/ESV Search"}.get(business_state, "")
     if licence_source_label:
         _trace(state, licence_source_label, t1 - t0,
                f"{len(licence_results.get('results', []))} licence matches for '{search_name}'",
@@ -2719,6 +2794,42 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                 "classes": licence_classes})
         # Await website text if started
         website_text = await website_text_task if website_text_task else ""
+    elif business_state == "VIC" and licence_matches:
+        # VBA/ESV search returns full detail — find best name match then use directly.
+        # Try business (display) name first, then legal name — VBA/ESV often lists trading names
+        # that don't match the ABR legal entity (e.g. "Luxen Electrical Group" vs "NJB Industries Pty Ltd").
+        best_match = None
+        match_details = {}
+        for _try_name in [business_name, search_name]:
+            if not _try_name:
+                continue
+            best_match, match_details = match_licence(licence_matches, _try_name,
+                                                      detected_categories=pre_detected,
+                                                      return_details=True)
+            if best_match:
+                logger.info(f"[BIZ] VIC licence matched via name '{_try_name}'")
+                break
+        _trace(state, "VBA Licence Matching", 0,
+               f"{'Matched: ' + match_details.get('winner', '?') if best_match else 'No match'} — {match_details.get('reason', '')}",
+               match_details)
+        if best_match:
+            licence_info = best_match
+            # Preserve licence_source from result (vba or esv), default to vba
+            if not licence_info.get("licence_source"):
+                licence_info["licence_source"] = "vba"
+            _vic_source = licence_info["licence_source"].upper()
+            licence_classes = [c["name"] for c in best_match.get("classes", []) if c.get("active")]
+            # VBA phone number — use as contact fallback
+            vba_phone = best_match.get("phone", "")
+            logger.info(f"[BIZ] {_vic_source} licence #{best_match.get('licence_number')} classes: {licence_classes}, phone: {vba_phone or 'n/a'}")
+            _trace(state, f"{_vic_source} Licence", t1 - t0,
+                   f"#{best_match.get('licence_number')} ({best_match.get('licence_type', '')}) — {', '.join(licence_classes)}",
+                   {"licence_number": best_match.get("licence_number"),
+                    "status": best_match.get("status"),
+                    "classes": licence_classes,
+                    "phone": vba_phone})
+        # Await website text if started
+        website_text = await website_text_task if website_text_task else ""
     else:
         # NSW (or other states with browse-style results): find best match then get details
         best_match, match_details = match_licence(licence_matches, search_name,
@@ -2805,8 +2916,10 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                 contact_name = p.get("name", "")
                 break
 
-    # Extract phone: prefer Google Places, fall back to Brave regex
+    # Extract phone: prefer Google Places, fall back to VBA, then Brave regex
     contact_phone = google_place.get("phone", "")
+    if not contact_phone and licence_info and licence_info.get("licence_source") == "vba":
+        contact_phone = licence_info.get("phone", "")
     if not contact_phone and web_results:
         for r in web_results[:3]:
             desc = r.get("description", "")

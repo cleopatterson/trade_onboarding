@@ -1143,7 +1143,7 @@
 
       if (isBusinessConfirm) {
         var bState = currentState.business_state || '';
-        var licenceLabel = bState === 'QLD' ? 'Checking QBCC trade licences' : bState === 'NSW' ? 'Checking NSW trade licences' : bState === 'VIC' ? 'Scanning for VIC trade registration' : bState === 'WA' ? 'Checking WA DMIRS trade licences' : ['SA','TAS','ACT','NT'].indexOf(bState) >= 0 ? ('Scanning for ' + bState + ' trade registration') : 'Looking up trade licences';
+        var licenceLabel = bState === 'QLD' ? 'Checking QBCC trade licences' : bState === 'NSW' ? 'Checking NSW trade licences' : bState === 'VIC' ? 'Checking VIC trade registration' : bState === 'WA' ? 'Checking WA DMIRS trade licences' : ['SA','TAS','ACT','NT'].indexOf(bState) >= 0 ? ('Scanning for ' + bState + ' trade registration') : 'Looking up trade licences';
         showProgressLoading(content, 'Setting up your services...', [licenceLabel, 'Searching web for business details', 'Mapping your services']);
       } else if (isAreaConfirm) {
         showProgressLoading(content, 'Building your profile...', ['Finalising your services', 'Pulling images from your website', 'Generating your business description', 'Preparing your profile preview']);

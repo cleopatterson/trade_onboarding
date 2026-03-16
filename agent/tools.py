@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import csv
 import json
 import logging
@@ -2160,6 +2161,510 @@ def qbcc_licence_lookup(abn: str, legal_name: str) -> dict | None:
         "business_address": address,
         "licence_source": "qbcc_csv",
     }
+
+
+# ────────── VIC VBA LICENCE LOOKUP (PLAYWRIGHT + AURA) ──────────
+
+# Default licence classes when VBA search doesn't return registrationClass (plumbing search)
+_VBA_DEFAULT_CLASSES = {
+    "Plumber": "Plumbing and Drainage",
+    "Builder": "Building Work",
+    "Carpenter": "Building Work",
+    "Bathroom Renovation Company": "Building Work",
+    "Kitchen Renovation Company": "Building Work",
+}
+
+# Cached Aura session — bootstrapped once via Playwright, reused for direct HTTP calls.
+# Keys: fwuid, app_id, context_loaded, page_uri, cookies, aura_token
+_vba_session: dict = {"fwuid": "", "app_id": "", "context_loaded": "", "page_uri": "", "_lock": None}
+
+
+async def _vba_bootstrap_session() -> bool:
+    """Launch headless Chromium, load VBA building search page, extract Aura session tokens.
+
+    Returns True if session was successfully bootstrapped.
+    The fwuid + context are cached in _vba_session for direct HTTP calls.
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        logger.warning("[VBA] playwright not installed — VBA lookup unavailable")
+        return False
+
+    logger.info("[VBA] Bootstrapping Aura session via Playwright...")
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 800},
+                locale="en-AU",
+            )
+            page = await context.new_page()
+            await page.add_init_script("Object.defineProperty(navigator, 'webdriver', { get: () => false });")
+
+            # Capture the Aura bootstrap response to extract fwuid
+            aura_context = {}
+            async def _capture_aura(response):
+                if "sfsites/aura" not in response.url:
+                    return
+                try:
+                    body = await response.text()
+                    if '"fwuid"' in body:
+                        data = json.loads(body)
+                        ctx = data.get("context", {})
+                        if ctx.get("fwuid"):
+                            aura_context["fwuid"] = ctx["fwuid"]
+                            aura_context["app"] = ctx.get("app", "siteforce:communityApp")
+                            loaded = ctx.get("loaded", {})
+                            aura_context["loaded"] = loaded
+                except Exception:
+                    pass
+
+            page.on("response", _capture_aura)
+
+            await page.goto(
+                "https://bams.vba.vic.gov.au/bams/s/practitioner-search",
+                wait_until="networkidle",
+                timeout=30000,
+            )
+            await page.wait_for_timeout(3000)
+
+            # Also try extracting fwuid from page JS if not captured from network
+            if not aura_context.get("fwuid"):
+                fwuid_from_page = await page.evaluate("""() => {
+                    try {
+                        return window.Aura?.appBootstrap?.data?.app?.attributes?.values?.fwuid
+                            || document.body.innerHTML.match(/"fwuid":"([^"]+)"/)?.[1]
+                            || '';
+                    } catch { return ''; }
+                }""")
+                if fwuid_from_page:
+                    aura_context["fwuid"] = fwuid_from_page
+
+            # Extract aura.token from the page (CSRF token needed for Aura POST)
+            aura_token = await page.evaluate("""() => {
+                try {
+                    // Salesforce stores the token in various places
+                    return window.$A?.getToken?.()
+                        || document.cookie.match(/sfdc-stream=([^;]+)/)?.[1]
+                        || '';
+                } catch { return ''; }
+            }""")
+            aura_context["aura_token"] = aura_token or ""
+
+            # Capture cookies before closing browser — needed for authenticated Aura calls
+            cookies = await context.cookies()
+            aura_context["cookies"] = {c["name"]: c["value"] for c in cookies
+                                       if "vba.vic.gov.au" in c.get("domain", "")}
+
+            page.remove_listener("response", _capture_aura)
+            await browser.close()
+
+        if aura_context.get("fwuid"):
+            _vba_session["fwuid"] = aura_context["fwuid"]
+            _vba_session["app_id"] = aura_context.get("app", "siteforce:communityApp")
+            _vba_session["context_loaded"] = aura_context.get("loaded", {})
+            _vba_session["page_uri"] = "/bams/s/practitioner-search"
+            _vba_session["cookies"] = aura_context.get("cookies", {})
+            _vba_session["aura_token"] = aura_context.get("aura_token", "")
+            logger.info(f"[VBA] Aura session bootstrapped — fwuid={_vba_session['fwuid'][:20]}...")
+            return True
+        else:
+            logger.warning("[VBA] Could not extract fwuid from page")
+            return False
+
+    except Exception as e:
+        logger.error(f"[VBA] Bootstrap failed: {type(e).__name__}: {e}")
+        return False
+
+
+async def _vba_aura_search(name: str, accreditation_type: str) -> list[dict]:
+    """Make a direct HTTP POST to the VBA Aura endpoint.
+
+    accreditation_type: "Building" or "Plumbing"
+    Returns raw PractitionerDetailList from the API response.
+    """
+    if not _vba_session.get("fwuid"):
+        if not await _vba_bootstrap_session():
+            return []
+
+    # Build the Aura message payload
+    # Building search uses: practitionerName, registrationCategory, registrationClass, accreditationType
+    # Plumbing search uses: practitionerName, practitionerId, registrationNumberADR, accreditationType
+    if accreditation_type == "Building":
+        search_params = {
+            "practitionerName": name,
+            "registrationCategory": "",
+            "registrationClass": "",
+            "accreditationType": "Building",
+        }
+    else:
+        search_params = {
+            "practitionerName": name,
+            "practitionerId": None,
+            "registrationNumberADR": None,
+            "accreditationType": "Plumbing",
+        }
+
+    message = {
+        "actions": [{
+            "id": "1;a",
+            "descriptor": "aura://ApexActionController/ACTION$execute",
+            "callingDescriptor": "UNKNOWN",
+            "params": {
+                "namespace": "",
+                "classname": "PractitionerSearchUtil",
+                "method": "getPractitioners",
+                "params": {"searchParamWrapper": search_params},
+                "cacheable": False,
+                "isContinuation": False,
+            },
+        }],
+    }
+
+    aura_context = {
+        "mode": "PROD",
+        "fwuid": _vba_session["fwuid"],
+        "app": _vba_session["app_id"],
+        "loaded": _vba_session.get("context_loaded", {}),
+        "dn": [],
+        "globals": {},
+        "uad": True,
+    }
+
+    page_uri = _vba_session.get("page_uri", "/bams/s/practitioner-search")
+
+    # Build cookie header from bootstrapped session
+    cookie_str = "; ".join(f"{k}={v}" for k, v in _vba_session.get("cookies", {}).items())
+
+    try:
+        resp = await _http_client.post(
+            "https://bams.vba.vic.gov.au/bams/s/sfsites/aura?r=1&aura.ApexAction.execute=1",
+            data={
+                "message": json.dumps(message),
+                "aura.context": json.dumps(aura_context),
+                "aura.pageURI": page_uri,
+                "aura.token": _vba_session.get("aura_token", ""),
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "*/*",
+                "Origin": "https://bams.vba.vic.gov.au",
+                "Referer": f"https://bams.vba.vic.gov.au{page_uri}",
+                "Cookie": cookie_str,
+            },
+            timeout=15.0,
+        )
+
+        if resp.status_code != 200:
+            logger.warning(f"[VBA] Aura search returned {resp.status_code}: {resp.text[:200]}")
+            # Try re-bootstrapping once
+            if await _vba_bootstrap_session():
+                return await _vba_aura_search(name, accreditation_type)
+            return []
+
+        # Aura may return HTML redirect instead of JSON if session expired
+        content_type = resp.headers.get("content-type", "")
+        raw_text = resp.text
+        if not raw_text or raw_text.startswith("<!") or raw_text.startswith("<html"):
+            logger.warning(f"[VBA] HTML/empty response (content-type: {content_type}): {raw_text[:200]}")
+            if await _vba_bootstrap_session():
+                return await _vba_aura_search(name, accreditation_type)
+            return []
+
+        # Aura responses sometimes have a JSONP-like prefix: "/*SOME_TOKEN*/{...}"
+        json_text = raw_text
+        if json_text.startswith("/*"):
+            idx = json_text.find("*/")
+            if idx != -1:
+                json_text = json_text[idx + 2:]
+
+        try:
+            data = json.loads(json_text)
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning(f"[VBA] JSON parse error: {e} — raw: {raw_text[:300]}")
+            return []
+        actions = data.get("actions", [])
+        if not actions:
+            return []
+
+        action = actions[0]
+        if action.get("state") != "SUCCESS":
+            logger.warning(f"[VBA] Aura action state: {action.get('state')} — {action.get('error', [])}")
+            return []
+
+        rv = action.get("returnValue", {}).get("returnValue", {})
+        practitioners = rv.get("PractitionerDetailList", [])
+        record_count = rv.get("recordCount", 0)
+        logger.info(f"[VBA] {accreditation_type} search '{name}': {record_count} results ({len(practitioners)} returned)")
+
+        # Update fwuid if server sent a new one
+        new_ctx = data.get("context", {})
+        if new_ctx.get("fwuid") and new_ctx["fwuid"] != _vba_session["fwuid"]:
+            _vba_session["fwuid"] = new_ctx["fwuid"]
+            logger.info(f"[VBA] Updated fwuid from response")
+
+        return practitioners
+
+    except httpx.TimeoutException:
+        logger.error("[VBA] Aura search timed out")
+        return []
+    except Exception as e:
+        logger.error(f"[VBA] Aura search error: {type(e).__name__}: {e}")
+        return []
+
+
+async def vic_vba_lookup(name: str, trade: str) -> dict:
+    """Look up a Victorian practitioner on the VBA register.
+
+    Routes to Building or Plumbing search based on trade.
+    Returns results in the same shape as nsw_licence_browse for compatibility
+    with match_licence() and _confirm_business().
+
+    Args:
+        name: Business or practitioner name to search for.
+        trade: Detected trade category (e.g. "Plumber", "Builder").
+    """
+    # Map trade to VBA accreditation type
+    _TRADE_TO_ACCREDITATION = {
+        "Plumber": "Plumbing",
+        "Builder": "Building",
+        "Carpenter": "Building",
+        "Bathroom Renovation Company": "Building",
+        "Kitchen Renovation Company": "Building",
+    }
+    accreditation = _TRADE_TO_ACCREDITATION.get(trade)
+    if not accreditation:
+        logger.info(f"[VBA] Trade '{trade}' not covered by VBA — skipping")
+        return {"results": [], "count": 0}
+
+    practitioners = await _vba_aura_search(name, accreditation)
+
+    # Convert VBA response to the standard licence browse format
+    results = []
+    for p in practitioners:
+        # registrationCategoryWithClass: "Domestic Builder Company - Domestic Builder - Limited"
+        reg_cat_class = p.get("registrationCategoryWithClass", "")
+        reg_class = p.get("registrationClass", "")
+
+        results.append({
+            "licence_id": "",  # VBA doesn't have a separate details endpoint we use
+            "licensee": p.get("practitionerName", ""),
+            "licence_number": p.get("registrationNumber", ""),
+            "licence_type": reg_cat_class or reg_class,
+            "status": p.get("status", ""),
+            "suburb": "",
+            "postcode": "",
+            "expiry_date": "",
+            "phone": p.get("phoneNumber", ""),
+            "registration_type": p.get("registrationType", ""),
+            "accreditation_type": p.get("accreditationType", ""),
+            "detail_url": p.get("detailURL", ""),
+            # Pre-populate classes from registration class (VBA search IS the detail).
+            # Plumbing search doesn't return registrationClass — use default from trade.
+            "classes": ([{"name": reg_class, "active": True}] if reg_class
+                        else [{"name": _VBA_DEFAULT_CLASSES.get(trade, trade), "active": True}]),
+            "licence_source": "vba",
+        })
+
+    return {"results": results, "count": len(results)}
+
+
+# ────────── VIC ESV LICENCE LOOKUP (PLAYWRIGHT + CAPTCHA) ──────────
+
+async def esv_rec_lookup(name: str) -> dict:
+    """Look up a Victorian Registered Electrical Contractor on the ESV register.
+
+    Uses Playwright to load the Pega-based search portal, solves the image CAPTCHA
+    with Haiku vision, then searches by business name.
+
+    Returns results in the same shape as nsw_licence_browse for compatibility.
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        logger.warning("[ESV] playwright not installed — ESV lookup unavailable")
+        return {"results": [], "count": 0}
+
+    logger.info(f"[ESV] Searching REC register for '{name}'...")
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 900},
+                locale="en-AU",
+            )
+            page = await context.new_page()
+            await page.add_init_script("Object.defineProperty(navigator, 'webdriver', { get: () => false });")
+
+            await page.goto(
+                "https://portal-public.energysafe.vic.gov.au/prod/RECView.html",
+                wait_until="networkidle",
+                timeout=30000,
+            )
+            await page.wait_for_timeout(4000)
+
+            # Find the Pega iframe
+            frame = None
+            for f in page.frames:
+                if "portal.energysafe.vic.gov.au" in f.url:
+                    frame = f
+                    break
+            if not frame:
+                logger.warning("[ESV] Pega iframe not found")
+                await browser.close()
+                return {"results": [], "count": 0}
+
+            # Solve CAPTCHA (retry up to 3 times)
+            captcha_solved = False
+            for attempt in range(3):
+                captcha_text = await _esv_solve_captcha(frame)
+                if not captcha_text:
+                    logger.warning(f"[ESV] CAPTCHA read failed on attempt {attempt + 1}")
+                    continue
+
+                logger.info(f"[ESV] CAPTCHA attempt {attempt + 1}: '{captcha_text}'")
+                captcha_input = frame.locator("input[placeholder*='CAPTCHA']").first
+                await captcha_input.fill(captcha_text)
+                submit_btn = frame.locator("button:has-text('Submit')").first
+                await submit_btn.click()
+                await page.wait_for_timeout(3000)
+
+                body_text = await frame.evaluate("() => document.body?.innerText?.slice(0, 300) || ''")
+                if "valid captcha" not in body_text.lower():
+                    captcha_solved = True
+                    break
+
+                # Refresh CAPTCHA for next attempt
+                logger.info(f"[ESV] CAPTCHA attempt {attempt + 1} failed, retrying...")
+
+            if not captcha_solved:
+                logger.warning("[ESV] All CAPTCHA attempts failed")
+                await browser.close()
+                return {"results": [], "count": 0}
+
+            # Search for the business
+            search_input = frame.locator("input[placeholder*='search']").first
+            if not await search_input.is_visible(timeout=3000):
+                logger.warning("[ESV] Search input not found after CAPTCHA")
+                await browser.close()
+                return {"results": [], "count": 0}
+
+            await search_input.fill(name)
+            search_btn = frame.locator("button:has-text('Search')").first
+            await search_btn.click()
+            await page.wait_for_timeout(5000)
+
+            # Extract results from the table
+            results_data = await frame.evaluate("""() => {
+                const rows = document.querySelectorAll('tr[id*="SectionB"]');
+                if (rows.length === 0) {
+                    // Try alternative: look for table rows with REC data
+                    const allRows = document.querySelectorAll('table tr');
+                    const results = [];
+                    for (const row of allRows) {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 7) {
+                            const text = cells[1]?.textContent?.trim() || '';
+                            if (text.startsWith('REC-')) {
+                                results.push({
+                                    rec_number: text,
+                                    business_name: cells[2]?.textContent?.trim() || '',
+                                    street: cells[3]?.textContent?.trim() || '',
+                                    suburb: cells[4]?.textContent?.trim() || '',
+                                    state: cells[5]?.textContent?.trim() || '',
+                                    postcode: cells[6]?.textContent?.trim() || '',
+                                    expiry: cells[7]?.textContent?.trim() || '',
+                                });
+                            }
+                        }
+                    }
+                    return results;
+                }
+                return Array.from(rows).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    return {
+                        rec_number: cells[1]?.textContent?.trim() || '',
+                        business_name: cells[2]?.textContent?.trim() || '',
+                        street: cells[3]?.textContent?.trim() || '',
+                        suburb: cells[4]?.textContent?.trim() || '',
+                        state: cells[5]?.textContent?.trim() || '',
+                        postcode: cells[6]?.textContent?.trim() || '',
+                        expiry: cells[7]?.textContent?.trim() || '',
+                    };
+                });
+            }""")
+
+            # Also try extracting from page text if DOM query missed
+            if not results_data:
+                body_text = await frame.evaluate("() => document.body?.innerText || ''")
+                if "No records found" in body_text or "No REC" in body_text:
+                    logger.info(f"[ESV] No REC results for '{name}'")
+                else:
+                    logger.info(f"[ESV] Results may be present but DOM extraction failed")
+
+            await browser.close()
+
+        # Convert to standard licence format
+        results = []
+        for r in results_data:
+            if not r.get("rec_number"):
+                continue
+            results.append({
+                "licence_id": "",
+                "licensee": r.get("business_name", ""),
+                "licence_number": r.get("rec_number", ""),
+                "licence_type": "Registered Electrical Contractor",
+                "status": "Current",  # ESV only shows current registrations
+                "suburb": r.get("suburb", ""),
+                "postcode": r.get("postcode", ""),
+                "expiry_date": r.get("expiry", ""),
+                "classes": [{"name": "Electrical Work", "active": True}],
+                "licence_source": "esv",
+            })
+
+        logger.info(f"[ESV] Found {len(results)} REC results for '{name}'")
+        return {"results": results, "count": len(results)}
+
+    except Exception as e:
+        logger.error(f"[ESV] Lookup failed: {type(e).__name__}: {e}")
+        return {"results": [], "count": 0}
+
+
+async def _esv_solve_captcha(frame) -> str:
+    """Screenshot the CAPTCHA area and use Haiku vision to read it."""
+    try:
+        captcha_container = frame.locator("text=Type the characters").locator("..")
+        if not await captcha_container.is_visible(timeout=3000):
+            return ""
+
+        screenshot = await captcha_container.screenshot()
+
+        b64 = base64.b64encode(screenshot).decode()
+        from langchain_core.messages import HumanMessage as _HM
+        msg = _HM(content=[
+            {"type": "text", "text": (
+                "This is a CAPTCHA challenge. What are the characters shown in large dark text on the left? "
+                "Ignore the circular refresh arrow icon on the right — it is NOT a character. "
+                "Return ONLY the CAPTCHA characters, nothing else. No spaces, no quotes, no explanation. "
+                "Characters are typically 5-7 lowercase letters and digits."
+            )},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+        ])
+        response = _llm_vision.invoke([msg])
+        return response.content.strip().lower()
+    except Exception as e:
+        logger.error(f"[ESV] CAPTCHA solve error: {e}")
+        return ""
 
 
 # ────────── BRAVE WEB SEARCH ──────────

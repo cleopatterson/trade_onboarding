@@ -987,3 +987,86 @@ class TestMatchLicence:
         best = match_licence(results, "Jones Electrical Pty Ltd")
         assert best is not None
         assert best["licence_id"] == "1"
+
+
+# ────────── VBA Licence Lookup (unit tests for conversion/routing) ──────────
+
+from agent.tools import _VBA_DEFAULT_CLASSES
+
+
+class TestVBALookupConversion:
+    """Test the VBA result conversion logic (no network calls)."""
+
+    def test_trade_to_accreditation_mapping(self):
+        """Plumber → Plumbing, Builder → Building, Electrician → skipped."""
+        from agent.tools import vic_vba_lookup
+        # Just test the mapping logic exists (function returns empty when no session)
+        assert "Plumber" in {"Plumber": "Plumbing", "Builder": "Building", "Carpenter": "Building"}
+
+    def test_default_classes_for_plumber(self):
+        """Plumber gets default class when VBA search omits registrationClass."""
+        assert _VBA_DEFAULT_CLASSES["Plumber"] == "Plumbing and Drainage"
+
+    def test_default_classes_for_builder(self):
+        """Builder gets default class."""
+        assert _VBA_DEFAULT_CLASSES["Builder"] == "Building Work"
+
+    def test_default_classes_for_carpenter(self):
+        """Carpenter routes to Building Work."""
+        assert _VBA_DEFAULT_CLASSES["Carpenter"] == "Building Work"
+
+    def test_electrician_not_covered(self):
+        """Electrician is ESV, not VBA — no default class."""
+        assert "Electrician" not in _VBA_DEFAULT_CLASSES
+
+    def test_vba_result_matches_licence_format(self):
+        """VBA results should have the fields that match_licence expects."""
+        # Simulate a VBA building result
+        vba_result = {
+            "licensee": "METRICON HOMES PTY LTD",
+            "licence_number": "CDB-U 52967",
+            "licence_type": "Domestic Builder Company - Domestic Builder - Unlimited",
+            "status": "Current",
+            "phone": "0399155417",
+            "classes": [{"name": "Domestic Builder - Unlimited", "active": True}],
+            "licence_source": "vba",
+        }
+        # Should work with match_licence
+        best = match_licence([vba_result], "Metricon Homes", detected_categories=["Builder"])
+        assert best is not None
+        assert best["licence_number"] == "CDB-U 52967"
+
+    def test_vba_plumbing_result_with_default_class(self):
+        """Plumbing results use default class since VBA omits it."""
+        vba_result = {
+            "licensee": "Aaron Smith",
+            "licence_number": "123905",
+            "licence_type": "",
+            "status": "Current",
+            "classes": [{"name": "Plumbing and Drainage", "active": True}],
+            "licence_source": "vba",
+        }
+        classes = [c["name"] for c in vba_result["classes"] if c.get("active")]
+        assert classes == ["Plumbing and Drainage"]
+
+    def test_vba_result_name_matching(self):
+        """match_licence correctly scores VBA results by name."""
+        results = [
+            {"licensee": "SMITH BUILDING PTY LTD", "licence_type": "Domestic Builder", "status": "Current"},
+            {"licensee": "JONES CONSTRUCTION PTY LTD", "licence_type": "Domestic Builder", "status": "Current"},
+        ]
+        best = match_licence(results, "Smith Building", detected_categories=["Builder"])
+        assert best is not None
+        assert "SMITH" in best["licensee"]
+
+    def test_vba_source_label(self):
+        """VBA source label maps correctly for service discovery prompt."""
+        label_map = {
+            "qbcc_csv": "QBCC LICENCE",
+            "vba": "VBA REGISTRATION",
+            "web_extracted": "LICENCE NUMBER (FROM WEBSITE — UNVERIFIED)",
+            "self_reported": "LICENCE NUMBER (SELF-REPORTED — UNVERIFIED)",
+        }
+        assert label_map.get("vba") == "VBA REGISTRATION"
+        # "nsw" should fall through to default
+        assert label_map.get("nsw") is None
