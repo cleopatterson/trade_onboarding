@@ -29,8 +29,8 @@ open http://localhost:8001
 | File | Purpose |
 |------|---------|
 | `server/app.py` | FastAPI server, auto-chaining, session state, button logic, logging |
-| `agent/graph.py` | State machine nodes: welcome, business_verification, service_discovery, service_area, profile, pricing, complete (confirmation bypassed) |
-| `agent/tools.py` | ABR lookup, NSW licence browse/details, WA DMIRS scraper, multi-state licence extraction, Brave search, Google Places, suburb grouping, website scraping, AI image filter, tiered service mapping, related category suggestions |
+| `agent/graph.py` | State machine nodes: welcome, business_verification, service_discovery, service_area, profile, pricing, complete, assessment. Enrichment extracted to `_enrich_business()`. Assessment via `_assess_profile()` |
+| `agent/tools.py` | ABR lookup, SS API client, NSW licence browse/details, multi-state licence extraction, Brave search, Google Places, suburb grouping, website scraping, AI image filter, tiered service mapping, related category suggestions |
 | `agent/config.py` | Environment config, model IDs, API keys, CORS origins, env validation |
 | `agent/state.py` | OnboardingState TypedDict |
 | `web/landing.html` | Landing page + wizard modal (all-in-one) |
@@ -53,11 +53,59 @@ open http://localhost:8001
 
 ## Conversation Flow
 ```
-WELCOME → BUSINESS_VERIFICATION → SERVICE_DISCOVERY → SERVICE_AREA → PROFILE → PRICING → COMPLETE
+NEW USER:    WELCOME → BUSINESS_VERIFICATION → SERVICE_DISCOVERY → SERVICE_AREA → PROFILE → PRICING → COMPLETE
+EXISTING:   ASSESSMENT → [BIZ_VERIFY*] → [SERVICE_DISCOVERY] → [AREA] → [PROFILE] → COMPLETE
+                          * only nodes with gaps are entered; pricing skipped for existing users
 ```
 - Confirmation step removed — services/areas editable directly on the profile preview
 - Profile node generates LLM description + scrapes website images + AI filters photos
 - Pricing node: data-driven (no LLM), recommends plan based on region count, 3-turn flow (plan → billing → done) or skip
+
+## Dual-Mode: New User + Improve Mode
+- **New user**: Standard flow — WELCOME through COMPLETE
+- **Improve mode**: Existing SS user with `?business_id=123` URL param or `ss_business_id` in session creation
+- `_flow_mode: "improve"` flag in state drives prompt tweaks and routing
+- `_init_improve_state()` maps SS API response to wizard state, pre-populating services/areas/profile
+- `_enrich_business()` extracted from `_confirm_business()` — reusable enrichment (Google, Brave, licence, categories)
+- Pricing node skipped for improve mode (`subscription_plan: "existing"`)
+- Complete node generates score jump + changes summary in improve mode
+- SS API: `ss_get_business()` in tools.py, `SS_API_TOKEN` + `SS_API_URL` + `SS_API_BASIC_AUTH` env vars
+- Owner name fetched from SS API user relationship (`?include=job_filter,user`)
+
+### Assessment Screen (v4)
+- `assessment_node()` runs enrichment against existing profile, presents row-based findings
+- `_assess_profile()` compares enriched data vs SS profile: services, licence, photos, logo, description, areas
+- Row-based findings with grey icons + chips, single "Let's get started" CTA (no per-finding buttons)
+- Benefit-led LLM intro addressing owner by name, speaking in "you/your" (not third person)
+- Profile score computed (7 areas x ~14% each) — displayed as score jump on completion
+- LLM-based barrier pollution check using regional guide data (no hardcoded barrier lists)
+- Regions computed from SS radius on init using `get_suburbs_in_radius_grouped()`
+- Barrier findings: "Tighten your service area" with subtitle showing radius + barrier name
+
+### Fix Flows
+- All findings queued in priority order, always ending at profile node
+- Improve mode auto-chain: runs one fix node at a time, no cascading
+- `__SKIP_FIX__` handler in service_discovery, service_area, profile nodes
+- `_improve_fix_total` + `_improve_fix_index` track fix progress
+- Verification routes through existing `business_verification_node` (not custom sub-flow)
+- Service discovery: improve mode merges with existing services, only asks about actual gaps
+- Service area: barrier/mismatch context injected into Turn 1 LLM prompt
+- Description comparison: current vs improved side-by-side, editable, then shows profile builder
+- Profile node: skips website/social search in improve mode, preserves SS logo/photos
+- `_description_comparison` + `_description_improved` state fields for description flow
+- `_needs_logo` + `_needs_photos` state fields for profile visual gaps
+
+### Improve Mode Prompts
+- Service discovery: reframed from "setting up" to "reviewing for gaps" with WHY rationale
+- Service area: radius context + barrier framing as better-matched leads
+- Profile description: "keep their voice" guidelines, match existing length not 500 char limit
+- Assessment summary: speak directly to owner using "you/your", not third person
+- Profile questions: improve-mode branch for existing subscribers
+
+### Google Places Matching (Improve Mode)
+- Distinctive word matching — excludes trade words (electrical, plumbing, etc.)
+- Requires at least one distinctive word overlap to accept match
+- Prevents false positives like Ampvantage != Ampower
 
 ## External APIs
 ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API, Google Places API (Text Search). See `docs/PRD.md` Section 4 for details, `.env.example` for required keys.
@@ -82,6 +130,11 @@ ABR JSON API, NSW Fair Trading Trades API (OAuth2), Brave Search API, Google Pla
 - Google Places retry: if first search fails, retries with legal name / Pty Ltd variant
 - Upload endpoint: `POST /api/upload` for logo + work photos (base64, max 5MB, photos capped at 6)
 - Progressive loading with magic stars + API activity steps for key transitions
+- Improve mode: custom loading screen ("Reviewing your profile..."), exit sheet for unsaved changes (Publish/Discard/Keep going)
+- Improve mode: description comparison page with side-by-side current vs improved text, editable
+- Improve mode: completion screen shows score jump + changes summary (no raw JSON)
+- Improve mode: gallery note when SS has portfolio but no image URLs available
+- ABN Verified badge checks `business_verified` flag (SS API v3 doesn't return ABN string)
 - Service discovery: bulk mapping on turn 1 (all subcategories auto-mapped per category), LLM asks about specialist `ask` items only
 - Bulk mapping: `service_tiers.json` defines `ask` dict per trade — specialist services with evidence keywords. If reviews/website/Brave mention keywords, auto-map without asking. Otherwise → specialist gap for LLM to ask about
 - Related category suggestions: after initial mapping, LLM suggests co-occurrence-based categories. Buttons: Yes all + individual categories + None of these. Accepted categories get bulk-mapped too
