@@ -83,6 +83,21 @@ class OnboardingState(TypedDict):
     subscription_price: str       # e.g. "$79/mo"
     _selected_plan: str           # guard for pricing node turn 2 vs turn 3
 
+    # Improve mode (existing SS user)
+    _flow_mode: str               # "" (new user) or "improve" (existing user)
+    _ss_profile: dict             # original SS API response (for diff comparison)
+    _ss_business_id: str          # SS business ID
+    _assessment: dict             # assessment findings from _assess_profile()
+    _assessment_shown: bool       # whether assessment has been presented to user
+    _improve_fixes: list[str]     # which areas user chose to fix: ["services", "areas", "profile", ...]
+    _improve_fix_total: int       # total number of fix areas
+    _improve_fix_index: int       # current fix step (1-based)
+    _verification_mode: bool      # in verification sub-flow
+    _description_comparison: bool # show current vs improved description
+    _description_improved: str    # AI-improved description text
+    _needs_logo: bool             # improve mode: logo missing
+    _needs_photos: bool           # improve mode: photos missing
+
     # UI / Auto-chain
     buttons: list[dict]           # node-generated button options
     _auto_chained: bool           # suppress stale user messages during auto-chain

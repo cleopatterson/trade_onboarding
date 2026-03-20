@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from agent.config import (
     ABR_GUID, NSW_TRADES_API_KEY, NSW_TRADES_AUTH_HEADER, BRAVE_SEARCH_API_KEY,
     GOOGLE_PLACES_API_KEY, ANTHROPIC_API_KEY, MODEL_FAST,
+    SS_API_TOKEN, SS_API_URL, SS_API_BASIC_AUTH,
 )
 
 RESOURCES_DIR = Path(__file__).parent.parent / "resources"
@@ -31,6 +32,102 @@ _llm_vision = _ChatAnthropic(
     max_tokens=256,
     temperature=0,
 )
+
+
+# ────────── SERVICE SEEKING API ──────────
+
+async def ss_get_business(business_id: str) -> dict:
+    """Fetch an existing business profile from the Service Seeking API.
+
+    Returns flattened dict with: id, businessName, businessDescription, businessNumber (ABN),
+    jobFilter (subCategories, suburb, radius), logoUrl, hasALogo, hasPortfolio,
+    badges, reviewsCount, reviewsScore, phoneNumber, websiteUrl.
+
+    The SS API returns {data: {id, type, attributes: {...}}} — we flatten to just the attributes
+    with id merged in.
+    """
+    if not SS_API_TOKEN or not SS_API_URL:
+        logger.warning("[SS API] SS_API_TOKEN or SS_API_URL not configured")
+        return {}
+
+    url = f"{SS_API_URL.rstrip('/')}/businesses/{business_id}"
+    # Auth: Basic + Token for staging, Token-only for production
+    auth_parts = []
+    if SS_API_BASIC_AUTH:
+        auth_parts.append(f"Basic {SS_API_BASIC_AUTH}")
+    auth_parts.append(f"Token token={SS_API_TOKEN}")
+    # Use system_v1 when Basic auth is present (staging), v3 for production
+    use_v3 = not SS_API_BASIC_AUTH
+    api_version = "3" if use_v3 else "system_v1"
+    headers = {
+        "Authorization": " ".join(auth_parts),
+        "Accept": f"application/vnd.api+json; version={api_version}",
+        "Content-Type": "application/vnd.api+json",
+    }
+    # v3 needs ?include=job_filter,user to get services/areas + owner name
+    params = {"include": "job_filter,user"} if use_v3 else {}
+    try:
+        resp = await _http_client.get(url, headers=headers, params=params)
+        if resp.status_code == 404:
+            logger.warning(f"[SS API] Business {business_id} not found")
+            return {}
+        resp.raise_for_status()
+        raw = resp.json()
+        # Unwrap {data: {id, type, attributes: {...}}} → flat dict with id
+        data_obj = raw.get("data", raw)
+        if isinstance(data_obj, dict) and "attributes" in data_obj:
+            result = data_obj["attributes"]
+            result["id"] = data_obj.get("id", business_id)
+        else:
+            result = raw
+            result.setdefault("id", business_id)
+
+        # v3: normalize included jobFilter into system_v1 format
+        if use_v3 and "jobFilter" not in result:
+            for inc in raw.get("included", []):
+                if inc.get("type") == "jobFilters":
+                    jf_attrs = inc.get("attributes", {})
+                    # Build jobFilter matching system_v1 shape
+                    subcats = []
+                    for item in jf_attrs.get("subcategoryItems", []):
+                        subcats.append({
+                            "id": item.get("id"),
+                            "name": item.get("value") or item.get("label", ""),
+                            "categoryID": item.get("categoryID"),
+                            "categoryName": item.get("categoryName", ""),
+                        })
+                    suburb = jf_attrs.get("suburb", {}) or {}
+                    result["jobFilter"] = {
+                        "radius": jf_attrs.get("radius", 20),
+                        "subCategories": subcats,
+                        "suburb": {
+                            "id": suburb.get("id"),
+                            "state": suburb.get("state", ""),
+                            "postcode": suburb.get("postcode", 0),
+                            "lat": suburb.get("lat", ""),
+                            "lng": suburb.get("lng", ""),
+                            "region": suburb.get("region", ""),
+                            "area": suburb.get("area", ""),
+                            "suburb": suburb.get("name", ""),
+                        },
+                    }
+                    break
+
+        # v3: extract owner name from included user resource
+        if use_v3 and "ownerName" not in result:
+            for inc in raw.get("included", []):
+                if inc.get("type") == "users":
+                    user_name = (inc.get("attributes") or {}).get("name", "")
+                    if user_name:
+                        result["ownerName"] = user_name
+                    break
+
+        logger.info(f"[SS API] Fetched business {business_id}: {result.get('businessName', '?')}"
+                     f"{' (owner: ' + result['ownerName'] + ')' if result.get('ownerName') else ''}")
+        return result
+    except Exception as e:
+        logger.error(f"[SS API] Error fetching business {business_id}: {e}")
+        return {}
 
 
 # ────────── ABR LOOKUP ──────────

@@ -1,5 +1,6 @@
 """FastAPI server for the Trade Onboarding wizard"""
 from __future__ import annotations
+from typing import Optional
 
 import asyncio
 import uuid
@@ -23,10 +24,10 @@ from langchain_core.messages import HumanMessage, AIMessage
 from agent.graph import (
     welcome_node, business_verification_node, service_discovery_node,
     service_area_node, profile_node, pricing_node,
-    complete_node,
+    complete_node, assessment_node, _enrich_business,
 )
 from agent.config import PORT, ALLOWED_ORIGINS, validate_env
-from agent.tools import _get_nsw_trades_token, qbcc_load_csv
+from agent.tools import _get_nsw_trades_token, qbcc_load_csv, ss_get_business
 
 logging.basicConfig(
     level=logging.INFO,
@@ -157,7 +158,7 @@ app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
 # ────────── MODELS ──────────
 
 class StartRequest(BaseModel):
-    pass
+    ss_business_id: Optional[str] = None
 
 class MessageRequest(BaseModel):
     session_id: str
@@ -174,11 +175,21 @@ NODE_FUNCTIONS = {
     "profile": profile_node,
     "pricing": pricing_node,
     "complete": complete_node,
+    "assessment": assessment_node,
 }
 
 
 def determine_node(state: dict) -> str:
     """Determine which node to run based on state."""
+    # Improve mode: assessment node first
+    if state.get("_flow_mode") == "improve" and not state.get("_assessment_shown"):
+        return "assessment"
+    # Assessment Turn 2+: user is still interacting with assessment
+    # (verification sub-flow, or hasn't picked a fix yet)
+    if (state.get("current_node") == "assessment"
+            and state.get("_assessment_shown")
+            and not state.get("_improve_fixes")):
+        return "assessment"
     if not state.get("business_verified"):
         return "business_verification"
     if not state.get("services_confirmed"):
@@ -188,6 +199,10 @@ def determine_node(state: dict) -> str:
     if not state.get("profile_saved"):
         return "profile"
     if not state.get("subscription_plan"):
+        # Skip pricing for improve mode
+        if state.get("_flow_mode") == "improve":
+            state["subscription_plan"] = "existing"
+            return "complete"
         return "pricing"
     return "complete"
 
@@ -200,7 +215,10 @@ async def _auto_chain_remaining(state: dict, _merge):
         state["confirmed"] = True
         _merge(await NODE_FUNCTIONS["profile"](state))
     if state.get("profile_saved") and not state.get("subscription_plan"):
-        _merge(await NODE_FUNCTIONS["pricing"](state))
+        if state.get("_flow_mode") == "improve":
+            state["subscription_plan"] = "existing"
+        else:
+            _merge(await NODE_FUNCTIONS["pricing"](state))
     if state.get("subscription_plan") and not state.get("output_json"):
         _merge(await NODE_FUNCTIONS["complete"](state))
 
@@ -261,6 +279,38 @@ async def run_node(state: dict) -> dict:
         result = await node_fn(state)
         _raw_merge(result)
 
+    # Auto-chain: assessment fix route → immediately run the target fix node
+    # Do NOT call _auto_chain_remaining — let the user interact with the fix node
+    if (state.get("_flow_mode") == "improve"
+            and state.get("_assessment_shown")
+            and state.get("_improve_fixes")
+            and node_name == "assessment"):
+        next_node = determine_node(state)
+        logger.info(f"[IMPROVE] Assessment fix auto-chain → {next_node} "
+                     f"(fixes={state.get('_improve_fixes')}, "
+                     f"svc_confirmed={state.get('services_confirmed')}, "
+                     f"area_confirmed={state.get('service_areas_confirmed')}, "
+                     f"profile_saved={state.get('profile_saved')})")
+        if next_node != "assessment" and next_node in NODE_FUNCTIONS:
+            state["_auto_chained"] = True
+            _merge(await NODE_FUNCTIONS[next_node](state))
+            state.pop("_auto_chained", None)
+            return state
+
+    # In improve mode, don't cascade through auto-chains — each fix node
+    # completes and stops. When a fix finishes (e.g. services confirmed),
+    # chain once to the NEXT fix node, then stop.
+    if state.get("_flow_mode") == "improve" and state.get("_improve_fixes"):
+        next_node = determine_node(state)
+        current = state.get("current_node", "")
+        # Only auto-chain if we've moved to a new node (fix just completed)
+        if next_node != current and next_node in NODE_FUNCTIONS and next_node != "complete":
+            state["_auto_chained"] = True
+            state["_improve_fix_index"] = state.get("_improve_fix_index", 0) + 1
+            _merge(await NODE_FUNCTIONS[next_node](state))
+            state.pop("_auto_chained", None)
+        return state
+
     # Auto-chain: business verified → immediately run service discovery
     if state.get("business_verified") and not state.get("services") and not state.get("services_confirmed"):
         _merge(await NODE_FUNCTIONS["service_discovery"](state))
@@ -293,22 +343,135 @@ async def health():
     return {"status": "healthy", "sessions": len(sessions)}
 
 
-@app.post("/api/session")
-async def create_session(req: StartRequest, request: Request):
-    """Create a new onboarding session and get the welcome message."""
-    # IP-based rate limit on session creation
-    client_ip = request.client.host if request.client else "unknown"
-    if not _check_rate_limit(f"ip:{client_ip}", SESSION_CREATE_LIMIT, SESSION_CREATE_WINDOW):
-        raise HTTPException(
-            status_code=429,
-            detail="Too many sessions created — please wait a moment",
-            headers={"Retry-After": str(int(SESSION_CREATE_WINDOW))},
-        )
+# ────────── CSV SEARCH FOR IMPROVE ──────────
 
-    session_id = str(uuid.uuid4())[:8]
+_csv_businesses: list[dict] = []
 
+
+def _load_csv_businesses():
+    """Load the business CSV into memory for search."""
+    global _csv_businesses
+    if _csv_businesses:
+        return
+    csv_path = Path(__file__).parent.parent / "all-contacts_with ID.csv"
+    if not csv_path.exists():
+        logger.warning(f"[CSV] Business CSV not found at {csv_path}")
+        return
+    import csv as csv_mod
+    with open(csv_path, encoding="utf-8-sig") as f:
+        reader = csv_mod.DictReader(f)
+        for row in reader:
+            biz_id = (row.get("Business ID") or "").strip()
+            if not biz_id:
+                continue
+            _csv_businesses.append({
+                "id": biz_id,
+                "name": (row.get("Business Name") or "").strip(),
+                "industry": (row.get("Industry") or "").strip(),
+                "city": (row.get("City") or "").strip(),
+                "reviews": row.get("Number of Reviews", "0"),
+                "rating": row.get("Star Rating", "0"),
+                "status": (row.get("Business Status") or "").strip(),
+                "membership": (row.get("membership_status1") or "").strip(),
+            })
+    logger.info(f"[CSV] Loaded {len(_csv_businesses)} businesses from CSV")
+
+
+@app.get("/api/search-businesses")
+async def search_businesses(q: str = "", limit: int = 20):
+    """Search the CSV business list by name or ID."""
+    _load_csv_businesses()
+    if not q or len(q) < 2:
+        return {"results": [], "total": len(_csv_businesses)}
+
+    q_lower = q.lower().strip()
+    results = []
+    # Exact ID match first
+    if q.isdigit():
+        for b in _csv_businesses:
+            if b["id"] == q:
+                results.append(b)
+                break
+
+    # Name search
+    for b in _csv_businesses:
+        if q_lower in b["name"].lower() or q_lower in b["industry"].lower():
+            if b not in results:
+                results.append(b)
+            if len(results) >= limit:
+                break
+
+    return {"results": results, "total": len(_csv_businesses)}
+
+
+# ────────── TEST HARNESS: Mock SS profile for improve mode testing ──────────
+
+_MOCK_SS_PROFILES = {
+    "demo-electrician": {
+        "id": 99901,
+        "businessName": "Spark Right Electrical",
+        "businessDescription": "Electrician",
+        "businessNumber": "51 824 753 556",
+        "phoneNumber": "0412 345 678",
+        "websiteUrl": "",
+        "logoUrl": "",
+        "hasALogo": False,
+        "hasPortfolio": False,
+        "badges": {"licenceVerified": False, "abnVerified": True, "identityVerified": False},
+        "reviewsCount": 12,
+        "reviewsScore": 4.5,
+        "jobFilter": {
+            "subCategories": [
+                {"id": 848, "name": "Lighting", "categoryID": 30, "categoryName": "Electrician"},
+                {"id": 849, "name": "Powerpoints", "categoryID": 30, "categoryName": "Electrician"},
+                {"id": 851, "name": "Switchboards", "categoryID": 30, "categoryName": "Electrician"},
+            ],
+            "suburb": {"suburb": "Parramatta", "state": "NSW", "postcode": "2150", "lat": -33.8151, "lng": 151.0011},
+            "radius": 15,
+        },
+    },
+    "demo-plumber": {
+        "id": 99902,
+        "businessName": "Watertight Plumbing Services",
+        "businessDescription": "",
+        "businessNumber": "65 432 109 876",
+        "phoneNumber": "",
+        "websiteUrl": "",
+        "logoUrl": "",
+        "hasALogo": False,
+        "hasPortfolio": False,
+        "badges": {"licenceVerified": False, "abnVerified": True, "identityVerified": False},
+        "reviewsCount": 3,
+        "reviewsScore": 5.0,
+        "jobFilter": {
+            "subCategories": [
+                {"id": 774, "name": "Toilet Installation & Repair", "categoryID": 74, "categoryName": "Plumber"},
+                {"id": 775, "name": "Tap Installation & Repair", "categoryID": 74, "categoryName": "Plumber"},
+            ],
+            "suburb": {"suburb": "Bondi", "state": "NSW", "postcode": "2026", "lat": -33.8914, "lng": 151.2743},
+            "radius": 10,
+        },
+    },
+}
+
+
+@app.get("/api/test-profiles")
+async def test_profiles():
+    """List available mock profiles for improve mode testing."""
+    return {
+        "profiles": {
+            k: {"name": v["businessName"], "services": len(v["jobFilter"]["subCategories"]),
+                 "suburb": v["jobFilter"]["suburb"]["suburb"]}
+            for k, v in _MOCK_SS_PROFILES.items()
+        },
+        "usage": "Open http://localhost:8001?business_id=demo-electrician",
+    }
+
+
+def _init_base_state(session_id: str) -> dict:
+    """Create a base state dict with all fields initialized."""
     now = time.time()
-    state = {
+    return {
         "session_id": session_id,
         "current_node": "welcome",
         "messages": [],
@@ -363,12 +526,188 @@ async def create_session(req: StartRequest, request: Request):
         "_needs_trading_name": False,
         "_needs_licence_number": False,
         "_licence_self_report": {},
+        "_flow_mode": "",
+        "_ss_profile": {},
+        "_ss_business_id": "",
+        "_assessment": {},
+        "_assessment_shown": False,
+        "_improve_fixes": [],
+        "_improve_fix_total": 0,
+        "_improve_fix_index": 0,
+        "_verification_mode": False,
+        "_description_comparison": False,
+        "_description_improved": "",
+        "_needs_logo": False,
+        "_needs_photos": False,
         "_created_at": now,
         "_last_active": now,
     }
 
-    # Run welcome node
+
+def _init_improve_state(ss_profile: dict, session_id: str) -> dict:
+    """Map SS API response to wizard state for improve mode."""
+    state = _init_base_state(session_id)
+
+    state["_flow_mode"] = "improve"
+    state["_ss_profile"] = ss_profile
+    state["_ss_business_id"] = str(ss_profile.get("id", ""))
+
+    # Business identity
+    state["business_name"] = ss_profile.get("businessName", "")
+    state["profile_description"] = ss_profile.get("businessDescription", "")
+
+    # ABN — v3 API doesn't expose businessNumber, check badges.abnVerified too
+    abn = ss_profile.get("businessNumber", "") or ""
+    abn_verified = (ss_profile.get("badges") or {}).get("abnVerified", False)
+    state["abn"] = abn
+    state["business_verified"] = bool(abn.strip()) or abn_verified
+
+    # Location from jobFilter.suburb
+    job_filter = ss_profile.get("jobFilter") or {}
+    suburb_data = job_filter.get("suburb") or {}
+    state["business_state"] = suburb_data.get("state", "")
+    state["business_postcode"] = str(suburb_data.get("postcode", ""))
+    state["business_suburb"] = suburb_data.get("suburb", "")
+
+    # Service areas — compute actual regions from SS radius
+    if suburb_data:
+        postcode = str(suburb_data.get("postcode", ""))
+        radius = job_filter.get("radius", 20)
+        regions_included = []
+        if postcode:
+            from agent.tools import get_suburbs_in_radius_grouped
+            grouped = get_suburbs_in_radius_grouped(postcode, float(radius))
+            if grouped.get("by_area"):
+                # Include all regions with 3+ suburbs (same threshold as service_area_node)
+                regions_included = [area for area, suburbs in grouped["by_area"].items()
+                                    if len(suburbs) >= 3]
+        state["service_areas"] = {
+            "base_suburb": suburb_data.get("suburb", ""),
+            "base_postcode": postcode,
+            "base_lat": suburb_data.get("lat", 0),
+            "base_lng": suburb_data.get("lng", 0),
+            "radius_km": radius,
+            "regions_included": regions_included,
+            "regions_excluded": [],
+        }
+        # Mark areas as confirmed so we don't re-run unless user chooses to fix
+        state["service_areas_confirmed"] = True
+
+    # Existing services from SS subcategories
+    ss_subcats = job_filter.get("subCategories") or []
+    services = []
+    for sc in ss_subcats:
+        services.append({
+            "input": sc.get("name", ""),
+            "category_name": sc.get("categoryName", ""),
+            "category_id": sc.get("categoryID", 0),
+            "subcategory_name": sc.get("name", ""),
+            "subcategory_id": sc.get("id", 0),
+            "confidence": "existing",
+            "source": "existing",
+        })
+    state["services"] = services
+    # Mark services as confirmed so we don't re-run unless user chooses to fix
+    state["services_confirmed"] = True
+
+    # Profile data
+    state["profile_logo"] = ss_profile.get("logoUrl", "") or ""
+    state["contact_phone"] = ss_profile.get("phoneNumber", "") or ""
+    state["business_website"] = ss_profile.get("websiteUrl", "") or ""
+    state["contact_name"] = ss_profile.get("ownerName", "") or ""
+
+    # Mark profile as saved (don't re-run unless user wants to)
+    state["profile_saved"] = True
+
+    # Set current node for assessment
+    state["current_node"] = "assessment"
+
+    return state
+
+
+@app.post("/api/session")
+async def create_session(req: StartRequest, request: Request):
+    """Create a new onboarding session and get the welcome message.
+
+    If ss_business_id is provided, creates an improve-mode session by fetching the
+    existing SS profile and running assessment.
+    """
+    # IP-based rate limit on session creation
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(f"ip:{client_ip}", SESSION_CREATE_LIMIT, SESSION_CREATE_WINDOW):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many sessions created — please wait a moment",
+            headers={"Retry-After": str(int(SESSION_CREATE_WINDOW))},
+        )
+
+    session_id = str(uuid.uuid4())[:8]
     start_time = time.time()
+
+    # ── Improve mode: existing SS user ──
+    if req.ss_business_id:
+        # Check mock profiles first (for testing), then real API
+        ss_profile = _MOCK_SS_PROFILES.get(req.ss_business_id) or await ss_get_business(req.ss_business_id)
+        if not ss_profile:
+            raise HTTPException(status_code=404, detail=f"Business {req.ss_business_id} not found on Service Seeking")
+
+        state = _init_improve_state(ss_profile, session_id)
+
+        # Run assessment node (enrichment + gap analysis)
+        result = await assessment_node(state)
+        for key, value in result.items():
+            if key == "messages":
+                state["messages"] = state.get("messages", []) + value
+            else:
+                state[key] = value
+
+        turn_time = round(time.time() - start_time, 2)
+        sessions[session_id] = state
+
+        ai_messages = [m for m in state["messages"] if isinstance(m, AIMessage)]
+        response_text = ai_messages[-1].content if ai_messages else "Let me have a look at your profile..."
+        buttons = state.pop("buttons", None) or []
+
+        _log_turn(session_id, {
+            "turn": 0,
+            "node": "assessment",
+            "turn_time": turn_time,
+            "ai_response": response_text,
+            "business_name": state.get("business_name", ""),
+            "flow_mode": "improve",
+        })
+
+        resp = {
+            "text": response_text,
+            "buttons": buttons,
+            "node": "assessment",
+            "turn_time": turn_time,
+        }
+
+        # Attach assessment findings (strip internal _ fields)
+        assessment = state.get("_assessment", {})
+        if assessment.get("findings"):
+            resp["_assessment_findings"] = [
+                {k: v for k, v in f.items() if not k.startswith("_")}
+                for f in assessment["findings"]
+            ]
+            if assessment.get("strengths"):
+                resp["_assessment_strengths"] = assessment["strengths"]
+            if assessment.get("profile_score") is not None:
+                resp["_profile_score"] = assessment["profile_score"]
+
+        api_trace = state.pop("_api_trace", [])
+
+        return {
+            "session_id": session_id,
+            "response": resp,
+            "state": _safe_state(state),
+            "api_trace": api_trace,
+        }
+
+    # ── New user mode ──
+    state = _init_base_state(session_id)
+
     result = await welcome_node(state)
 
     # Merge
@@ -480,6 +819,19 @@ async def chat(req: MessageRequest):
     profile_question = state.pop("_profile_question", False)
     if profile_question:
         resp["_profile_question"] = True
+
+    # Attach assessment findings for improve mode
+    if node == "assessment":
+        assessment = state.get("_assessment", {})
+        if assessment.get("findings"):
+            resp["_assessment_findings"] = [
+                {k: v for k, v in f.items() if not k.startswith("_")}
+                for f in assessment["findings"]
+            ]
+            if assessment.get("strengths"):
+                resp["_assessment_strengths"] = assessment["strengths"]
+            if assessment.get("profile_score") is not None:
+                resp["_profile_score"] = assessment["profile_score"]
 
     return {
         "session_id": req.session_id,
@@ -749,6 +1101,16 @@ def _safe_state(state: dict) -> dict:
         "google_review_count": state.get("google_review_count", 0),
         "pricing_shown": state.get("pricing_shown", False),
         "subscription_plan": state.get("subscription_plan", ""),
+        "_flow_mode": state.get("_flow_mode", ""),
+        "_assessment_shown": state.get("_assessment_shown", False),
+        "_improve_fix_total": state.get("_improve_fix_total", 0),
+        "_improve_fix_index": state.get("_improve_fix_index", 0),
+        "_verification_mode": state.get("_verification_mode", False),
+        "_description_comparison": state.get("_description_comparison", False),
+        "_description_improved": state.get("_description_improved", ""),
+        "_needs_logo": state.get("_needs_logo", False),
+        "_needs_photos": state.get("_needs_photos", False),
+        "_ss_description": (state.get("_ss_profile") or {}).get("businessDescription", ""),
     }
 
 

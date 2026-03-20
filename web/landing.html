@@ -154,6 +154,358 @@
       color: #888;
     }
 
+    .btn-hero-improve {
+      background: white;
+      color: #298AE3;
+      padding: 16px 28px;
+      border-radius: 8px;
+      font-size: 17px;
+      font-weight: 700;
+      border: 2px solid #298AE3;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-hero-improve:hover {
+      background: #f0f7ff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(41, 138, 227, 0.2);
+    }
+
+    .improve-search-panel {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.3s ease;
+      margin-top: 0;
+    }
+    .improve-search-panel.open {
+      max-height: 500px;
+      opacity: 1;
+      margin-top: 20px;
+    }
+    .improve-search-row {
+      display: flex;
+      gap: 10px;
+      max-width: 520px;
+    }
+    .improve-search-input {
+      flex: 1;
+      min-width: 0;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .improve-search-input:focus { border-color: #298AE3; }
+    .improve-search-btn {
+      background: #298AE3;
+      color: white;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .improve-search-btn:hover { background: #1d6fbf; }
+    .improve-search-hint {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 8px;
+    }
+    .improve-results {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      max-width: 480px;
+    }
+    .improve-result-card {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      border: 2px solid #e2e8f0;
+      transition: all 0.15s;
+    }
+    .improve-result-card:hover {
+      border-color: #298AE3;
+      box-shadow: 0 2px 8px rgba(41, 138, 227, 0.15);
+    }
+    .improve-result-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .improve-result-meta {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .improve-result-meta .tag {
+      background: #f1f5f9;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .improve-result-arrow {
+      color: #298AE3;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+    .improve-search-status {
+      text-align: center;
+      padding: 16px;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    /* Assessment v4 — row-based with chips + priority borders */
+    .assessment-strengths {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .assessment-strength {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .assessment-strength i {
+      font-size: 12px;
+      color: #16a34a;
+    }
+    .good-strip {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 16px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      margin: 0 0 14px;
+    }
+    .gs-score {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #16a34a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 800;
+      color: #16a34a;
+    }
+    .gs-list { display: flex; flex-direction: column; gap: 3px; }
+    .gs-item { font-size: 13px; color: #166534; font-weight: 500; line-height: 1.4; display: flex; align-items: center; gap: 6px; }
+    .gs-tick { color: #16a34a; font-size: 11px; flex-shrink: 0; }
+
+    /* Assessment option rows — matches ABR card hover style */
+    .assessment-opts {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      margin: 16px 0;
+    }
+    .assessment-opt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid #EDEDED;
+      border-radius: 12px;
+      background: #f9fafb;
+      user-select: none;
+    }
+    .assessment-opt-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f3f4f6;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .assessment-opt-body { flex: 1; min-width: 0; }
+    .assessment-opt-name { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+    .assessment-opt-sub { font-size: 13px; color: #666; margin-top: 3px; line-height: 1.4; }
+    .assessment-chip {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 99px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      background: #f3f4f6;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+    .assessment-opt-arrow {
+      color: #298AE3;
+      font-size: 14px;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .assessment-opt:hover .assessment-opt-arrow { opacity: 1; }
+
+    .assessment-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .assessment-btn-secondary {
+      background: white;
+      color: #64748b;
+      border: 2px solid #e2e8f0;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .assessment-btn-secondary:hover { border-color: #94a3b8; color: #475569; }
+
+    /* Skip bar */
+    .skip-bar {
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 12px;
+    }
+    .btn-skip {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #6b7280;
+      font-family: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .btn-skip:hover { color: #111; }
+    .skip-prog { font-size: 12px; color: #9ca3af; }
+
+    /* Description comparison */
+    .desc-area { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
+    .desc-current {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .desc-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px; }
+    .desc-old { font-size: 14px; color: #6b7280; line-height: 1.6; font-style: italic; }
+    .desc-new-wrap { border: 1.5px solid #298AE3; border-radius: 14px; overflow: hidden; background: #EFF6FF; }
+    .desc-new-tag { padding: 8px 16px; background: #298AE3; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #fff; }
+    .desc-edit { padding: 14px 16px; font-size: 15px; line-height: 1.65; color: #111; outline: none; cursor: text; min-height: 90px; }
+    .desc-footer {
+      padding: 14px 0;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-desc-skip {
+      flex: 1;
+      padding: 13px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 99px;
+      background: none;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-desc-confirm {
+      flex: 3;
+      padding: 13px;
+      border: none;
+      border-radius: 99px;
+      background: #298AE3;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* Score jump (completion screen) */
+    .score-jump {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 16px 0 20px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px 28px;
+      justify-content: center;
+    }
+    .sj-box { text-align: center; }
+    .sj-num { font-size: 32px; font-weight: 800; }
+    .sj-cap { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+    /* Exit sheet */
+    .exit-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 10001;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .exit-overlay.show { display: flex; }
+    .exit-sheet {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 28px 24px 40px;
+      width: 100%;
+      max-width: 480px;
+      animation: exit-su 0.22s ease;
+    }
+    @keyframes exit-su { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .exit-handle { width: 36px; height: 4px; background: #d1d5db; border-radius: 2px; margin: 0 auto 20px; }
+    .exit-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .exit-sub { font-size: 14px; color: #6b7280; line-height: 1.6; margin-bottom: 22px; }
+    .exit-btns { display: flex; flex-direction: column; gap: 10px; }
+    .btn-pub { padding: 15px; border: none; border-radius: 99px; background: #298AE3; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; }
+    .btn-draft { padding: 14px; border: 1.5px solid #e5e7eb; border-radius: 99px; background: none; font-size: 14px; font-weight: 500; color: #111; cursor: pointer; font-family: inherit; }
+    .btn-stay { padding: 10px; border: none; background: none; font-size: 14px; color: #9ca3af; cursor: pointer; font-family: inherit; text-decoration: underline; }
+
     .hero-stats {
       flex: 1;
       display: grid;
@@ -1438,6 +1790,13 @@
       .hero .container { flex-direction: column; gap: 40px; }
       .hero h1 { font-size: 34px; }
       .hero-stats { grid-template-columns: 1fr 1fr; }
+      .hero-cta { flex-direction: column; align-items: stretch; }
+      .btn-hero-improve { text-align: center; justify-content: center; }
+      .improve-search-row { max-width: 100%; }
+      .improve-search-input { max-width: 100%; }
+      .improve-results { max-width: 100%; }
+      .assessment-actions { flex-direction: column; }
+      .hero-subtext { text-align: center; }
       .steps { grid-template-columns: 1fr; }
       .benefits-grid { grid-template-columns: 1fr; }
       .ss-nav { display: none; }
@@ -1505,7 +1864,21 @@
           <button class="btn-hero-join" onclick="openOnboardingWizard()">
             Join Service Seeking <i class="fas fa-arrow-right"></i>
           </button>
+          <button class="btn-hero-improve" onclick="toggleImproveSearch()">
+            Improve Your Profile <i class="fas fa-search"></i>
+          </button>
           <span class="hero-subtext">Free to register</span>
+        </div>
+        <div class="improve-search-panel" id="improveSearchPanel">
+          <div class="improve-search-row">
+            <input type="text" class="improve-search-input" id="improveSearchInput"
+                   placeholder="Business name, trade, or SS profile URL...">
+            <button class="improve-search-btn" id="improveSearchBtn" onclick="triggerImproveSearch()">
+              Search <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <div class="improve-search-hint">Search by business name or paste an SS profile URL</div>
+          <div class="improve-results" id="improveResults"></div>
         </div>
       </div>
       <div class="hero-stats">
@@ -1632,12 +2005,15 @@
     let questionCount = 0;
     let currentState = {};
     let isSending = false;
+    let flowMode = '';
 
     // Step tracking
     const STEPS = ['business', 'services', 'areas', 'profile', 'pricing', 'done'];
+    const IMPROVE_STEPS = ['assessment', 'fixing', 'done'];
     const NODE_TO_STEP = {
       'welcome': 'business',
       'business_verification': 'business',
+      'assessment': 'business',
       'service_discovery': 'services',
       'service_area': 'areas',
       'confirmation': 'profile',
@@ -1645,15 +2021,30 @@
       'pricing': 'pricing',
       'complete': 'done',
     };
+    const IMPROVE_NODE_TO_STEP = {
+      'assessment': 'assessment',
+      'service_discovery': 'fixing',
+      'service_area': 'fixing',
+      'profile': 'fixing',
+      'business_verification': 'fixing',
+      'complete': 'done',
+    };
 
     // Loading subtitles
     let subtitleInterval = null;
-    const loadingSubtitles = [
+    const LOADING_NEW = [
       "Getting things ready...",
       "Connecting to the business register...",
       "Preparing your registration...",
       "Almost there...",
     ];
+    const LOADING_IMPROVE = [
+      "Pulling up your profile...",
+      "Checking your services and areas...",
+      "Looking up your licence and reviews...",
+      "Analysing your profile...",
+    ];
+    let loadingSubtitles = LOADING_NEW;
 
     function startSubtitleCycling() {
       let index = 0;
@@ -1674,43 +2065,74 @@
     }
 
     // ────────── CREATE WIZARD MODAL ──────────
-    function createWizardModal() {
-      const html = `
-        <div id="wizard-modal-backdrop">
-          <div id="wizard-modal">
-            <div class="wizard-progress-bar">
-              <div class="wizard-progress-fill" id="wizardProgressBar"></div>
-            </div>
+    function createWizardModal(isImprove) {
+      var loadTitle = isImprove ? 'Reviewing your profile...' : 'Getting things ready...';
+      var loadSub = isImprove ? 'Pulling up your profile' : 'Connecting to Service Seeking';
 
-            <div class="wizard-modal-header">
-              <button id="wizard-modal-close">&times;</button>
-            </div>
+      var backdrop = document.createElement('div');
+      backdrop.id = 'wizard-modal-backdrop';
 
-            <div id="wizard-content">
-              <div class="wizard-loading">
-                <div class="magic-stars">
-                  <div class="magic-star"></div>
-                  <div class="magic-star"></div>
-                  <div class="magic-star"></div>
-                  <div class="magic-star"></div>
-                </div>
-                <div class="wizard-loading-title">Getting things ready...</div>
-                <div class="wizard-loading-subtitle" id="loading-subtitle">Connecting to Service Seeking</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.insertAdjacentHTML('beforeend', html);
-      document.getElementById('wizard-modal-close').addEventListener('click', closeWizard);
+      var modal = document.createElement('div');
+      modal.id = 'wizard-modal';
+
+      var progressBar = document.createElement('div');
+      progressBar.className = 'wizard-progress-bar';
+      var progressFill = document.createElement('div');
+      progressFill.className = 'wizard-progress-fill';
+      progressFill.id = 'wizardProgressBar';
+      progressBar.appendChild(progressFill);
+      modal.appendChild(progressBar);
+
+      var header = document.createElement('div');
+      header.className = 'wizard-modal-header';
+      var closeBtn = document.createElement('button');
+      closeBtn.id = 'wizard-modal-close';
+      closeBtn.textContent = '\u00d7';
+      closeBtn.addEventListener('click', closeWizard);
+      header.appendChild(closeBtn);
+      modal.appendChild(header);
+
+      var contentDiv = document.createElement('div');
+      contentDiv.id = 'wizard-content';
+
+      var loading = document.createElement('div');
+      loading.className = 'wizard-loading';
+
+      var stars = document.createElement('div');
+      stars.className = 'magic-stars';
+      for (var i = 0; i < 4; i++) {
+        var star = document.createElement('div');
+        star.className = 'magic-star';
+        stars.appendChild(star);
+      }
+      loading.appendChild(stars);
+
+      var title = document.createElement('div');
+      title.className = 'wizard-loading-title';
+      title.textContent = loadTitle;
+      loading.appendChild(title);
+
+      var subtitle = document.createElement('div');
+      subtitle.className = 'wizard-loading-subtitle';
+      subtitle.id = 'loading-subtitle';
+      subtitle.textContent = loadSub;
+      loading.appendChild(subtitle);
+
+      contentDiv.appendChild(loading);
+      modal.appendChild(contentDiv);
+      backdrop.appendChild(modal);
+      document.body.appendChild(backdrop);
     }
 
     // ────────── OPEN WIZARD ──────────
-    async function openOnboardingWizard() {
+    async function openOnboardingWizard(ssBusinessId) {
       // Guard: remove any stale wizard DOM (handles quick close/reopen race)
       const existing = document.getElementById('wizard-modal-backdrop');
       if (existing) existing.remove();
-      createWizardModal();
+
+      var isImprove = !!ssBusinessId;
+      loadingSubtitles = isImprove ? LOADING_IMPROVE : LOADING_NEW;
+      createWizardModal(isImprove);
 
       const backdrop = document.getElementById('wizard-modal-backdrop');
       backdrop.style.display = 'flex';
@@ -1718,40 +2140,447 @@
       setTimeout(() => backdrop.classList.add('show'), 10);
 
       questionCount = 0;
-      updateProgress('business');
+      updateProgress(isImprove ? 'assessment' : 'business');
       startSubtitleCycling();
+
+      // Build request body — include ss_business_id for improve mode
+      const requestBody = {};
+      if (ssBusinessId) {
+        requestBody.ss_business_id = ssBusinessId;
+      }
 
       try {
         const response = await fetch(`${API_URL}/api/session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
+          body: JSON.stringify(requestBody)
         });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || 'Failed to create session');
+        }
 
         const data = await response.json();
         sessionId = data.session_id;
+        logApiTrace(data);
         stopSubtitleCycling();
         displayResponse(data.response, data.state);
       } catch (error) {
         console.error('Error:', error);
         stopSubtitleCycling();
-        document.getElementById('wizard-content').innerHTML = `
-          <div class="wizard-error">
-            <i class="fas fa-exclamation-circle"></i>
-            <h3>Connection Error</h3>
-            <p>Please make sure the server is running on port 8001</p>
-          </div>
-        `;
+        const content = document.getElementById('wizard-content');
+        while (content.firstChild) content.firstChild.remove();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'wizard-error';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-exclamation-circle';
+        const h3 = document.createElement('h3');
+        h3.textContent = 'Connection Error';
+        const p = document.createElement('p');
+        p.textContent = error.message || 'Please make sure the server is running on port 8001';
+        errorDiv.appendChild(icon);
+        errorDiv.appendChild(h3);
+        errorDiv.appendChild(p);
+        content.appendChild(errorDiv);
       }
     }
 
+    // ────────── IMPROVE SEARCH PANEL ──────────
+    function toggleImproveSearch() {
+      const panel = document.getElementById('improveSearchPanel');
+      panel.classList.toggle('open');
+      if (panel.classList.contains('open')) {
+        setTimeout(function() {
+          document.getElementById('improveSearchInput').focus();
+        }, 100);
+      }
+    }
+
+    (function initImproveSearch() {
+      const input = document.getElementById('improveSearchInput');
+      if (!input) return;
+
+      // Enter key triggers search
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') triggerImproveSearch();
+      });
+    })();
+
+    function triggerImproveSearch() {
+      const q = (document.getElementById('improveSearchInput').value || '').trim();
+      if (!q) return;
+
+      // SS profile URL detection — auto-launch
+      const urlMatch = q.match(/profile\/(\d+)/);
+      if (urlMatch) {
+        openOnboardingWizard(urlMatch[1]);
+        return;
+      }
+
+      // Direct numeric ID (3+ digits) — auto-launch
+      if (/^\d{3,}$/.test(q)) {
+        openOnboardingWizard(q);
+        return;
+      }
+
+      if (q.length < 2) return;
+      doImproveSearch(q);
+    }
+
+    async function doImproveSearch(q) {
+      const resultsEl = document.getElementById('improveResults');
+      resultsEl.textContent = '';
+      const loading = document.createElement('div');
+      loading.className = 'improve-search-status';
+      loading.textContent = 'Searching...';
+      resultsEl.appendChild(loading);
+
+      try {
+        const resp = await fetch(API_URL + '/api/search-businesses?q=' + encodeURIComponent(q));
+        const data = await resp.json();
+        renderImproveResults(data.results || []);
+      } catch (e) {
+        resultsEl.textContent = '';
+        const err = document.createElement('div');
+        err.className = 'improve-search-status';
+        err.textContent = 'Search failed';
+        resultsEl.appendChild(err);
+      }
+    }
+
+    function renderImproveResults(results) {
+      const resultsEl = document.getElementById('improveResults');
+      resultsEl.textContent = '';
+
+      if (!results.length) {
+        const status = document.createElement('div');
+        status.className = 'improve-search-status';
+        status.textContent = 'No matches found';
+        resultsEl.appendChild(status);
+        return;
+      }
+
+      results.slice(0, 10).forEach(function(biz) {
+        const card = document.createElement('div');
+        card.className = 'improve-result-card';
+
+        const info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0';
+
+        const name = document.createElement('div');
+        name.className = 'improve-result-name';
+        name.textContent = biz.name || 'Business #' + biz.id;
+
+        const meta = document.createElement('div');
+        meta.className = 'improve-result-meta';
+
+        if (biz.industry) {
+          const indTag = document.createElement('span');
+          indTag.className = 'tag';
+          indTag.textContent = biz.industry.length > 30 ? biz.industry.substring(0, 30) + '...' : biz.industry;
+          meta.appendChild(indTag);
+        }
+        if (biz.city) {
+          const citySpan = document.createElement('span');
+          citySpan.textContent = biz.city;
+          meta.appendChild(citySpan);
+        }
+        if (biz.rating && parseFloat(biz.rating) > 0) {
+          const ratingSpan = document.createElement('span');
+          ratingSpan.textContent = biz.rating + '\u2605';
+          meta.appendChild(ratingSpan);
+        }
+
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        const arrow = document.createElement('i');
+        arrow.className = 'fas fa-arrow-right improve-result-arrow';
+
+        card.appendChild(info);
+        card.appendChild(arrow);
+        card.addEventListener('click', function() { openOnboardingWizard(biz.id); });
+        resultsEl.appendChild(card);
+      });
+    }
+
+    // ────────── ASSESSMENT SCREEN (v4) ──────────
+    function showAssessmentCards(content, text, findings, buttons, strengths, response) {
+      while (content.firstChild) content.firstChild.remove();
+
+      var container = document.createElement('div');
+      container.className = 'wizard-question-container';
+
+      // Header label (no score — score is in green strip)
+      var businessName = currentState?.business_name || '';
+      var qNum = document.createElement('div');
+      qNum.className = 'wizard-question-number';
+      qNum.textContent = 'Profile Assessment' + (businessName ? ' \u00b7 ' + businessName : '');
+      container.appendChild(qNum);
+
+      // Summary text
+      if (text) {
+        var textDiv = document.createElement('div');
+        textDiv.className = 'wizard-question-text';
+        textDiv.insertAdjacentHTML('afterbegin', formatText(text));
+        container.appendChild(textDiv);
+      }
+
+      // Fix option rows
+      if (findings.length) {
+        var opts = document.createElement('div');
+        opts.className = 'assessment-opts';
+
+        var ASSESS_ICONS = {
+          verification: 'fa-shield-alt',
+          services: 'fa-th-large',
+          area_mismatch: 'fa-map-marker-alt',
+          area_barrier: 'fa-crosshairs',
+          profile: 'fa-file-alt',
+        };
+        var CHIP_LABELS = {urgent: 'Fix first', leads: '+leads', refine: 'Refine', polish: 'Polish'};
+
+        findings.forEach(function(f) {
+          var fixAction = f.fix_action || '__FIX_SERVICES__';
+
+          var opt = document.createElement('div');
+          opt.className = 'assessment-opt';
+
+          // Icon circle (grey)
+          var iconDiv = document.createElement('div');
+          iconDiv.className = 'assessment-opt-icon';
+          var iconI = document.createElement('i');
+          iconI.className = 'fas ' + (ASSESS_ICONS[f.type] || 'fa-wrench');
+          iconI.style.color = '#6b7280';
+          iconI.style.fontSize = '14px';
+          iconDiv.appendChild(iconI);
+          opt.appendChild(iconDiv);
+
+          // Body (name + subtitle)
+          var body = document.createElement('div');
+          body.className = 'assessment-opt-body';
+          var nameEl = document.createElement('div');
+          nameEl.className = 'assessment-opt-name';
+          nameEl.textContent = f.headline || f.type;
+          body.appendChild(nameEl);
+          if (f.subtitle) {
+            var subEl = document.createElement('div');
+            subEl.className = 'assessment-opt-sub';
+            subEl.textContent = f.subtitle;
+            body.appendChild(subEl);
+          }
+          opt.appendChild(body);
+
+          opts.appendChild(opt);
+        });
+
+        container.appendChild(opts);
+      }
+
+      // CTA button — kicks off the fix flow for all findings
+      if (findings.length) {
+        var ctaDiv = document.createElement('div');
+        ctaDiv.style.cssText = 'margin-top:42px;';
+        var ctaBtn = document.createElement('button');
+        ctaBtn.className = 'wizard-button wizard-button-confirm';
+        ctaBtn.style.cssText = 'width:100%;justify-content:center;';
+        var ctaText = document.createElement('span');
+        ctaText.textContent = "Let's get started";
+        ctaBtn.appendChild(ctaText);
+        var ctaIcon = document.createElement('i');
+        ctaIcon.className = 'fas fa-arrow-right';
+        ctaIcon.style.marginLeft = '8px';
+        ctaBtn.appendChild(ctaIcon);
+        // Send the first finding's fix action — _fix_route will queue all fixes
+        var firstAction = findings[0].fix_action || '__FIX_SERVICES__';
+        ctaBtn.addEventListener('click', function() { sendMessage(firstAction); });
+        ctaDiv.appendChild(ctaBtn);
+        container.appendChild(ctaDiv);
+      }
+
+      content.appendChild(container);
+    }
+
+    // ────────── SKIP BAR ──────────
+    function renderSkipBar(container, currentStep, totalSteps) {
+      var bar = document.createElement('div');
+      bar.className = 'skip-bar';
+      var skipBtn = document.createElement('button');
+      skipBtn.className = 'btn-skip';
+      skipBtn.textContent = 'Skip this step';
+      skipBtn.addEventListener('click', function() { sendMessage('__SKIP_FIX__'); });
+      bar.appendChild(skipBtn);
+      if (totalSteps > 0) {
+        var prog = document.createElement('span');
+        prog.className = 'skip-prog';
+        prog.textContent = currentStep + ' of ' + totalSteps;
+        bar.appendChild(prog);
+      }
+      container.appendChild(bar);
+    }
+
+    // ────────── DESCRIPTION COMPARISON ──────────
+    function showDescriptionComparison(content, state, introText) {
+      while (content.firstChild) content.firstChild.remove();
+      var container = document.createElement('div');
+      container.className = 'wizard-question-container';
+
+      // Header — just "Description", no counter
+      var qNum = document.createElement('div');
+      qNum.className = 'wizard-question-number';
+      qNum.textContent = 'Description';
+      container.appendChild(qNum);
+
+      // Intro text from LLM (or fallback)
+      var qt = document.createElement('div');
+      qt.className = 'wizard-question-text';
+      qt.insertAdjacentHTML('afterbegin', formatText(introText || "Here's an updated version of your description \u2014 edit anything you like."));
+      container.appendChild(qt);
+
+      // Current description (muted reference)
+      var currentDesc = state._ss_description || '';
+      if (currentDesc) {
+        var currentLabel = document.createElement('div');
+        currentLabel.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;margin:16px 0 6px;';
+        currentLabel.textContent = 'Current';
+        container.appendChild(currentLabel);
+        var currentText = document.createElement('div');
+        currentText.style.cssText = 'font-size:14px;color:#9ca3af;line-height:1.6;font-style:italic;margin-bottom:16px;';
+        currentText.textContent = currentDesc;
+        container.appendChild(currentText);
+      }
+
+      // Updated description (editable)
+      var newDesc = state._description_improved || state.profile_description || '';
+      var newLabel = document.createElement('div');
+      newLabel.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#298AE3;margin-bottom:6px;';
+      newLabel.textContent = 'Updated \u00b7 edit freely before saving';
+      container.appendChild(newLabel);
+      var editDiv = document.createElement('div');
+      editDiv.style.cssText = 'font-size:15px;line-height:1.65;color:#111;padding:14px 16px;border:2px solid #298AE3;border-radius:8px;background:white;outline:none;cursor:text;min-height:90px;';
+      editDiv.setAttribute('contenteditable', 'true');
+      editDiv.textContent = newDesc;
+      container.appendChild(editDiv);
+
+      // Buttons — standard wizard style
+      var buttonsDiv = document.createElement('div');
+      buttonsDiv.className = 'wizard-buttons-container';
+      buttonsDiv.style.marginTop = '24px';
+
+      var confirmBtn = document.createElement('button');
+      confirmBtn.className = 'wizard-button wizard-button-confirm';
+      var confirmSpan = document.createElement('span');
+      confirmSpan.textContent = 'Use this description';
+      confirmBtn.appendChild(confirmSpan);
+      var confirmIcon = document.createElement('i');
+      confirmIcon.className = 'fas fa-check';
+      confirmIcon.style.marginLeft = '8px';
+      confirmBtn.appendChild(confirmIcon);
+      confirmBtn.addEventListener('click', function() {
+        var finalDesc = editDiv.textContent || editDiv.innerText || newDesc;
+        sendMessage('__ACCEPT_DESC__:' + finalDesc);
+      });
+      buttonsDiv.appendChild(confirmBtn);
+
+      var skipBtn = document.createElement('button');
+      skipBtn.className = 'wizard-button';
+      var skipSpan = document.createElement('span');
+      skipSpan.textContent = 'Skip';
+      skipBtn.appendChild(skipSpan);
+      skipBtn.addEventListener('click', function() { sendMessage('__SKIP_FIX__'); });
+      buttonsDiv.appendChild(skipBtn);
+
+      container.appendChild(buttonsDiv);
+      content.appendChild(container);
+    }
+
+    // Auto-launch improve mode from URL parameter ?business_id=123
+    (function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const bizId = params.get('business_id');
+      if (bizId) {
+        // Auto-launch wizard in improve mode
+        setTimeout(() => openOnboardingWizard(bizId), 300);
+      }
+    })();
+
     // ────────── CLOSE WIZARD ──────────
     function closeWizard() {
+      // In improve mode with unsaved changes, show exit sheet
+      if (flowMode === 'improve' && currentState?._assessment_shown && !currentState?.output_json) {
+        showExitSheet();
+        return;
+      }
+      doCloseWizard();
+    }
+
+    function doCloseWizard() {
+      hideExitSheet();
       const backdrop = document.getElementById('wizard-modal-backdrop');
       backdrop.classList.remove('show');
       document.body.style.overflow = '';
       sessionId = null;
       setTimeout(() => backdrop.remove(), 300);
+    }
+
+    function showExitSheet() {
+      var overlay = document.getElementById('exit-overlay');
+      if (!overlay) {
+        // Create exit sheet DOM
+        overlay = document.createElement('div');
+        overlay.className = 'exit-overlay';
+        overlay.id = 'exit-overlay';
+        var sheet = document.createElement('div');
+        sheet.className = 'exit-sheet';
+        var handle = document.createElement('div');
+        handle.className = 'exit-handle';
+        sheet.appendChild(handle);
+        var title = document.createElement('div');
+        title.className = 'exit-title';
+        title.textContent = 'Leave without publishing?';
+        sheet.appendChild(title);
+        var sub = document.createElement('div');
+        sub.className = 'exit-sub';
+        sub.textContent = "You've made updates to your profile. Publish them now or discard your changes.";
+        sheet.appendChild(sub);
+        var btns = document.createElement('div');
+        btns.className = 'exit-btns';
+        var pubBtn = document.createElement('button');
+        pubBtn.className = 'btn-pub';
+        pubBtn.textContent = 'Publish changes';
+        pubBtn.addEventListener('click', function() {
+          hideExitSheet();
+          // Save what we have
+          var desc = currentState?.profile_description || currentState?._description_improved || '';
+          if (desc) {
+            var payload = JSON.stringify({description: desc, removed_services: [], removed_areas: []});
+            sendMessage('__SAVE_PROFILE__:' + payload);
+          } else {
+            doCloseWizard();
+          }
+        });
+        btns.appendChild(pubBtn);
+        var discardBtn = document.createElement('button');
+        discardBtn.className = 'btn-draft';
+        discardBtn.textContent = 'Discard changes';
+        discardBtn.addEventListener('click', function() { doCloseWizard(); });
+        btns.appendChild(discardBtn);
+        var stayBtn = document.createElement('button');
+        stayBtn.className = 'btn-stay';
+        stayBtn.textContent = 'Keep going';
+        stayBtn.addEventListener('click', function() { hideExitSheet(); });
+        btns.appendChild(stayBtn);
+        sheet.appendChild(btns);
+        overlay.appendChild(sheet);
+        document.body.appendChild(overlay);
+      }
+      overlay.classList.add('show');
+    }
+
+    function hideExitSheet() {
+      var overlay = document.getElementById('exit-overlay');
+      if (overlay) overlay.classList.remove('show');
     }
 
     // ────────── DISPLAY RESPONSE ──────────
@@ -1760,16 +2589,33 @@
       questionCount++;
       currentState = state || {};
 
+      // Track flow mode
+      if (state?._flow_mode) flowMode = state._flow_mode;
+
       const node = response?.node || state?.current_node || '';
-      const step = NODE_TO_STEP[node] || 'business';
+      const step = flowMode === 'improve'
+        ? (IMPROVE_NODE_TO_STEP[node] || 'assessment')
+        : (NODE_TO_STEP[node] || 'business');
       updateProgress(step);
 
       const content = document.getElementById('wizard-content');
       content.scrollTop = 0;
 
+      // Assessment cards for improve mode
+      if (node === 'assessment' && response?._assessment_findings?.length) {
+        showAssessmentCards(content, response.text, response._assessment_findings, response.buttons, response._assessment_strengths, response);
+        return;
+      }
+
       // Check for service selection form (fallback multi-select)
       if (response?._fallback_form && response?.buttons?.some(function(b) { return b.header || b.value === '__GROUP_HEADER__'; })) {
         showServiceForm(content, response.buttons, response.text);
+        return;
+      }
+
+      // Description comparison for improve mode
+      if (state?._description_comparison && state?._flow_mode === 'improve' && node === 'profile' && !state?.profile_saved) {
+        showDescriptionComparison(content, state, response?.text || '');
         return;
       }
 
@@ -1873,6 +2719,14 @@
 
       html += '</div>';
       content.innerHTML = html;
+
+      // Add skip bar for improve mode fix flows
+      if (flowMode === 'improve' && currentState?._improve_fix_total > 0 && !currentState?.output_json) {
+        var qContainer = content.querySelector('.wizard-question-container');
+        if (qContainer) {
+          renderSkipBar(qContainer, currentState._improve_fix_index || 1, currentState._improve_fix_total);
+        }
+      }
 
       // Attach button handlers
       const isEditMode = buttons.some(b => b.label.startsWith('\u2715'));
@@ -2299,7 +3153,7 @@
       // Trust badges
       const trustBar = document.createElement('div');
       trustBar.className = 'profile-trust-bar';
-      if (abn) {
+      if (abn || state?.business_verified) {
         const b = document.createElement('span');
         b.className = 'profile-trust-badge green';
         b.innerHTML = '<i class="fas fa-check"></i>';
@@ -2491,6 +3345,14 @@
 
       // ── Gallery card ──
       const { card: galleryCard, inner: galleryInner } = makeCard('Gallery', false);
+      // If SS profile has portfolio but we don't have URLs, show note
+      var ssHasPortfolio = state?._flow_mode === 'improve' && !photos.length;
+      if (ssHasPortfolio) {
+        var note = document.createElement('div');
+        note.style.cssText = 'font-size:13px;color:#6b7280;padding:8px 0;';
+        note.textContent = 'Your existing work photos are on your Service Seeking profile. Add more below or they\u2019ll stay as-is.';
+        galleryInner.appendChild(note);
+      }
       const photoGrid = document.createElement('div');
       photoGrid.className = 'profile-photos-grid';
       photos.forEach((p, i) => {
@@ -2918,94 +3780,161 @@
       const contactName = state?.contact_name || '';
       const firstName = contactName ? contactName.split(' ')[0] : '';
 
+      const isImprove = state?._flow_mode === 'improve';
+
       const h2 = document.createElement('h2');
-      h2.textContent = firstName
-        ? "You're live, " + firstName + "!"
-        : "You're live on Service Seeking!";
+      if (isImprove) {
+        h2.textContent = 'Profile updated';
+      } else {
+        h2.textContent = firstName
+          ? "You're live, " + firstName + "!"
+          : "You're live on Service Seeking!";
+      }
       wrapper.appendChild(h2);
 
       const subtitle = document.createElement('p');
-      const strong = document.createElement('strong');
-      strong.textContent = output.business_name || '';
-      subtitle.appendChild(document.createTextNode('Welcome to Service Seeking, '));
-      subtitle.appendChild(strong);
-      subtitle.appendChild(document.createTextNode('!'));
+      if (isImprove) {
+        // Improve mode: show changes summary
+        var changes = output.changes || {};
+        var parts = [];
+        if (changes.services_added && changes.services_added.length) {
+          var added = 0;
+          changes.services_added.forEach(function(s) { added += (s.subcategories || []).length; });
+          if (added) parts.push(added + ' new services');
+        }
+        if (changes.description_updated) parts.push('description updated');
+        if (changes.licence_added) parts.push('licence verified');
+        if (changes.photos_added) parts.push(changes.photos_added + ' photos');
+        subtitle.textContent = parts.length
+          ? 'Your changes are live: ' + parts.join(', ') + '.'
+          : 'No changes were needed — your profile is looking great!';
+      } else {
+        const strong = document.createElement('strong');
+        strong.textContent = output.business_name || '';
+        subtitle.appendChild(document.createTextNode('Welcome to Service Seeking, '));
+        subtitle.appendChild(strong);
+        subtitle.appendChild(document.createTextNode('!'));
+      }
       wrapper.appendChild(subtitle);
 
-      if (description) {
-        const descP = document.createElement('p');
-        descP.style.fontStyle = 'italic';
-        descP.style.color = '#555';
-        descP.textContent = description;
-        wrapper.appendChild(descP);
+      // Score jump for improve mode
+      if (isImprove && output.score_before && output.score_after) {
+        var scoreDiv = document.createElement('div');
+        scoreDiv.className = 'score-jump';
+        var beforeBox = document.createElement('div');
+        beforeBox.className = 'sj-box';
+        var beforeNum = document.createElement('div');
+        beforeNum.className = 'sj-num';
+        beforeNum.style.color = '#9ca3af';
+        beforeNum.textContent = output.score_before + '%';
+        beforeBox.appendChild(beforeNum);
+        var beforeCap = document.createElement('div');
+        beforeCap.className = 'sj-cap';
+        beforeCap.textContent = 'Before';
+        beforeBox.appendChild(beforeCap);
+        scoreDiv.appendChild(beforeBox);
+        var arrow = document.createElement('div');
+        arrow.style.cssText = 'font-size:24px;color:#16a34a;font-weight:300';
+        arrow.textContent = '\u2192';
+        scoreDiv.appendChild(arrow);
+        var afterBox = document.createElement('div');
+        afterBox.className = 'sj-box';
+        var afterNum = document.createElement('div');
+        afterNum.className = 'sj-num';
+        afterNum.style.color = '#16a34a';
+        afterNum.textContent = output.score_after + '%';
+        afterBox.appendChild(afterNum);
+        var afterCap = document.createElement('div');
+        afterCap.className = 'sj-cap';
+        afterCap.textContent = 'After';
+        afterBox.appendChild(afterCap);
+        scoreDiv.appendChild(afterBox);
+        wrapper.appendChild(scoreDiv);
       }
 
-      // Services summary
-      const infoBox = document.createElement('div');
-      infoBox.style.cssText = 'margin:24px 0;text-align:left;';
-      const box = document.createElement('div');
-      box.className = 'wizard-info-box';
+      if (!isImprove) {
+        // New user: show description, services, areas, JSON
+        if (description) {
+          const descP = document.createElement('p');
+          descP.style.fontStyle = 'italic';
+          descP.style.color = '#555';
+          descP.textContent = description;
+          wrapper.appendChild(descP);
+        }
 
-      // Services row
-      const svcRow = document.createElement('div');
-      svcRow.className = 'wizard-summary-item';
-      const svcLabel = document.createElement('span');
-      svcLabel.className = 'wizard-summary-label';
-      svcLabel.textContent = 'Services';
-      svcRow.appendChild(svcLabel);
-      const svcValue = document.createElement('span');
-      svcValue.className = 'wizard-summary-value';
-      services.forEach(cat => {
-        (cat.subcategories || []).forEach(sc => {
-          const chip = document.createElement('span');
-          chip.className = 'service-chip';
-          chip.textContent = sc.name;
-          svcValue.appendChild(chip);
-          svcValue.appendChild(document.createTextNode(' '));
+        const infoBox = document.createElement('div');
+        infoBox.style.cssText = 'margin:24px 0;text-align:left;';
+        const box = document.createElement('div');
+        box.className = 'wizard-info-box';
+
+        const svcRow = document.createElement('div');
+        svcRow.className = 'wizard-summary-item';
+        const svcLabel = document.createElement('span');
+        svcLabel.className = 'wizard-summary-label';
+        svcLabel.textContent = 'Services';
+        svcRow.appendChild(svcLabel);
+        const svcValue = document.createElement('span');
+        svcValue.className = 'wizard-summary-value';
+        services.forEach(cat => {
+          (cat.subcategories || []).forEach(sc => {
+            const chip = document.createElement('span');
+            chip.className = 'service-chip';
+            chip.textContent = sc.name;
+            svcValue.appendChild(chip);
+            svcValue.appendChild(document.createTextNode(' '));
+          });
         });
-      });
-      if (services.length === 0) svcValue.textContent = 'None';
-      svcRow.appendChild(svcValue);
-      box.appendChild(svcRow);
+        if (services.length === 0) svcValue.textContent = 'None';
+        svcRow.appendChild(svcValue);
+        box.appendChild(svcRow);
 
-      // Areas row
-      const areaRow = document.createElement('div');
-      areaRow.className = 'wizard-summary-item';
-      const areaLabel = document.createElement('span');
-      areaLabel.className = 'wizard-summary-label';
-      areaLabel.textContent = 'Service Areas';
-      areaRow.appendChild(areaLabel);
-      const areaValue = document.createElement('span');
-      areaValue.className = 'wizard-summary-value';
-      areaValue.textContent = regions.length ? regions.join(', ') : 'Not set';
-      areaRow.appendChild(areaValue);
-      box.appendChild(areaRow);
+        const areaRow = document.createElement('div');
+        areaRow.className = 'wizard-summary-item';
+        const areaLabel = document.createElement('span');
+        areaLabel.className = 'wizard-summary-label';
+        areaLabel.textContent = 'Service Areas';
+        areaRow.appendChild(areaLabel);
+        const areaValue = document.createElement('span');
+        areaValue.className = 'wizard-summary-value';
+        areaValue.textContent = regions.length ? regions.join(', ') : 'Not set';
+        areaRow.appendChild(areaValue);
+        box.appendChild(areaRow);
 
-      infoBox.appendChild(box);
-      wrapper.appendChild(infoBox);
+        infoBox.appendChild(box);
+        wrapper.appendChild(infoBox);
 
-      const subtext = document.createElement('p');
-      subtext.textContent = "You'll start receiving relevant job leads in your area soon.";
-      wrapper.appendChild(subtext);
+        const subtext = document.createElement('p');
+        subtext.textContent = "You'll start receiving relevant job leads in your area soon.";
+        wrapper.appendChild(subtext);
 
-      // JSON details
-      const details = document.createElement('details');
-      details.style.cssText = 'text-align:left;margin:16px 0;';
-      const summary = document.createElement('summary');
-      summary.style.cssText = 'cursor:pointer;color:#888;font-size:13px;margin-bottom:8px;';
-      summary.textContent = 'View raw JSON output';
-      details.appendChild(summary);
-      const jsonDiv = document.createElement('div');
-      jsonDiv.className = 'wizard-result-json';
-      jsonDiv.textContent = jsonStr;
-      details.appendChild(jsonDiv);
-      wrapper.appendChild(details);
+        const details = document.createElement('details');
+        details.style.cssText = 'text-align:left;margin:16px 0;';
+        const summary = document.createElement('summary');
+        summary.style.cssText = 'cursor:pointer;color:#888;font-size:13px;margin-bottom:8px;';
+        summary.textContent = 'View raw JSON output';
+        details.appendChild(summary);
+        const jsonDiv = document.createElement('div');
+        jsonDiv.className = 'wizard-result-json';
+        jsonDiv.textContent = jsonStr;
+        details.appendChild(jsonDiv);
+        wrapper.appendChild(details);
+      }
 
       // Close button
       const closeBtn = document.createElement('button');
       closeBtn.className = 'wizard-close-btn';
+      if (isImprove) {
+        closeBtn.style.background = '#298AE3';
+      }
       closeBtn.addEventListener('click', () => closeWizard());
-      closeBtn.innerHTML = 'Done <i class="fas fa-check" style="margin-left:8px;"></i>';
+      var closeBtnText = document.createTextNode(isImprove ? 'Done' : 'Done ');
+      closeBtn.appendChild(closeBtnText);
+      if (!isImprove) {
+        var checkIcon = document.createElement('i');
+        checkIcon.className = 'fas fa-check';
+        checkIcon.style.marginLeft = '8px';
+        closeBtn.appendChild(checkIcon);
+      }
       wrapper.appendChild(closeBtn);
 
       content.textContent = '';
@@ -3014,10 +3943,11 @@
 
     // ────────── UPDATE PROGRESS ──────────
     function updateProgress(currentStep) {
-      const stepIndex = STEPS.indexOf(currentStep);
+      const steps = flowMode === 'improve' ? IMPROVE_STEPS : STEPS;
+      const stepIndex = steps.indexOf(currentStep);
       if (stepIndex < 0) return;
 
-      const pct = ((stepIndex + 1) / STEPS.length) * 100;
+      const pct = ((stepIndex + 1) / steps.length) * 100;
       const bar = document.getElementById('wizardProgressBar');
       if (bar) bar.style.width = pct + '%';
     }

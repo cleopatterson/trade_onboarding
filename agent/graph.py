@@ -244,6 +244,18 @@ async def business_verification_node(state: OnboardingState) -> dict:
     messages = state.get("messages", [])
     last_msg = _get_last_human_message(messages)
 
+    # Improve mode: auto-search business name, or handle fix messages
+    if state.get("_flow_mode") == "improve":
+        if last_msg == "__SKIP_FIX__":
+            return {
+                "current_node": "business_verification",
+                "business_verified": True,
+                "messages": [AIMessage(content="Verification skipped.")],
+            }
+        # On first entry (auto-chained from assessment), use business name as search
+        if (not last_msg or last_msg.startswith("__")) and state.get("business_name") and not state.get("abr_results"):
+            last_msg = state.get("business_name")
+
     if not last_msg:
         return {"current_node": "business_verification"}
 
@@ -839,6 +851,8 @@ def _build_service_prompt(
         ))
     general_heading_text = " and ".join(general_headings) if general_headings else "their trade"
     general_count = sum(1 for s in services if s.get("source") == "general")
+    is_improve = state.get("_flow_mode") == "improve"
+    existing_count = len([s for s in services if s.get("source") == "existing"]) if is_improve else 0
 
     # ── Turn 1 rule ──
     if tiered_mode:
@@ -867,18 +881,30 @@ def _build_service_prompt(
                 f"Do NOT ask about specialist gaps this turn."
             )
         elif gaps:
-            turn1_rule = (
-                f"- TURN 1 RULE: You're setting this business up as {general_heading_text}. "
-                f"Your response MUST be 2-3 SHORT sentences max. Confirm the category heading "
-                f"and briefly mention the licence if found. "
-                f"{evidence_ack}"
-                f"FORBIDDEN: Do NOT mention service counts, list individual services, or say how many are mapped. "
-                f"Include the pre-mapped services array exactly as-is in your JSON output. "
-                f"{licence_ack}{multi_cat_note}"
-                f"Then look at the REMAINING GAPS and pick the most relevant group of 3-6 services to ask about. "
-                f"Group them by theme (e.g. 'cabling work' or 'solar and energy'). "
-                f"Keep it to ONE simple question per turn."
-            )
+            if is_improve:
+                turn1_rule = (
+                    f"- TURN 1 RULE: This {general_heading_text} business already has {existing_count} services listed. "
+                    f"We found {len(gaps)} specialist services they might be missing. "
+                    f"Your response MUST be 1-2 SHORT sentences — go straight to asking about the gaps. "
+                    f"FORBIDDEN: Do NOT introduce yourself, mention what you can see, or describe what you're doing. "
+                    f"Do NOT mention service counts or list individual services. "
+                    f"Include the pre-mapped services array exactly as-is in your JSON output. "
+                    f"Look at the REMAINING GAPS and ask about the most relevant group of 3-6 services. "
+                    f"Group them by theme. ONE simple question."
+                )
+            else:
+                turn1_rule = (
+                    f"- TURN 1 RULE: You're setting this business up as {general_heading_text}. "
+                    f"Your response MUST be 2-3 SHORT sentences max. Confirm the category heading "
+                    f"and briefly mention the licence if found. "
+                    f"{evidence_ack}"
+                    f"FORBIDDEN: Do NOT mention service counts, list individual services, or say how many are mapped. "
+                    f"Include the pre-mapped services array exactly as-is in your JSON output. "
+                    f"{licence_ack}{multi_cat_note}"
+                    f"Then look at the REMAINING GAPS and pick the most relevant group of 3-6 services to ask about. "
+                    f"Group them by theme (e.g. 'cabling work' or 'solar and energy'). "
+                    f"Keep it to ONE simple question per turn."
+                )
         else:
             turn1_rule = (
                 f"- TURN 1 RULE: You're setting this business up as {general_heading_text} "
@@ -899,10 +925,22 @@ def _build_service_prompt(
         )
 
     # ── Static context ──
-    static_context = f"""You are the Service Seeking onboarding assistant helping a business set up their services.
+    if is_improve:
+        improve_svc_ctx = f"""
+CONTEXT: This is an EXISTING business on Service Seeking with {existing_count} services already listed.
+We've analysed their licence, website, and reviews and found services they should be listed under but aren't.
+Every missing service = job leads they'll never see. Your job is to check whether they offer these
+specific services so we can add them. This is a quick review, not a full onboarding.
 
-GOAL: Map this business's services as completely as possible. Every missed subcategory is leads they'll never see. It's better to include a service they occasionally do than to miss one they do regularly.
+WHY THIS MATTERS: Service Seeking matches businesses to jobs by subcategory. If a plumber does hot water
+systems but isn't listed under "Hot Water Systems", they'll never see those job leads. We're closing those gaps."""
+    else:
+        improve_svc_ctx = ""
 
+    static_context = f"""You are {'reviewing an existing business profile on Service Seeking to find missing services' if is_improve else 'the Service Seeking onboarding assistant helping a business set up their services'}.
+
+GOAL: {'Check whether this business offers specific services we identified as gaps — each one they add means more job leads.' if is_improve else 'Map this business services as completely as possible. Every missed subcategory is leads they will never see. It is better to include a service they occasionally do than to miss one they do regularly.'}
+{improve_svc_ctx}
 SUBCATEGORY GUIDE:
 {guide[:4000] if guide else "No specific guide available for this trade."}
 
@@ -910,7 +948,7 @@ CATEGORY TAXONOMY:
 {taxonomy[:6000]}
 
 GUIDELINES:
-- This flows directly from business confirmation — the conversation is already going. Don't re-introduce yourself.
+- {'This is a profile review — get straight to asking about the missing services. No introduction, no preamble, no stating what you can see. Just ask the question.' if is_improve else 'This flows directly from business confirmation — the conversation is already going.'} Do not re-introduce yourself.
 - Be conversational and Australian. Keep it short — people are busy. Say "tradie" for trade businesses, but adapt your language for professional services (photographers, designers, accountants, etc.).
 - Licence classes are your strongest signal for trades — they tell you exactly what they're licensed for. Professional services may not have trade licences, and that's fine.
 {turn1_rule}
@@ -942,12 +980,23 @@ Return ONLY the JSON object."""
     elif pending_cluster_ids and not cluster_added:
         cluster_context = "\nUser declined the last cluster. Move on to the next one."
 
+    # ── Improve mode context ──
+    improve_context = ""
+    if state.get("_flow_mode") == "improve":
+        existing_count = sum(1 for s in services if s.get("source") == "existing")
+        improve_context = (
+            f"\nMODE: PROFILE IMPROVEMENT — This business already has a Service Seeking profile with {existing_count} services. "
+            f"You're helping them add missing services they should be listed under. "
+            f"Frame it as improving their visibility: \"I found some services you might be missing\" not \"setting up your services\". "
+            f"Their existing services (source=existing) are already on their profile — focus on what's NEW."
+        )
+
     # ── Dynamic context ──
     dynamic_context = f"""BUSINESS: {business_name}
 {f'CONTACT: {contact}' if contact else ''}
 {_format_services_context(services, general_headings)}
 {licence_context}{data_confidence}
-{web_context}{reviews_context}{gaps_text}{cluster_context}
+{web_context}{reviews_context}{gaps_text}{cluster_context}{improve_context}
 
 CONVERSATION SO FAR:
 {conv_history}"""
@@ -971,7 +1020,20 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             "messages": [AIMessage(content="Services locked in!")],
         }
 
-    last_msg = _get_last_human_message(messages)
+    # When auto-chained from assessment, ignore the stale button message
+    if state.get("_auto_chained"):
+        last_msg = None
+    else:
+        last_msg = _get_last_human_message(messages)
+
+    # Skip fix handler for improve mode
+    if last_msg == "__SKIP_FIX__":
+        return {
+            "current_node": "service_discovery",
+            "services_confirmed": True,
+            "messages": [AIMessage(content="Services skipped.")],
+        }
+
     licence_classes = state.get("licence_classes", [])
     web_results = state.get("web_results", [])
 
@@ -1302,6 +1364,7 @@ async def service_discovery_node(state: OnboardingState) -> dict:
     pending_cluster_ids = state.get("_pending_cluster_ids", [])
 
     if svc_turn == 1 and not services:
+        # New user flow: no services yet, run full tiered mapping
         website_text = state.get("website_text", "")
         initial = compute_initial_services(
             business_name, licence_classes,
@@ -1316,7 +1379,6 @@ async def service_discovery_node(state: OnboardingState) -> dict:
             specialist_gap_ids = [g["subcategory_id"] for g in initial["specialist_gaps"]]
             _eso_updates["_general_headings"] = initial.get("general_headings", [])
             logger.info(f"[SVC] Tiered mapping: {len(services)} pre-mapped, {len(initial['specialist_gaps'])} specialist gaps")
-            # Trace: category detection + tiered mapping breakdown
             general_headings = initial.get("general_headings", initial.get("category_names", []))
             _trace(state, "Tiered Mapping", 0,
                    f"Detected {', '.join(initial.get('category_names', []))} → {len(services)} auto-mapped, "
@@ -1325,6 +1387,46 @@ async def service_discovery_node(state: OnboardingState) -> dict:
                     "general_headings": general_headings,
                     "auto_mapped": len(services),
                     "specialist_gaps": [g.get("subcategory_name", "") for g in initial["specialist_gaps"]]})
+
+    elif svc_turn == 1 and services and state.get("_flow_mode") == "improve" and not specialist_gap_ids:
+        # Improve mode: services exist from SS profile, find what's MISSING
+        website_text = state.get("website_text", "")
+        initial = compute_initial_services(
+            business_name, licence_classes,
+            google_biz_name, google_type,
+            google_reviews, web_results,
+            website_text=website_text,
+            google_types=state.get("google_types", []),
+        )
+        if initial.get("tiered"):
+            existing_ids = {s.get("subcategory_id") for s in services}
+            # Merge: add any auto-mapped services the SS profile is missing
+            new_services = [s for s in initial["services"] if s.get("subcategory_id") not in existing_ids]
+            if new_services:
+                services = services + new_services
+                logger.info(f"[SVC] Improve: merged {len(new_services)} new auto-mapped services into {len(existing_ids)} existing")
+            # Specialist gaps: only those not already in the profile
+            specialist_gap_ids = [g["subcategory_id"] for g in initial["specialist_gaps"]
+                                  if g["subcategory_id"] not in existing_ids]
+            if specialist_gap_ids or new_services:
+                tiered_mode = True
+                _eso_updates["_general_headings"] = initial.get("general_headings", [])
+                logger.info(f"[SVC] Improve tiered: {len(new_services)} new auto-mapped, "
+                            f"{len(specialist_gap_ids)} specialist gaps (from {len(initial['specialist_gaps'])} total)")
+                _trace(state, "Improve Tiered Mapping", 0,
+                       f"Existing: {len(existing_ids)}, new auto-mapped: {len(new_services)}, "
+                       f"specialist gaps: {len(specialist_gap_ids)}",
+                       {"existing": len(existing_ids), "new_mapped": len(new_services),
+                        "specialist_gaps": len(specialist_gap_ids)})
+            else:
+                # Nothing to add — confirm immediately
+                logger.info(f"[SVC] Improve: no new services to add, confirming {len(services)} existing")
+                return {
+                    "current_node": "service_discovery",
+                    "services": services,
+                    "services_confirmed": True,
+                    "messages": [AIMessage(content="Your services are looking comprehensive — nothing to add!")],
+                }
 
     # ── Category suggestion (turn 1, after initial mapping) ──
     related_suggestions = None
@@ -1625,6 +1727,14 @@ async def service_area_node(state: OnboardingState) -> dict:
     else:
         last_msg = _get_last_human_message(messages)
 
+    # Skip fix handler for improve mode
+    if last_msg == "__SKIP_FIX__":
+        return {
+            "current_node": "service_area",
+            "service_areas_confirmed": True,
+            "messages": [AIMessage(content="Service area skipped.")],
+        }
+
     # Gather geographic context
     grouped = get_suburbs_in_radius_grouped(postcode, 20.0) if postcode else {}
 
@@ -1743,10 +1853,45 @@ Return ONLY the JSON object."""
                {"state": business_state, "guide_file": _state_city_map.get(business_state, "none") + "_regions.md" if regional_guide else "none",
                 "chars": len(regional_guide)})
 
+        # Improve mode: add location mismatch context if Google suburb differs from SS profile
+        improve_area_ctx = ""
+        if state.get("_flow_mode") == "improve":
+            google_suburb = state.get("business_suburb", "")
+            ss_suburb = ((state.get("_ss_profile") or {}).get("jobFilter") or {}).get("suburb", {}).get("suburb", "")
+            if google_suburb and ss_suburb and google_suburb.lower() != ss_suburb.lower():
+                improve_area_ctx = f"""
+IMPORTANT — LOCATION MISMATCH:
+Google Places shows this business in **{google_suburb}**, but their Service Seeking profile says **{ss_suburb}**.
+Lead with this mismatch — ask which suburb they're actually based in. Present radio-style options:
+1. Update to {google_suburb} (matches Google Business Profile)
+2. Keep {ss_suburb} (profile is correct)
+3. They work across both areas
+Then set up their service area based on their answer.
+"""
+            else:
+                # Check for barrier pollution from assessment
+                assessment = state.get("_assessment", {})
+                barrier_finding = next((f for f in assessment.get("findings", []) if f["type"] == "area_barrier"), None)
+                if barrier_finding:
+                    svc_areas = state.get("service_areas", {})
+                    ss_radius = svc_areas.get("radius_km", 20)
+                    base = google_suburb or ss_suburb or "their suburb"
+                    regions = svc_areas.get("regions_included", [])
+                    improve_area_ctx = f"""
+IMPORTANT — RADIUS REFINEMENT:
+This business is based in {base} with a {ss_radius}km radius on Service Seeking, which currently covers {len(regions)} regions: {', '.join(regions)}.
+{barrier_finding.get('suggested', '')}
+The owner may not realise how far their radius extends or that it includes areas across a barrier they wouldn't service.
+Explain what their current {ss_radius}km radius covers, mention the barrier issue naturally, and ask which areas they actually want to service.
+Don't be alarmist — frame it as a refinement to get better-matched leads.
+"""
+                elif google_suburb:
+                    improve_area_ctx = f"\nIMPROVE MODE: This business's profile is being reviewed. They're based in {google_suburb}. Ask about their service area from there.\n"
+
         static_context = f"""You are the Service Seeking onboarding assistant helping a business define their service area.
 
 GOAL: Figure out which REGIONS this business covers. Real coverage isn't a perfect circle — it's a blob shaped by traffic, barriers, and preferences. Your job is to identify which regions they include and which they exclude.
-
+{improve_area_ctx}
 REGIONS WITHIN 20KM OF BASE:
 {region_list or "No region data available"}
 Total: {grouped.get("total", 0)} suburbs across these regions
@@ -1755,7 +1900,7 @@ REGIONAL GUIDE (barriers, congestion, corridors):
 {regional_guide[:4000] if regional_guide else "No regional guide available."}
 
 GUIDELINES:
-- This step flows directly from the service confirmation — the conversation is already going. Don't re-introduce yourself or rehash what you already know. The user's last message was about services, not areas.
+- {'This is a profile review. The business has a radius set on SS but may not realise what it covers. A radius that is too wide means they are paying for leads in areas they will not service. Frame this as getting better-matched leads, not as a problem.' if state.get('_flow_mode') == 'improve' else 'This step flows directly from the service confirmation — the conversation is already going.'} Don't re-introduce yourself or rehash what you already know.
 - Be conversational and Australian. Keep it short — people are busy.
 - Talk in terms of regions/areas, not individual suburbs
 - Use the regional guide to understand natural boundaries, but don't explain the geography — they already know it. Just ask which areas they cover.
@@ -1779,11 +1924,19 @@ step_complete = true when the user has indicated which regions they cover.
 Return ONLY the JSON object."""
 
         contact = state.get("contact_name", "")
+        improve_area_ctx = ""
+        if state.get("_flow_mode") == "improve":
+            ss_radius = (state.get("_ss_profile", {}).get("jobFilter") or {}).get("radius", "?")
+            improve_area_ctx = (
+                f"\nMODE: PROFILE IMPROVEMENT — This business already has a Service Seeking profile. "
+                f"Current radius on SS: {ss_radius}km. "
+                f"Frame as reviewing their coverage, not setting up from scratch."
+            )
         dynamic_context = f"""BUSINESS: {business_name}
 {f'CONTACT: {contact}' if contact else ''}
 BASE SUBURB: {grouped.get("base_suburb", "Unknown")} ({postcode})
 STATE: {business_state}
-CURRENT SERVICE AREA: Not set yet"""
+CURRENT SERVICE AREA: Not set yet{improve_area_ctx}"""
 
         t_llm = time.time()
         response = await model.ainvoke([
@@ -1881,6 +2034,25 @@ async def profile_node(state: OnboardingState) -> dict:
     messages = state.get("messages", [])
     last_msg = _get_last_human_message(messages)
 
+    # Skip fix handler for improve mode
+    if last_msg == "__SKIP_FIX__":
+        return {
+            "current_node": "profile",
+            "profile_saved": True,
+            "messages": [AIMessage(content="Profile step skipped.")],
+        }
+
+    # ── Accept description (improve mode comparison) → update desc, show profile builder ──
+    if last_msg and last_msg.startswith("__ACCEPT_DESC__:"):
+        new_desc = last_msg[len("__ACCEPT_DESC__:"):].strip()
+        return {
+            "current_node": "profile",
+            "profile_description": new_desc,
+            "profile_description_draft": new_desc,
+            "_description_comparison": False,
+            "messages": [AIMessage(content="Description updated. Here's your profile — check everything looks good before publishing.")],
+        }
+
     # ── Save call: user clicked Save Profile ──
     if last_msg and last_msg.startswith(MSG_SAVE_PROFILE):
         payload = last_msg[len(MSG_SAVE_PROFILE):].strip()
@@ -1917,19 +2089,30 @@ async def profile_node(state: OnboardingState) -> dict:
     if state.get("profile_description_draft") and last_msg:
         business_name = state.get("business_name", "")
         contact_name = state.get("contact_name", "")
-        response = await llm_fast.ainvoke([
-            SystemMessage(content=f"""You are the Service Seeking onboarding assistant. The user is viewing their profile preview and has typed a question or comment instead of publishing.
-
-BUSINESS: {business_name}
-{f'CONTACT: {contact_name}' if contact_name else ''}
-
-Answer their question helpfully and briefly (1-3 sentences). Be conversational and Australian.
+        is_improve_profile = state.get("_flow_mode") == "improve"
+        if is_improve_profile:
+            profile_q_guidance = """Answer their question helpfully and briefly (1-3 sentences). Be conversational and Australian.
+- If they ask about what happens next: their changes will be published to their existing Service Seeking profile. They're not signing up for anything new.
+- If they ask about editing: mention they can edit the description directly, or remove services/areas on the preview.
+- If they want to change something about the description: suggest they edit it directly on the profile card.
+- Keep it short, don't over-explain. Say "we" not "I".
+- End with a natural nudge back to the profile."""
+        else:
+            profile_q_guidance = """Answer their question helpfully and briefly (1-3 sentences). Be conversational and Australian.
 - If they ask about pricing/plans: mention there are a few tiers depending on reach, and you'll walk them through it after publishing.
 - If they ask about editing: mention they can edit the description, remove services or areas right on the preview.
 - If they ask about what happens next: after publishing, you'll sort out their plan and they'll be live.
 - If they want to change something about the description: suggest they edit it directly on the profile card.
 - Keep it short, don't over-explain.
-- End with a natural nudge back to the profile — something like "Want to jump back to your profile?" or "Ready to check out your profile again?" Keep it casual."""),
+- End with a natural nudge back to the profile — something like "Want to jump back to your profile?" or "Ready to check out your profile again?" Keep it casual."""
+
+        response = await llm_fast.ainvoke([
+            SystemMessage(content=f"""You are {'reviewing' if is_improve_profile else 'setting up'} a Service Seeking profile. The user is viewing their profile preview and has typed a question or comment instead of publishing.
+
+BUSINESS: {business_name}
+{f'CONTACT: {contact_name}' if contact_name else ''}
+
+{profile_q_guidance}"""),
             HumanMessage(content=last_msg),
         ])
         return {
@@ -1946,8 +2129,9 @@ Answer their question helpfully and briefly (1-3 sentences). Be conversational a
         }
 
     # ── No-website gate: search for social profiles, ask user to verify ──
+    # Skip for improve mode — business already exists, go straight to description
     google_website = state.get("business_website", "")
-    if not google_website and not state.get("_website_asked"):
+    if not google_website and not state.get("_website_asked") and state.get("_flow_mode") != "improve":
         business_name = state.get("business_name", "")
         business_state = state.get("business_state", "")
 
@@ -2085,12 +2269,47 @@ Answer their question helpfully and briefly (1-3 sentences). Be conversational a
     if google_rating:
         rating_context = f"\nGOOGLE RATING: {google_rating}/5 ({google_review_count} reviews)"
 
-    # ── Run LLM description + intro in parallel with scrape ──
-    llm_task = llm_fast_json.ainvoke([
-        SystemMessage(content=f"""You're helping a business set up their Service Seeking profile. Do two things:
+    # Improve mode: include existing description for reference
+    improve_desc_ctx = ""
+    improve_desc_guidelines = ""
+    if state.get("_flow_mode") == "improve":
+        existing_desc = (state.get("_ss_profile") or {}).get("businessDescription", "")
+        if existing_desc:
+            improve_desc_ctx = f"\nEXISTING DESCRIPTION (owner's current copy):\n{existing_desc[:500]}"
+            improve_desc_guidelines = """
+IMPROVE MODE — KEEP THEIR VOICE:
+- This is NOT a rewrite. The owner wrote this and it has their personality in it.
+- Fix grammar, capitalisation, and formatting issues
+- Remove phone numbers, licence numbers, and ABN — those belong in structured fields
+- Fix stale claims (e.g. "8 years" when they've been a member since 2011)
+- Add trust signals they're missing (mention reviews, licence, years of experience) IF natural
+- Keep their unique phrases and selling points (e.g. "distressed painting a specialty", "no subcontractors")
+- Keep roughly the same length and structure — don't condense their 5-sentence description into 2 generic ones
+- The result should read like THEIR description, polished — not a corporate rewrite"""
+        else:
+            improve_desc_ctx = "\nNOTE: This business currently has NO description — write a fresh one."
 
-1. Write a short "intro" message (1 sentence) presenting their profile preview and inviting them to make changes. Speak as one person (not "we"), conversational and Australian, use their first name if known. Like "Here's your profile [name] — let me know if you want to change anything." Vary the wording naturally. Don't give specific UI instructions.
-2. Write a "description" (2-3 sentences) for their profile listing.
+    # ── Run LLM description + intro in parallel with scrape ──
+    if state.get("_flow_mode") == "improve":
+        intro_instruction = (
+            '1. Write a short "intro" message (1 sentence) introducing the improved description. '
+            'Use their first name if known. Like "Here\'s an updated version of your description, [name] — '
+            'have a read and edit anything you like." Vary naturally. Don\'t mention the profile card or UI.'
+        )
+        desc_instruction = '2. Improve the existing description — see IMPROVE MODE guidelines below.'
+    else:
+        intro_instruction = (
+            '1. Write a short "intro" message (1 sentence) presenting their profile preview and inviting them '
+            'to make changes. Use their first name if known. Like "Here\'s your profile [name] — let me know '
+            'if you want to change anything." Vary naturally. Don\'t give specific UI instructions.'
+        )
+        desc_instruction = '2. Write a "description" (2-3 sentences) for their profile listing.'
+
+    llm_task = llm_fast_json.ainvoke([
+        SystemMessage(content=f"""You're helping a business {'improve' if state.get('_flow_mode') == 'improve' else 'set up'} their Service Seeking profile. A stronger description converts more profile views into job enquiries. Do two things:
+
+{intro_instruction}
+{desc_instruction}
 
 BUSINESS: {business_name}
 {f'OWNER: {contact_name}' if contact_name else ''}
@@ -2098,17 +2317,17 @@ BUSINESS: {business_name}
 SERVICES: {services_text}
 AREAS: {regions_text}
 {f'YEARS IN BUSINESS: {years}' if years else ''}
-{web_context}{rating_context}
+{web_context}{rating_context}{improve_desc_ctx}
 
 DESCRIPTION GUIDELINES:
 - Third person, professional but warm Australian tone
 - Mention key services, areas covered, and years of experience if available
 - If Google rating is available and strong (4+), mention it briefly (e.g. "highly rated")
-- Keep under 500 characters — punchy and specific, not generic
+- {'Match the length of their existing description — if theirs is 5 sentences, yours should be similar. Do not condense a long description into 2 generic sentences.' if improve_desc_guidelines else 'Keep under 500 characters — punchy and specific, not generic'}
 - Don't mention ABN, licence numbers, or compliance details
 - If BUSINESS WEBSITE TEXT is provided, use it to pick out specific details (specialties, taglines, unique selling points) — don't just repeat it, distil the best bits
 - Focus on what makes this business worth hiring
-
+{improve_desc_guidelines}
 Return JSON: {{"intro": "...", "description": "..."}}"""),
         HumanMessage(content="Generate the intro and profile description."),
     ])
@@ -2212,7 +2431,10 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         description = raw.strip('"')
         logger.info(f"[PROFILE] JSON parse failed, using raw as description")
 
-    # ── Merge images: Google Places > verified website > user-provided URL only ──
+    # ── Merge images: Google Places > verified website > user-provided URL > existing SS ──
+    # In improve mode, preserve existing logo/photos as fallback
+    existing_logo = state.get("profile_logo", "") if state.get("_flow_mode") == "improve" else ""
+    existing_photos = state.get("profile_photos", []) if state.get("_flow_mode") == "improve" else []
     logo = scraped.get("logo", "")
 
     # Google Business photos are highest quality — real work photos from owner/customers
@@ -2251,6 +2473,13 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
             if p not in photos and p != logo and len(photos) < 8:
                 photos.append(p)
 
+    # Fallback to existing SS images if scraping found nothing
+    if not logo and existing_logo:
+        logo = existing_logo
+        logger.info(f"[PROFILE] Using existing SS logo: {logo[:80]}")
+    if not photos and existing_photos:
+        photos = existing_photos
+        logger.info(f"[PROFILE] Using existing SS photos: {len(photos)}")
     if not logo and not photos:
         logger.info(f"[PROFILE] No verified logo or photos found — monogram will be shown")
 
@@ -2281,7 +2510,7 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
                f"{pre_filter_count} candidates → {len(photos)} kept (Haiku vision WORK/SKIP)",
                {"before": pre_filter_count, "after": len(photos), "trade_type": trade_type})
 
-    return {
+    result = {
         "current_node": "profile",
         "years_in_business": years,
         "profile_description": description,
@@ -2291,6 +2520,15 @@ Return JSON: {{"intro": "...", "description": "..."}}"""),
         "profile_photos": photos[:6],
         "messages": [AIMessage(content=intro or description)],
     }
+
+    # Improve mode: set description comparison flag if existing desc exists
+    if state.get("_flow_mode") == "improve":
+        existing_desc = (state.get("_ss_profile") or {}).get("businessDescription", "")
+        if existing_desc and len(existing_desc) >= 30:
+            result["_description_comparison"] = True
+            result["_description_improved"] = description
+
+    return result
 
 
 PRICING_PLANS = {
@@ -2522,6 +2760,83 @@ async def complete_node(state: OnboardingState) -> dict:
         } if state.get("subscription_plan") and state.get("subscription_plan") != "skip" else None,
     }
 
+    # ── Improve mode: generate changes diff + before/after score ──
+    if state.get("_flow_mode") == "improve":
+        ss_profile = state.get("_ss_profile", {})
+        ss_subcats = {s.get("id") for s in ((ss_profile.get("jobFilter") or {}).get("subCategories") or [])}
+        current_service_ids = {s.get("subcategory_id") for s in state.get("services", [])}
+        ss_badges = ss_profile.get("badges", {})
+
+        changes = {
+            "services_added": [s for s in services_output
+                               for sc in s.get("subcategories", [])
+                               if sc.get("id") and sc["id"] not in ss_subcats],
+            "services_removed": [sid for sid in ss_subcats if sid not in current_service_ids],
+            "description_updated": bool(state.get("profile_description") and
+                                        state.get("profile_description") != ss_profile.get("businessDescription", "")),
+            "photos_added": len(state.get("profile_photos", [])),
+            "licence_added": bool(state.get("licence_info") and not ss_badges.get("licenceVerified")),
+        }
+        output["changes"] = changes
+
+        # Before/after completeness score (7 areas, each worth ~14%)
+        def _score(abn, licence, services_ok, desc_ok, photos, logo, area_ok):
+            s = 0
+            if abn: s += 14
+            if licence: s += 14
+            if services_ok: s += 15
+            if desc_ok: s += 15
+            if photos: s += 14
+            if logo: s += 14
+            if area_ok: s += 14
+            return s
+
+        ss_desc = ss_profile.get("businessDescription", "") or ""
+        score_before = _score(
+            ss_badges.get("abnVerified", False),
+            ss_badges.get("licenceVerified", False),
+            bool(ss_subcats),
+            len(ss_desc) >= 30,
+            ss_profile.get("hasPortfolio", False),
+            ss_profile.get("hasALogo", False),
+            True,  # area assumed OK before
+        )
+        score_after = _score(
+            bool(state.get("abn")) or ss_badges.get("abnVerified", False),
+            bool(state.get("licence_info")) or ss_badges.get("licenceVerified", False),
+            bool(state.get("services")),
+            bool(state.get("profile_description")) or len(ss_desc) >= 30,
+            ss_profile.get("hasPortfolio", False) or bool(state.get("profile_photos")),
+            ss_profile.get("hasALogo", False) or bool(state.get("profile_logo")),
+            True,
+        )
+        # Boost for services improvement
+        if changes["services_added"]:
+            score_after = min(100, score_after + min(len(changes["services_added"]), 5))
+        output["score_before"] = score_before
+        output["score_after"] = score_after
+
+        added_count = len(changes["services_added"])
+        message = "All done! Here's a summary of the improvements:"
+        if added_count:
+            message += f" {added_count} new services added."
+        if changes["description_updated"]:
+            message += " Description updated."
+        if changes["photos_added"]:
+            message += f" {changes['photos_added']} photos added."
+        if changes["licence_added"]:
+            message += " Licence verified."
+        if not any([added_count, changes["description_updated"], changes["photos_added"], changes["licence_added"]]):
+            message = "Your profile is looking great — no changes were needed!"
+
+        return {
+            "current_node": "complete",
+            "output_json": output,
+            "confirmed": True,
+            "profile_saved": True,
+            "messages": [AIMessage(content=message)],
+        }
+
     return {
         "current_node": "complete",
         "output_json": output,
@@ -2573,35 +2888,20 @@ def _extract_json(text: str) -> str:
     return text
 
 
-async def _confirm_business(abr: dict, state: dict) -> dict:
-    """Confirm a business and enrich with licence data + web search."""
-    business_name = abr.get("display_name", state.get("business_name_input", ""))
-    legal_name = abr.get("legal_name", "") or business_name
-    abn = abr.get("abn", "")
-    postcode = abr.get("postcode", "")
-    business_state = abr.get("state", "")
+async def _enrich_business(state: dict) -> dict:
+    """Run parallel enrichment: Google Places, Brave search, licence lookup, website scrape, category detection.
 
-    # Gate: inactive/cancelled ABN
-    abn_status = abr.get("status", "Active")
-    if abn_status and abn_status != "Active":
-        logger.warning(f"[BIZ] ABN {abn} status is '{abn_status}' — blocking onboarding")
-        return {
-            "current_node": "business_verification",
-            "abr_results": [],
-            "business_verified": False,
-            "messages": [AIMessage(content=(
-                f"It looks like the ABN for {business_name} is currently **{abn_status.lower()}** on the Australian Business Register. "
-                f"You'll need an active ABN to join Service Seeking. "
-                f"If you have a different business with an active ABN, I can help you set that one up."
-            ))],
-            "buttons": [
-                {"label": "Try a different business", "value": MSG_RESTART_BIZ},
-            ],
-        }
+    Expects state to have: business_name, legal_name (or business_name), abn, business_postcode, business_state.
+    Returns dict of enrichment fields to merge into state.
+    """
+    business_name = state.get("business_name", "")
+    legal_name = state.get("legal_name", "") or business_name
+    postcode = state.get("business_postcode", "")
+    business_state = state.get("business_state", "")
 
-    # Run licence + Brave + Google Places in parallel
     # Licence search: use legal_name (entity registration name) — that's what NSW Fair Trading has
     licence_search_name = legal_name
+    abn = state.get("abn", "")
 
     # Route licence lookup by state
     async def _qbcc_as_browse():
@@ -2660,11 +2960,48 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     web_task = brave_web_search(f"{business_name} {brave_location} Australia")
     google_query_suffix = f"{postcode} {business_state}" if postcode else business_state
     google_task = google_places_search(business_name, google_query_suffix)
-    licence_results, web_results, google_place = await asyncio.gather(
-        licence_task, web_task, google_task,
-    )
+
+    # ABR lookup: if we don't already have an ABN, search by name to find it
+    abr_task = None
+    if not abn and business_name:
+        abr_task = abr_lookup(business_name, "name")
+
+    if abr_task:
+        licence_results, web_results, google_place, abr_results = await asyncio.gather(
+            licence_task, web_task, google_task, abr_task,
+        )
+    else:
+        licence_results, web_results, google_place = await asyncio.gather(
+            licence_task, web_task, google_task,
+        )
+        abr_results = None
     t1 = time.time()
-    logger.info(f"[BIZ] Licence + Brave + Google Places: {t1 - t0:.1f}s (parallel)")
+    logger.info(f"[BIZ] Licence + Brave + Google Places{' + ABR' if abr_task else ''}: {t1 - t0:.1f}s (parallel)")
+
+    # ABR: auto-match best result by name + state/postcode
+    abr_match = None
+    if abr_results and abr_results.get("results"):
+        _abr_candidates = [r for r in abr_results["results"] if r.get("status") == "Active"]
+        # Prefer exact state + postcode match
+        for r in _abr_candidates:
+            if r.get("state") == business_state and (not postcode or r.get("postcode") == postcode):
+                abr_match = r
+                break
+        # Fallback: same state
+        if not abr_match:
+            for r in _abr_candidates:
+                if r.get("state") == business_state:
+                    abr_match = r
+                    break
+        # Fallback: first active result
+        if not abr_match and _abr_candidates:
+            abr_match = _abr_candidates[0]
+        if abr_match:
+            logger.info(f"[BIZ] ABR match: {abr_match.get('display_name')} ABN {abr_match.get('abn')} ({abr_match.get('state')})")
+            _trace(state, "ABR Lookup", t1 - t0,
+                   f"Matched: {abr_match.get('display_name')} — ABN {abr_match.get('abn')} ({abr_match.get('entity_type', '')})",
+                   {"abn": abr_match.get("abn"), "entity_type": abr_match.get("entity_type"),
+                    "state": abr_match.get("state"), "gst": abr_match.get("gst_registered")})
 
     # Google Places retry: if no result OR low-quality result, try variants.
     # ABR names often have "Pty Ltd" which Google listings omit, causing wrong matches.
@@ -2713,7 +3050,7 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
     _ENTITY_PATTERNS = re.compile(r'\b(pty|ltd|limited|trust|trustee|holdings|group|partnership)\b', re.IGNORECASE)
     _is_entity = _ENTITY_PATTERNS.search(legal_name)
     # Also check ABR entity_type for partnerships (name may just be "SMITH AND JONES")
-    _abr_entity_type = abr.get("entity_type", "")
+    _abr_entity_type = state.get("entity_type", "")
     if not _is_entity and "partner" in _abr_entity_type.lower():
         _is_entity = True
     if business_state in ("NSW", "QLD", "VIC") and not licence_results.get("results") and _is_entity:
@@ -2757,18 +3094,42 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         g_words = set(re.sub(r'[^\w\s]', '', g_name).split())
         b_words = set(re.sub(r'[^\w\s]', '', b_name).split())
         _STOP_WORDS = {"pty", "ltd", "limited", "the", "and", "of", "services", "service", "group", "australia"}
+        _TRADE_WORDS = {
+            "electrical", "electrician", "plumbing", "plumber", "painting", "painter",
+            "building", "builder", "builders", "carpentry", "carpenter", "cleaning",
+            "cleaner", "cleaners", "gardening", "gardener", "landscaping", "handyman",
+            "roofing", "roofer", "concreting", "concreter", "renovation", "renovations",
+            "construction", "maintenance", "solutions", "contractors", "contracting",
+            "industries", "enterprises", "projects", "works", "installations",
+            "decorating", "fencing", "tiling", "plastering",
+        }
         g_words -= _STOP_WORDS
         b_words -= _STOP_WORDS
-        common = g_words & b_words
-        # Require meaningful overlap: at least 50% of the shorter name's words must match
-        # (1 word out of 3 is not enough — "Smith Broughton Auctioneers" ≠ "Broughton Construction Company")
-        if g_words and b_words:
-            min_words = min(len(g_words), len(b_words))
-            name_overlap = len(common) >= max(1, (min_words + 1) // 2)  # ceil(50%)
+        # Name matching: a false positive (wrong business) is far worse than a miss.
+        # Wrong Google match → wrong photos, reviews, location, website → bad assessment.
+        # Missed match → no Google data, graceful degradation.
+        #
+        # Strategy: require distinctive (non-trade) words to match.
+        # Trade words like "electrical", "plumbing" etc. don't distinguish businesses.
+        distinctive_g = g_words - _TRADE_WORDS
+        distinctive_b = b_words - _TRADE_WORDS
+        distinctive_common = distinctive_g & distinctive_b
+
+        if distinctive_b:
+            # Business has distinctive words — require at least one to match
+            name_overlap = len(distinctive_common) >= 1
+        elif distinctive_g:
+            # Business name is all trade words but Google result has distinctive words — no match
+            # e.g. business="Electrical Services" vs Google="Ampower Electrical" — reject
+            name_overlap = False
         else:
+            # Both names are purely trade words — substring check
+            # e.g. "Electrical Services" vs "Electrical Solutions"
             name_overlap = g_name in b_name or b_name in g_name
+
         if not name_overlap:
-            logger.warning(f"[GOOGLE] Name mismatch: '{google_place.get('name', '')}' doesn't match '{business_name}' (overlap: {len(common)}/{min_words if g_words and b_words else 0} words). Discarding.")
+            logger.warning(f"[GOOGLE] Name mismatch: '{google_place.get('name', '')}' doesn't match '{business_name}' "
+                           f"(distinctive_b={distinctive_b}, distinctive_common={distinctive_common}). Discarding.")
             google_place = {}
 
     # Discard Google Places data if business is listed as permanently closed
@@ -3074,15 +3435,6 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
                {"url": google_website, "chars": len(website_text), "preview": website_text[:200]})
 
     return {
-        "current_node": "business_verification",
-        "business_name": business_name,
-        "legal_name": legal_name,
-        "abn": abn,
-        "entity_type": abr.get("entity_type", ""),
-        "gst_registered": abr.get("gst_registered", False),
-        "business_postcode": postcode,
-        "business_state": business_state,
-        "business_verified": True,
         "licence_info": licence_info,
         "licence_classes": licence_classes,
         "_needs_licence_number": needs_licence_number,
@@ -3101,10 +3453,650 @@ async def _confirm_business(abr: dict, state: dict) -> dict:
         "google_photos": google_place.get("photos", []),
         "business_suburb": google_place.get("suburb", ""),
         "google_address": google_place.get("short_address", "") or google_place.get("address", ""),
-        "abn_registration_date": abr.get("entity_start_date", ""),
         "_is_trade_business": is_trade,
         "_detected_categories": detected_categories,
+        "_abr_match": abr_match,
+    }
+
+
+async def _confirm_business(abr: dict, state: dict) -> dict:
+    """Confirm a business from ABR and run enrichment."""
+    business_name = abr.get("display_name", state.get("business_name_input", ""))
+    legal_name = abr.get("legal_name", "") or business_name
+    abn = abr.get("abn", "")
+    postcode = abr.get("postcode", "")
+    business_state = abr.get("state", "")
+
+    # Gate: inactive/cancelled ABN
+    abn_status = abr.get("status", "Active")
+    if abn_status and abn_status != "Active":
+        logger.warning(f"[BIZ] ABN {abn} status is '{abn_status}' — blocking onboarding")
+        return {
+            "current_node": "business_verification",
+            "abr_results": [],
+            "business_verified": False,
+            "messages": [AIMessage(content=(
+                f"It looks like the ABN for {business_name} is currently **{abn_status.lower()}** on the Australian Business Register. "
+                f"You'll need an active ABN to join Service Seeking. "
+                f"If you have a different business with an active ABN, I can help you set that one up."
+            ))],
+            "buttons": [
+                {"label": "Try a different business", "value": MSG_RESTART_BIZ},
+            ],
+        }
+
+    # Set state fields that _enrich_business expects
+    state["business_name"] = business_name
+    state["legal_name"] = legal_name
+    state["abn"] = abn
+    state["business_postcode"] = postcode
+    state["business_state"] = business_state
+
+    enrichment = await _enrich_business(state)
+
+    result = {
+        "current_node": "business_verification",
+        "business_name": business_name,
+        "legal_name": legal_name,
+        "abn": abn,
+        "entity_type": abr.get("entity_type", ""),
+        "gst_registered": abr.get("gst_registered", False),
+        "business_postcode": postcode,
+        "business_state": business_state,
+        "business_verified": True,
+        "abn_registration_date": abr.get("entity_start_date", ""),
         "messages": [AIMessage(content=f"Great, {business_name} is confirmed!")],
+    }
+    result.update(enrichment)
+    return result
+
+
+# ────────── ASSESSMENT (IMPROVE MODE) ──────────
+
+async def _assess_profile(state: dict) -> dict:
+    """Compare enriched data vs existing SS profile to find improvement opportunities.
+
+    Returns {findings: [{type, severity, headline, completeness, ...}], strengths: [...], summary_counts}.
+    """
+    ss_profile = state.get("_ss_profile", {})
+    findings = []
+    strengths = []
+
+    # Pre-extract review data (used in description + reviews checks)
+    ss_review_count = ss_profile.get("reviewsCount") or 0
+    ss_review_score = ss_profile.get("reviewsScoreOutOfFive") or "0"
+
+    # ABN + Licence → merged into "verification" finding
+    ss_badges = ss_profile.get("badges", {})
+    has_abn = state.get("abn") or ss_badges.get("abnVerified", False)
+    has_licence_verified = ss_badges.get("licenceVerified", False)
+    abr_match = state.get("_abr_match")
+    licence_info = state.get("licence_info")
+    licence_found = licence_info and not licence_info.get("_expired")
+
+    # Determine verification status
+    verify_issues = []
+    verify_strengths = []
+    if has_abn:
+        abr_detail = ""
+        if abr_match:
+            parts = []
+            if abr_match.get("entity_type"):
+                parts.append(abr_match["entity_type"])
+            if abr_match.get("gst_registered"):
+                parts.append("GST registered")
+            if parts:
+                abr_detail = f" ({', '.join(parts)})"
+        verify_strengths.append(f"ABN Verified{abr_detail}")
+    else:
+        if abr_match:
+            verify_issues.append(f"ABN {abr_match.get('abn', '')} found but not verified on profile")
+        else:
+            verify_issues.append("No ABN on profile")
+
+    if has_licence_verified:
+        licence_classes = state.get("licence_classes", [])
+        if licence_classes:
+            classes_str = ", ".join(licence_classes[:4])
+            if len(licence_classes) > 4:
+                classes_str += f" +{len(licence_classes) - 4} more"
+            verify_strengths.append(f"Licence verified ({classes_str})")
+        else:
+            verify_strengths.append("Licence verified")
+    elif licence_found:
+        verify_issues.append(f"Licence #{licence_info.get('licence_number', '')} found but not verified")
+
+    # If everything verified → strengths; otherwise → single verification finding
+    if not verify_issues:
+        for s in verify_strengths:
+            strengths.append({"headline": s, "icon": "check"})
+    else:
+        subtitle = verify_issues[0]
+        if len(verify_issues) > 1:
+            subtitle = "ABN and licence not verified on your profile"
+        findings.append({
+            "type": "verification",
+            "priority": 1,
+            "chip": "urgent",
+            "severity": "high",
+            "headline": "Business Verification",
+            "subtitle": subtitle,
+            "fix_action": "__FIX_VERIFY__",
+            "completeness": 0,
+            "current": "; ".join(verify_issues),
+            "suggested": "; ".join(verify_issues),
+            "action": "Verify your business",
+        })
+        # Still add any partial strengths
+        for s in verify_strengths:
+            strengths.append({"headline": s, "icon": "check"})
+
+    # Services check — compare what enrichment detected vs what SS profile has
+    ss_subcats = {s.get("id") for s in (ss_profile.get("jobFilter", {}).get("subCategories") or [])}
+    detected_cats = state.get("_detected_categories", [])
+    missing_services = set()
+    if detected_cats:
+        from agent.tools import compute_initial_services
+        potential = compute_initial_services(
+            state.get("business_name", ""),
+            state.get("licence_classes", []),
+            state.get("google_business_name", ""),
+            state.get("google_primary_type", ""),
+            state.get("google_reviews", []),
+            state.get("web_results", []),
+            state.get("website_text", ""),
+            state.get("google_types"),
+        )
+        potential_ids = {s.get("subcategory_id") for s in potential.get("services", [])}
+        missing_services = potential_ids - ss_subcats
+        if missing_services:
+            total = len(ss_subcats) + len(missing_services)
+            completeness = round(len(ss_subcats) / max(total, 1) * 100)
+            # Build evidence-aware headline + subtitle
+            evidence_count = sum(1 for s in potential.get("services", [])
+                                 if s.get("subcategory_id") in missing_services
+                                 and s.get("source") == "evidence")
+            # Specialist gaps are the ones we'll actually ask about
+            specialist_gaps = potential.get("specialist_gaps", [])
+            specialist_missing = [g for g in specialist_gaps if g["subcategory_id"] in missing_services]
+            general_missing = len(missing_services) - len(specialist_missing)
+
+            if evidence_count and general_missing:
+                subtitle = f"{general_missing} standard services to add, plus {len(specialist_missing)} to check with you"
+            elif evidence_count:
+                subtitle = f"{evidence_count} confirmed from your website and reviews"
+            else:
+                subtitle = f"Based on your trade category and licence"
+            findings.append({
+                "type": "services",
+                "priority": 2,
+                "chip": "leads",
+                "severity": "high",
+                "headline": f"Review {len(missing_services)} services not on your profile",
+                "subtitle": subtitle,
+                "fix_action": "__FIX_SERVICES__",
+                "completeness": completeness,
+                "current": f"{len(ss_subcats)} services listed",
+                "suggested": f"{len(missing_services)} additional services detected",
+                "action": "Review and add missing services",
+                "_missing_count": len(missing_services),
+            })
+    if ss_subcats and not missing_services:
+        strengths.append({"headline": f"{len(ss_subcats)} services listed", "icon": "check"})
+
+    # Licence check is now merged into verification above — no standalone licence finding
+
+    # Photos + Logo + Description → merged into single "profile" finding
+    google_photos = state.get("google_photos", [])
+    has_portfolio = ss_profile.get("hasPortfolio", False)
+    has_logo = ss_profile.get("hasALogo", False)
+
+    if has_portfolio:
+        strengths.append({"headline": "Work photos uploaded", "icon": "check"})
+    if has_logo:
+        strengths.append({"headline": "Logo uploaded", "icon": "check"})
+
+    # Description check — AI quality assessment
+    ss_desc = ss_profile.get("businessDescription", "") or ""
+    desc_len = len(ss_desc)
+    desc_issues = []
+    desc_score = 0
+    desc_summary = ""
+    if desc_len < 30:
+        desc_score = 1
+        desc_summary = "No description" if not ss_desc.strip() else "Description is too short"
+    else:
+        # Use AI to assess description quality
+        t_desc = time.time()
+        business_name = state.get("business_name", "")
+        member_since = ss_profile.get("memberSince", "")
+        licence_classes_str = ", ".join(state.get("licence_classes", []))
+        review_info = ""
+        if ss_review_count and float(ss_review_score) > 0:
+            review_info = f"{ss_review_count} reviews at {ss_review_score}★"
+        ss_subcat_names = [s.get("name", "") for s in (ss_profile.get("jobFilter", {}).get("subCategories") or [])]
+        services_str = ", ".join(ss_subcat_names[:10])
+
+        desc_assessment = await llm_fast.ainvoke([
+            SystemMessage(content=f"""You are a profile copywriting expert for Service Seeking, Australia's largest trade marketplace. Analyse this business description and return JSON.
+
+BUSINESS: {business_name}
+MEMBER SINCE: {member_since}
+LICENCE CLASSES: {licence_classes_str or 'Unknown'}
+REVIEWS: {review_info or 'None on SS'}
+SERVICES: {services_str or 'Unknown'}
+
+CURRENT DESCRIPTION:
+{ss_desc}
+
+Return JSON with:
+- "score": 1-10 (1=terrible, 5=adequate, 10=excellent)
+- "issues": array of specific problems found (e.g. "ALL CAPS section looks unprofessional", "Says '8 years' but member since 2016 — now stale", "Doesn't mention licence or reviews")
+- "summary": one sentence describing the main improvement opportunity
+
+Score guide:
+- 1-3: Missing, empty, or barely functional
+- 4-5: Has content but significant issues (caps, stale info, generic, poor grammar)
+- 6-7: Decent but missing trust signals (licence, reviews, specific services/areas)
+- 8-9: Good, covers most bases
+- 10: Excellent, professional, specific, leverages all trust signals
+
+Return ONLY valid JSON, no other text."""),
+            HumanMessage(content="Assess the description quality."),
+        ])
+
+        # Parse AI response
+        desc_result = {"score": 5, "issues": [], "summary": "Could be improved"}
+        try:
+            raw = desc_assessment.content.strip()
+            if raw.startswith("```"):
+                raw = re.sub(r'^```\w*\n?', '', raw)
+                raw = re.sub(r'\n?```$', '', raw)
+            desc_result = json.loads(raw)
+        except Exception:
+            logger.warning(f"[ASSESS] Failed to parse description assessment: {desc_assessment.content[:200]}")
+
+        desc_score = desc_result.get("score", 5)
+        desc_issues = desc_result.get("issues", [])
+        desc_summary = desc_result.get("summary", "")
+        desc_time = time.time() - t_desc
+        logger.info(f"[ASSESS] Description quality: {desc_score}/10 — {desc_summary}")
+        if desc_issues:
+            logger.info(f"[ASSESS] Description issues: {desc_issues}")
+        _trace(state, "LLM: Description Quality", desc_time,
+               f"Score {desc_score}/10 — {desc_summary}",
+               {"score": desc_score, "issues": desc_issues, "description_length": desc_len})
+
+    if desc_score >= 8:
+        strengths.append({"headline": "Strong description", "icon": "check"})
+
+    # Build combined profile finding (description + photos + logo)
+    profile_issues = []
+    if desc_score < 8:
+        if desc_issues:
+            profile_issues.append("; ".join(desc_issues[:2]))
+        elif desc_summary:
+            profile_issues.append(desc_summary)
+        else:
+            profile_issues.append("Description needs improvement")
+    if not has_portfolio and google_photos:
+        profile_issues.append(f"{len(google_photos)} photos available from Google")
+    elif not has_portfolio:
+        profile_issues.append("No work photos")
+    if not has_logo:
+        profile_issues.append("No logo")
+
+    if profile_issues:
+        # Use the clean summary sentence, not raw technical issues
+        if desc_summary and desc_score < 8:
+            subtitle = desc_summary
+        elif profile_issues:
+            subtitle = profile_issues[0]
+        if not has_portfolio and not has_logo:
+            subtitle += " + missing photos and logo"
+        elif not has_portfolio:
+            subtitle += " + no work photos"
+        elif not has_logo:
+            subtitle += " + no logo"
+        findings.append({
+            "type": "profile",
+            "priority": 4,
+            "chip": "polish",
+            "severity": "low" if desc_score >= 5 else "medium",
+            "headline": "Freshen up your profile",
+            "subtitle": subtitle,
+            "fix_action": "__FIX_PROFILE__",
+            "completeness": desc_score * 10 if desc_score else 0,
+            "current": desc_summary or "Profile needs attention",
+            "suggested": subtitle,
+            "action": "Improve your profile",
+            "_desc_score": desc_score,
+            "_needs_logo": not has_logo,
+            "_needs_photos": not has_portfolio,
+        })
+
+    # Reviews — compare SS vs Google, highlight gaps
+    google_rating = state.get("google_rating", 0)
+    google_review_count = state.get("google_review_count", 0)
+
+    if ss_review_count and float(ss_review_score) > 0:
+        headline = f"{ss_review_count} reviews ({ss_review_score}\u2605)"
+        if google_rating and google_review_count > ss_review_count:
+            headline += f" \u00b7 {google_review_count} on Google ({google_rating}\u2605)"
+        strengths.append({"headline": headline, "icon": "star"})
+    elif google_rating and google_review_count:
+        # No SS reviews but has Google reviews
+        strengths.append({"headline": f"{google_review_count} Google reviews ({google_rating}\u2605)", "icon": "star"})
+
+    # Service area checks — location mismatch + barrier pollution
+    google_suburb = state.get("business_suburb", "")
+    ss_suburb = (ss_profile.get("jobFilter", {}).get("suburb") or {}).get("suburb", "")
+    has_area_finding = False
+
+    if google_suburb and ss_suburb and google_suburb.lower() != ss_suburb.lower():
+        findings.append({
+            "type": "area_mismatch",
+            "priority": 3,
+            "chip": "urgent",
+            "severity": "high",
+            "headline": "Update your location",
+            "subtitle": f"Google shows {google_suburb}, profile says {ss_suburb}",
+            "fix_action": "__FIX_AREAS__",
+            "completeness": 50,
+            "current": f"Based in {ss_suburb}",
+            "suggested": f"Google shows {google_suburb}",
+            "action": "Review your service area",
+            "_google_suburb": google_suburb,
+            "_ss_suburb": ss_suburb,
+        })
+        has_area_finding = True
+
+    # Barrier pollution check — does the radius cross a known barrier?
+    # Uses the regional guide (same data the service_area_node uses) + LLM to assess
+    if not has_area_finding:
+        base_suburb = ss_suburb or google_suburb or ""
+        ss_radius = (ss_profile.get("jobFilter") or {}).get("radius", 20)
+        business_state = state.get("business_state", "")
+        service_areas = state.get("service_areas", {})
+        regions_included = service_areas.get("regions_included", [])
+
+        if regions_included and len(regions_included) >= 3 and ss_radius >= 15:
+            regional_guide = get_regional_guide(business_state)
+            if regional_guide:
+                t_barrier = time.time()
+                barrier_response = await llm_fast.ainvoke([
+                    SystemMessage(content=f"""You are analysing whether a tradesperson's service radius includes areas across a geographic barrier they probably wouldn't service.
+
+BASE SUBURB: {base_suburb} (postcode {state.get('business_postcode', '')})
+RADIUS: {ss_radius}km
+ALL REGIONS WITHIN THIS RADIUS ({len(regions_included)}): {', '.join(regions_included)}
+
+REGIONAL GUIDE — BARRIERS SECTION:
+{regional_guide[:3000]}
+
+Look at where {base_suburb} is located, then look at the regions this {ss_radius}km radius covers. Does the radius extend across a significant barrier (harbour, river, mountain range, national park, bridge bottleneck) to include regions on the other side that a tradesperson based in {base_suburb} would be unlikely to service?
+
+For example: a 20km radius from Balgowlah (Northern Beaches) would include Eastern Suburbs and Inner West — but those are across Sydney Harbour, requiring the Harbour Bridge or tunnel. Most Northern Beaches tradies wouldn't take those jobs.
+
+Return JSON:
+- "has_barrier": true/false
+- "barrier_name": "name of the barrier" (e.g. "Sydney Harbour", "Georges River")
+- "explanation": "one sentence explaining the issue for the business owner" (e.g. "Your 20km radius reaches across the harbour into Eastern Suburbs and Inner West — you're probably not taking those jobs")
+
+Only flag barriers that create a genuine practical problem for a tradie traveling by van/ute. Return ONLY valid JSON."""),
+                    HumanMessage(content="Check for barrier pollution."),
+                ])
+                logger.info(f"[ASSESS] Barrier LLM response: {barrier_response.content[:300]}")
+                try:
+                    raw = barrier_response.content.strip()
+                    if raw.startswith("```"):
+                        raw = re.sub(r'^```\w*\n?', '', raw)
+                        raw = re.sub(r'\n?```$', '', raw)
+                    barrier_result = json.loads(raw)
+                except Exception:
+                    barrier_result = {"has_barrier": False}
+
+                barrier_time = time.time() - t_barrier
+                if barrier_result.get("has_barrier"):
+                    barrier_name = barrier_result.get("barrier_name", "a geographic barrier")
+                    explanation = barrier_result.get("explanation", "")
+                    logger.info(f"[ASSESS] Barrier pollution: {ss_radius}km from {base_suburb} crosses {barrier_name} — "
+                                f"{explanation} — regions ({len(regions_included)}): {regions_included}")
+                    _trace(state, "LLM: Barrier Check", barrier_time,
+                           f"Barrier found: {barrier_name}",
+                           {"barrier": barrier_name, "radius": ss_radius, "regions": len(regions_included)})
+                    subtitle = f"{ss_radius}km radius from {base_suburb} crosses {barrier_name}"
+                    findings.append({
+                        "type": "area_barrier",
+                        "priority": 3,
+                        "chip": "refine",
+                        "severity": "medium",
+                        "headline": "Tighten your service area",
+                        "subtitle": subtitle,
+                        "fix_action": "__FIX_AREAS__",
+                        "completeness": 70,
+                        "current": f"{ss_radius}km radius from {base_suburb} covers {len(regions_included)} regions",
+                        "suggested": explanation or f"Radius crosses {barrier_name}",
+                        "action": "Refine your service area",
+                    })
+                    has_area_finding = True
+                else:
+                    logger.info(f"[ASSESS] No barrier pollution for {ss_radius}km from {base_suburb} ({len(regions_included)} regions)")
+                    _trace(state, "LLM: Barrier Check", barrier_time,
+                           "No barrier found",
+                           {"radius": ss_radius, "regions": len(regions_included)})
+
+    if not has_area_finding and ss_suburb:
+        strengths.append({"headline": f"Location: {ss_suburb}", "icon": "check"})
+
+    # Sort findings by priority
+    findings.sort(key=lambda f: f.get("priority", 99))
+
+    summary_counts = {}
+    for f in findings:
+        sev = f["severity"]
+        summary_counts[sev] = summary_counts.get(sev, 0) + 1
+
+    logger.info(f"[ASSESS] Strengths: {[s['headline'] for s in strengths]}")
+    finding_labels = [f"{f['type']}({f['severity']}, p{f.get('priority', '?')})" for f in findings]
+    logger.info(f"[ASSESS] Findings: {finding_labels}")
+    _trace(state, "Profile Assessment", 0,
+           f"{len(strengths)} strengths, {len(findings)} findings ({summary_counts})",
+           {"strengths": [s["headline"] for s in strengths],
+            "findings": [{"type": f["type"], "severity": f["severity"],
+                         "headline": f.get("headline", ""), "priority": f.get("priority", 0)}
+                        for f in findings]})
+
+    # Compute current profile score (same formula as complete_node)
+    profile_score = 0
+    if has_abn: profile_score += 14
+    if has_licence_verified: profile_score += 14
+    if ss_subcats: profile_score += 15
+    if len(ss_desc) >= 30: profile_score += 15
+    if has_portfolio: profile_score += 14
+    if has_logo: profile_score += 14
+    if ss_suburb: profile_score += 14
+
+    return {"findings": findings, "strengths": strengths, "summary_counts": summary_counts, "profile_score": profile_score}
+
+
+async def assessment_node(state: OnboardingState) -> dict:
+    """Assessment node for improve mode — shows enrichment findings to existing SS user.
+
+    Turn 1: Run enrichment, assess profile, show findings with fix options.
+    Turn 2+: Route based on user selection.
+    """
+    messages = state.get("messages", [])
+    last_msg = _get_last_human_message(messages)
+
+    # Turn 2+: user chose what to fix (or clicked a fix row)
+    if state.get("_assessment_shown") and last_msg:
+        findings = state.get("_assessment", {}).get("findings", [])
+        fix_types = [f["type"] for f in findings]
+        fix_total = len(findings)
+
+        # Helper to build fix routing result
+        # Always sets ALL fix types and flags so we walk through every finding,
+        # starting with the clicked one and always ending at the profile screen.
+        def _fix_route(start_fix, msg, extra=None):
+            # Build ordered fix list: clicked fix first, then others in priority order,
+            # always ending at profile screen (the final review before publishing)
+            if start_fix == "profile":
+                # Clicked profile directly — just go there (it's the end)
+                all_fixes = ["profile"]
+            else:
+                all_fixes = [start_fix]
+                for f in findings:
+                    if f["type"] != start_fix and f["type"] != "profile":
+                        all_fixes.append(f["type"])
+                all_fixes.append("profile")  # Always end at profile
+
+            result = {
+                "current_node": "assessment",
+                "_improve_fixes": all_fixes,
+                "_improve_fix_total": len(all_fixes),
+                "_improve_fix_index": 1,
+                "messages": [AIMessage(content=msg)],
+            }
+            # Set confirmation flags for ALL fix types
+            for fix in all_fixes:
+                if fix == "services":
+                    result["services_confirmed"] = False
+                elif fix in ("area_mismatch", "area_barrier", "areas"):
+                    result["service_areas_confirmed"] = False
+                    svc_areas = dict(state.get("service_areas", {}))
+                    svc_areas.pop("base_suburb", None)
+                    result["service_areas"] = svc_areas
+                elif fix == "profile":
+                    result["profile_saved"] = False
+                    profile_finding = next((f for f in findings if f["type"] == "profile"), None)
+                    if profile_finding:
+                        result["_needs_logo"] = profile_finding.get("_needs_logo", False)
+                        result["_needs_photos"] = profile_finding.get("_needs_photos", False)
+                elif fix == "verification":
+                    result["_verification_mode"] = True
+                    result["business_verified"] = False
+            if extra:
+                result.update(extra)
+            return result
+
+        # Individual fix actions from assessment rows
+        if last_msg == "__FIX_VERIFY__":
+            # Route to the existing business_verification_node — same Q&A flow as new users
+            return _fix_route("verification", "Let's verify your business.")
+
+        if last_msg == "__FIX_SERVICES__":
+            return _fix_route("services", "Let's review your services and see what we can add.")
+
+        if last_msg == "__FIX_AREAS__":
+            # Find which area finding triggered this
+            area_finding = next((f for f in findings if f["type"] in ("area_mismatch", "area_barrier")), None)
+            start_type = area_finding["type"] if area_finding else "area_mismatch"
+            return _fix_route(start_type, "Let's check your service area.")
+
+        if last_msg == "__FIX_PROFILE__":
+            return _fix_route("profile", "Let's freshen up your profile.")
+
+        if last_msg == "__SKIP_FIX__":
+            # Skip current fix — advance to next or complete
+            result = {
+                "current_node": "assessment",
+                "_verification_mode": False,
+                "business_verified": state.get("business_verified", True),
+                "services_confirmed": state.get("services_confirmed", True),
+                "service_areas_confirmed": state.get("service_areas_confirmed", True),
+                "profile_saved": state.get("profile_saved", True),
+                "messages": [AIMessage(content="Skipped. Moving on...")],
+            }
+            # Increment fix index
+            fix_index = state.get("_improve_fix_index", 1)
+            result["_improve_fix_index"] = fix_index + 1
+            return result
+
+        if last_msg == "__LOOKS_GOOD__":
+            return {
+                "current_node": "complete",
+                "confirmed": True,
+                "profile_saved": True,
+                "services_confirmed": True,
+                "service_areas_confirmed": True,
+                "subscription_plan": "existing",
+                "messages": [AIMessage(content="Your profile looks great! No changes needed. Keep up the good work!")],
+            }
+
+    # Turn 1: run enrichment + assessment
+    assessment = state.get("_assessment")
+    if not assessment:
+        t_assess = time.time()
+        logger.info(f"[ASSESS] Starting assessment for '{state.get('business_name', '')}' (ID: {state.get('_ss_business_id', '')})")
+
+        # Run enrichment (same as new user flow)
+        enrichment = await _enrich_business(state)
+        for k, v in enrichment.items():
+            state[k] = v
+        t_enrich = time.time()
+        logger.info(f"[ASSESS] Enrichment complete: {t_enrich - t_assess:.1f}s — "
+                     f"categories={state.get('_detected_categories', [])}, "
+                     f"licence={'#' + state.get('licence_info', {}).get('licence_number', '') if state.get('licence_info') else 'none'}, "
+                     f"google={'yes' if state.get('google_rating') else 'no'}, "
+                     f"abr={'yes' if state.get('_abr_match') else 'no'}")
+
+        assessment = await _assess_profile(state)
+        state["_assessment"] = assessment
+        logger.info(f"[ASSESS] Assessment complete: {time.time() - t_assess:.1f}s total")
+
+    findings = assessment.get("findings", [])
+    if not findings:
+        return {
+            "current_node": "assessment",
+            "_assessment_shown": True,
+            "_assessment": assessment,
+            "messages": [AIMessage(content=(
+                f"I've had a thorough look at your profile for **{state.get('business_name', '')}** "
+                f"and it's looking really solid! Nothing major to improve right now. Nice work!"
+            ))],
+            "buttons": [{"label": "Looks good, thanks!", "value": "__LOOKS_GOOD__"}],
+        }
+
+    # Benefit-led intro with owner's name
+    contact_name = state.get("contact_name", "")
+    first_name = contact_name.split()[0] if contact_name else ""
+    finding_count = len(findings)
+
+    finding_word = "thing" if finding_count == 1 else "things"
+    business_type = ""
+    detected_cats = state.get("_detected_categories", [])
+    if detected_cats:
+        business_type = detected_cats[0].lower()
+
+    # This is the greeting line on the assessment screen. The owner just waited for their
+    # profile to load — reward them with a warm, specific opener that makes them want to continue.
+    summary_response = await llm_fast.ainvoke([
+        SystemMessage(content=f"""You are writing the greeting line on a profile review screen.
+
+Owner's first name: {first_name or '(not known)'}
+Business type: {business_type or 'business'}
+Number of improvements found: {finding_count}
+
+Write ONE sentence. Speak TO the owner using "you/your". NEVER say "{first_name}'s business" or refer to them in third person. The improvements are listed below, so say "these" to connect.
+
+TEMPLATE: "Hi [name], we found these [N] things that could get your [type] business more leads."
+
+Say "we" not "I". One sentence, no line breaks. Output ONLY the sentence."""),
+        HumanMessage(content=f"Greeting for {first_name or 'the owner'}, a {business_type or 'business'} with {finding_count} improvements."),
+    ])
+    summary_text = summary_response.content.strip().strip('"').split('\n')[0]
+
+    # No buttons — each row IS the action, and ✕ closes the wizard
+    buttons = []
+
+    return {
+        "current_node": "assessment",
+        "_assessment_shown": True,
+        "_assessment": assessment,
+        "_improve_fix_total": len(findings),
+        "messages": [AIMessage(content=summary_text)],
+        "buttons": buttons,
     }
 
 
