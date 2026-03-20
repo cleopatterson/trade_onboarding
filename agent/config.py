@@ -23,6 +23,11 @@ BRAVE_SEARCH_API_KEY = os.getenv("BRAVE_SEARCH_API_KEY", "")
 # Google Places API (for Google Business Profile ratings/reviews)
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 
+# Service Seeking API (for existing user profile improvement)
+SS_API_TOKEN = os.getenv("SS_API_TOKEN", "") or os.getenv("SERVICE_SEEKING_API_TOKEN", "")
+SS_API_URL = os.getenv("SS_API_URL", "") or os.getenv("SERVICE_SEEKING_API_URL", "")
+SS_API_BASIC_AUTH = os.getenv("SS_API_BASIC_AUTH", "") or os.getenv("SERVICE_SEEKING_API_BASIC_AUTH", "")
+
 # CORS — comma-separated allowed origins (default: localhost only)
 ALLOWED_ORIGINS = [
     o.strip() for o in os.getenv("ALLOWED_ORIGINS", f"http://localhost:{PORT}").split(",") if o.strip()
