@@ -582,3 +582,47 @@
 - **Google Places retry** (`agent/graph.py`):
   - If initial search fails, retries with legal name and "Pty Ltd" variant
   - Known limitation: pure service-area businesses (no physical address) often invisible to Places Text Search API
+
+### Mar 20, 2026 — Improve Mode v4: Assessment Redesign + Fix Flows
+- **Assessment screen redesign** (`agent/graph.py`, `web/landing.html`):
+  - Row-based findings with grey icons + chips, single "Let's get started" CTA
+  - Removed "Fix everything" and "Looks good" buttons — rows are informational only
+  - Benefit-led LLM intro addressing owner by name (from SS API user relationship `?include=job_filter,user`)
+  - Profile score computed (7 areas x ~14% each) — displayed as score jump on completion
+  - LLM-based barrier pollution check using regional guide data (no hardcoded barrier lists)
+  - Regions computed from SS radius on init using `get_suburbs_in_radius_grouped()`
+  - Barrier findings: "Tighten your service area" with subtitle showing radius + barrier name
+- **Google Places matching** (`agent/graph.py`):
+  - Distinctive word matching — excludes generic trade words (electrical, plumbing, etc.)
+  - Requires at least one distinctive word overlap to accept match
+  - Prevents false positives like Ampvantage != Ampower
+- **Fix flows** (`agent/graph.py`, `server/app.py`):
+  - All findings queued in priority order, always ending at profile node
+  - Improve mode auto-chain: runs one fix node at a time, no cascading
+  - `__SKIP_FIX__` handler in service_discovery, service_area, profile nodes
+  - Verification routes through existing `business_verification_node` (not custom sub-flow)
+  - Service discovery: improve mode merges with existing services, only asks about actual gaps
+  - Service area: barrier/mismatch context injected into Turn 1 LLM prompt
+  - Description comparison: current vs improved side-by-side, editable, then shows profile builder
+  - Profile node: skips website/social search in improve mode, preserves SS logo/photos
+- **Prompt overhaul** (`agent/graph.py` — all 5 improve-mode prompts):
+  - Service discovery: reframed from "setting up" to "reviewing for gaps" with WHY rationale
+  - Service area: radius context + barrier framing as better-matched leads
+  - Profile description: "keep their voice" guidelines, match existing length not 500 char limit
+  - Assessment summary: speak directly to owner using "you/your", not third person
+  - Profile questions: improve-mode branch for existing subscribers
+- **Frontend** (`web/landing.html`):
+  - Improve-specific loading screen ("Reviewing your profile...")
+  - Exit sheet for unsaved changes (Publish/Discard/Keep going)
+  - Description comparison page with standard wizard button styles
+  - Completion screen: score jump + changes summary (no raw JSON for improve mode)
+  - Gallery note when SS has portfolio but no image URLs
+  - ABN Verified badge checks `business_verified` flag (SS API v3 doesn't return ABN string)
+  - Owner name from SS API user relationship
+- **State fields added** (`agent/state.py`):
+  - `_improve_fix_total`, `_improve_fix_index` — fix progress tracking
+  - `_description_comparison`, `_description_improved` — description comparison flow
+  - `_needs_logo`, `_needs_photos` — profile visual gaps
+- **Config** (`agent/config.py`):
+  - `SS_API_TOKEN`, `SS_API_URL`, `SS_API_BASIC_AUTH` added
+  - Railway needs `SS_API_TOKEN` and `SS_API_URL` env vars
